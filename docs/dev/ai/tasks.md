@@ -12,10 +12,10 @@
 | Task ID | Domain / Phase | Status | Subsystem Contract | Target Implementation | Test Suite |
 |---|---|---|---|---|---|
 | `TASK-001` | Phase 1: Repo Scaffolding | COMPLETED | [Scaffolding Contract](condom/layer-2/001/001/task-001-scaffolding.contract.md) | `README.md`, `.agents/rules/`, `.gitignore` | `just check-links` / File verification |
-| `TASK-002` | Phase 1: Docker Foundation | IN_PROGRESS | [Docker Contract](condom/layer-2/001/001/task-002-docker.contract.md) | `docker-compose.yaml`, `docker/php/Dockerfile` | `just test` / `docker compose config` |
-| `TASK-003` | Phase 2: Error Kernel | PLANNED | `docs/dev/specifications/contracts/error.contract.md` | `src/app/Core/ErrorHandler.php` | `dev/scripts/sh/test-panel-sabotage.sh` |
-| `TASK-004` | Phase 2: Dual DB Engine | PLANNED | [Database Contract](../specifications/contracts/database.contract.md) | `src/app/Core/Database.php` | `dev/scripts/py/migrate.py` |
-| `TASK-005` | Phase 3: Bitmask RBAC | PLANNED | [RBAC Contract](../specifications/contracts/rbac.contract.md) | `src/app/Middleware/RoleMiddleware.php` | Test harness suite |
+| `TASK-002` | Phase 1: Docker Foundation | COMPLETED | [Docker Contract](condom/layer-2/001/001/task-002-docker.contract.md) | `docker-compose.yaml`, `docker/php/Dockerfile` | `just test` / `docker compose config` |
+| `TASK-003` | Phase 2: Error Kernel & YAML | COMPLETED | [Phase 2 Execution Contract](condom/layer-2/001/001/task-003-phase2-execution.contract.md) | `src/app/Core/ErrorHandler.php`, `header.php` | `dev/scripts/sh/test-panel-sabotage.sh` |
+| `TASK-004` | Phase 2: Dual DB Engine | IN_PROGRESS | [Database Contract](../specifications/contracts/database.contract.md) | `src/app/Core/Database.php` | `dev/scripts/py/migrate.py` |
+| `TASK-005` | Phase 3: Bitmask RBAC & SuperAdmin | IN_PROGRESS | [RBAC Contract](../specifications/contracts/rbac.contract.md) | `RoleMiddleware.php`, `SuperAdminController.php` | `php -l` / RBAC unit verification |
 | `TASK-006` | Phase 4: Clean-Room UI | PLANNED | `docs/dev/specifications/contracts/ui.contract.md` | `src/public/assets/css/style.css` | W3C / WCAG AA audit |
 
 ---

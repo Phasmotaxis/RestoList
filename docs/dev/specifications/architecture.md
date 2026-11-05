@@ -58,6 +58,15 @@ The Enterprise Information Management System (EIMS) provides a secure multi-tena
   - Positive: Guarantees exact runtime reproduction across macOS, Linux, and Windows WSL2 without host tool installation.
   - Negative: Requires Docker engine installed on target evaluation hardware.
 
+### ADR-006: Super Admin Global Deployment Governance & Multi-Tenant RBAC
+- **Status**: Accepted
+- **Context**: The enterprise architecture requires global administrative governance across distributed tenant organizations, while tenant admins must remain strictly partitioned to prevent data leakage.
+- **Decision**: Expand `SuperAdmin` authority to global cloud deployment scope. `SuperAdmin` has unrestricted access to list, audit, and provision tenant organizations, audit organization administrators, and inspect all users across tenants. `Admin` (Tenant Admin) remains mathematically constrained by `tenant_id` boundaries.
+- **Contract Reference**: [RBAC Contract](contracts/rbac.contract.md)
+- **Consequences**:
+  - Positive: Clear separation of operational concerns between platform-level operators and tenant administrators. Single audit plane for institutional governance.
+  - Negative: Super Admin endpoints must strictly enforce bitmask checks to prevent privilege escalation from tenant-level administrators.
+
 ---
 
 ## 3. Failure Mode Analysis & Defenses

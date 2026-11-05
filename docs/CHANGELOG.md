@@ -25,3 +25,11 @@ This software uses [Semantic Versioning v2.0.0](https://semver.org/spec/v2.0.0.h
 - Authored air-gap image archiving utility in [`dev/scripts/sh/pre-cache.sh`](../dev/scripts/sh/pre-cache.sh) for defense against connectivity loss.
 - Configured task orchestration runner in [`justfile`](../justfile) with `setup`, `build`, `up`, `down`, `test`, and `pre-cache` targets.
 - Added MIT license terms in [`LICENSE`](../LICENSE), [`docs/LICENSE.md`](LICENSE.md), [`docs/licenses/MIT.md`](licenses/MIT.md), and attribution ledger in [`docs/NOTICE.md`](NOTICE.md).
+- Authored dynamic YAML metadata parser in [`src/app/Views/partials/header.php`](../src/app/Views/partials/header.php) consuming [`dev/values/constants/main.yaml`](../dev/values/constants/main.yaml) for unified application branding.
+- Implemented Live Panel Sabotage verification suite in [`dev/scripts/sh/test-panel-sabotage.sh`](../dev/scripts/sh/test-panel-sabotage.sh) asserting error elevation, visual diagnostic rendering, and syntax integrity.
+- Expanded `SuperAdmin` authority in [`src/app/Controllers/SuperAdminController.php`](../src/app/Controllers/SuperAdminController.php) to govern cross-tenant organizations, administrators, users, and audit records under [ADR-006](dev/specifications/architecture.md).
+
+### Changed
+
+- Updated canonical [`.gitignore`](../.gitignore) to enforce user-defined and template-level path exclusions.
+- Integrated automated panel sabotage verification into [`justfile`](../justfile) `test` target.

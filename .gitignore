@@ -1,35 +1,63 @@
-# Operational & AI Condom (Sensitive & Session State)
+################################################################################
+#                                 USER-DEFINED                                 #
+################################################################################
+
+# User-Ignored Folders
 docs/dev/ai/condom/
-
-# Environment Configuration
-.env
-.env.local
-
-# Database files & Local storage
-*.sqlite
-*.sqlite3
-*.db
-dev/tmp/
-storage/
-
-# Container & Offline Tar Archives
-*.tar
-*.tar.gz
-
-# Python cache & virtual environments
-__pycache__/
-*.py[cod]
-*$py.class
-.venv/
-venv/
-
-# Dependencies
-vendor/
-node_modules/
-
-# OS and Editor Artifacts
-.DS_Store
-Thumbs.db
 docs/.obsidian/
-.idea/
-.vscode/
+
+# User-Ignored Files
+
+# User-Unignored Folders
+
+# User-Unignored Files
+
+################################################################################
+#                                   TEMPLATE                                   #
+################################################################################
+
+# Template Ignored Folders
+**/__pycache__/
+**/.obsidian/plugins
+**/.trash/
+**/.DS_Store
+**/tmp/
+.history/
+.refact/
+
+# Template Ignored Files
+.env
+docker-compose.yml
+**/*.bak
+**/*.bak.*
+**/*.db
+**/*.db.*
+**/*.test.*
+**/*.old
+**/*.old.*
+**/t
+**/t*
+**/test.*
+**/.obsidian/workspace.json
+**/.obsidian/workspace-mobile.json
+
+# Template Unignored Folders
+
+# Template Unignored Files
+!.env.example
+
+################################################################################
+#                                 GITIGNORE.IO                                 #
+################################################################################
+
+# Created by https://www.toptal.com/developers/gitignore/api/linux,macos,python,windows,visualstudiocode
+# Edit at https://www.toptal.com/developers/gitignore?templates=linux,macos,python,windows,visualstudiocode
+
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+# End of https://www.toptal.com/developers/gitignore/api/linux,macos,python,windows,visualstudiocode

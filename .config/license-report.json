@@ -1,21 +1,7 @@
 {
-  "project": "EIMS",
-  "license": "MIT",
-  "dependencies": [
-    {
-      "name": "php",
-      "version": "8.3-fpm-alpine",
-      "license": "PHP-3.01"
-    },
-    {
-      "name": "nginx",
-      "version": "1.25-alpine",
-      "license": "BSD-2-Clause"
-    },
-    {
-      "name": "mysql",
-      "version": "8.0",
-      "license": "GPL-2.0"
-    }
-  ]
+    "fields": [
+      "name",
+      "licenseType",
+      "link"
+    ]
 }

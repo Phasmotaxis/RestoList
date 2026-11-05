@@ -35,6 +35,8 @@ test: setup
     docker compose config --quiet
     @echo "[INFO] Checking required directory structure..."
     @test -f README.md && test -f docs/CHANGELOG.md && test -f docs/GETTING-STARTED.md
+    @echo "[INFO] Running panel sabotage and kernel tests..."
+    ./dev/scripts/sh/test-panel-sabotage.sh
     @echo "[SUCCESS] Base verification suite passed."
 
 # Export Docker images for air-gapped deployment

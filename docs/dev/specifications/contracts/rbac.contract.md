@@ -29,3 +29,14 @@ interface RoleMiddlewareInterface
 2. **Evaluation Logic**: Access is granted if and only if `($userMask & $requiredMask) === $requiredMask` (or non-zero for any-role access).
 3. **Session Verification**: The middleware inspects the active session state (`$_SESSION['user']['role_mask']`). If missing or invalid, execution aborts with HTTP 401 Unauthorized or redirects to login.
 4. **Denial Interception**: If the evaluated mask lacks required privileges, the middleware aborts execution with HTTP 403 Forbidden and renders `src/app/Views/errors/403.php`.
+
+## 3. Hierarchical Scope & Tenant Isolation
+1. **Super Admin Scope (`ROLE_SUPERADMIN = 1`)**:
+   - Possesses global cloud deployment authority.
+   - Has unrestricted cross-tenant read/write/audit visibility across all organizations (`tenants`), organization administrators, and end-users.
+   - Can inspect global security and data mutation audit logs (`audit_logs`) without `tenant_id` filtering.
+2. **Organization Admin Scope (`ROLE_ADMIN = 2`)**:
+   - Strictly constrained to their assigned `tenant_id`.
+   - Cannot view or manage users, logs, or configurations of another tenant organization.
+3. **Standard User Scope (`ROLE_USER = 4`)**:
+   - Constrained to operational record creation and reading within their assigned `tenant_id`.
