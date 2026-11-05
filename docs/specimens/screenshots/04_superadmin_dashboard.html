@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta name="apple-mobile-web-app-title" content="SuperAdmin Console - EIMS" />
+    <meta name="twitter:title" content="SuperAdmin Console - EIMS" />
+    <meta property="og:site_name" content="SuperAdmin Console - EIMS" />
+    <meta property="og:title" content="SuperAdmin Console - EIMS" />
+    <title>SuperAdmin Console - EIMS</title>
+
+    <meta name="author" content="EIMS Development Team">
+
+    <meta name="description" content="Enterprise Information Management System for Multi-Tenant Data Governance" />
+    <meta property="og:description" content="Enterprise Information Management System for Multi-Tenant Data Governance" />
+
+    <meta name="twitter:site:domain" content="eims-cvsu.lyra-on.top" />
+    <meta name="twitter:url" content="https://eims-cvsu.lyra-on.top" />
+    <meta property="og:url" content="https://eims-cvsu.lyra-on.top" />
+    <link rel="canonical" href="https://eims-cvsu.lyra-on.top" />
+
+    <meta name="twitter:card" content="/assets/images/banner.png" />
+    <meta name="twitter:image" content="/assets/images/banner.png" />
+    <meta property="og:image" content="/assets/images/banner.png" />
+    <meta property="og:image:width" content="1280" />
+    <meta property="og:image:height" content="800" />
+
+    <link rel="icon" type="image/x-icon" href="/assets/images/icons/logo.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/assets/images/icons/logo.png" />
+
+    <meta property="twitter:card" content="summary_large_image" />
+
+    <meta property="og:type" content="website" />
+
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
+
+    <link rel="preload stylesheet" as="style" href="/assets/css/style.css" />
+    <script defer src="/assets/js/app.js"></script>
+</head>
+<body>
+    <header class="site-header">
+        <div class="container">
+            <h1>Enterprise Information Management System</h1>
+            <p class="subtitle">Cavite State University - Main Campus - 2nd year 1st semester 2026-27</p>
+        </div>
+    </header>
+    <main class="container">
+<section class="card">
+    <h2>Global Deployment Control Plane</h2>
+    <p class="subtitle">Complete visibility across all tenant organizations, organization admins, and active users.</p>
+</section>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+    <div class="card" style="margin-bottom: 0;">
+        <h3>Tenant Organizations</h3>
+        <p style="font-size: 2rem; font-weight: bold; color: var(--color-primary);">3</p>
+        <p class="subtitle">Active enterprise tenants</p>
+    </div>
+    <div class="card" style="margin-bottom: 0;">
+        <h3>Organization Admins</h3>
+        <p style="font-size: 2rem; font-weight: bold; color: var(--color-accent);">1</p>
+        <p class="subtitle">Scoped tenant administrators</p>
+    </div>
+    <div class="card" style="margin-bottom: 0;">
+        <h3>Total Users</h3>
+        <p style="font-size: 2rem; font-weight: bold; color: var(--color-primary);">4</p>
+        <p class="subtitle">Global user accounts across tenants</p>
+    </div>
+    <div class="card" style="margin-bottom: 0;">
+        <h3>Audit Records</h3>
+        <p style="font-size: 2rem; font-weight: bold; color: var(--color-text-muted);">20</p>
+        <p class="subtitle">Total captured system actions</p>
+    </div>
+</div>
+
+<section class="card">
+    <h3>SuperAdmin Operations</h3>
+    <ul style="list-style-type: none; padding-left: 0; display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 1rem;">
+        <li><a href="/superadmin/organizations" style="color: var(--color-primary); font-weight: 500;">Manage Organizations &rarr;</a></li>
+        <li><a href="/superadmin/users" style="color: var(--color-primary); font-weight: 500;">All Users Directory &rarr;</a></li>
+        <li><a href="/superadmin/audit-logs" style="color: var(--color-primary); font-weight: 500;">Global Security Logs &rarr;</a></li>
+        <li><form method="POST" action="/logout" style="display: inline;"><button type="submit" style="background: none; border: none; color: var(--color-danger, #dc2626); cursor: pointer; font-weight: 500; font-size: 1rem; padding: 0;">Logout &rarr;</button></form></li>
+    </ul>
+</section>
+    </main>
+    <footer class="site-footer container">
+        <p>&copy; 2026 EIMS Development Team. All rights reserved.</p>
+    </footer>
+    <script src="/assets/js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,36 @@
+\documentclass[11pt,a4paper]{article}
+
+\input{preamble}
+
+\title{\textbf{Enterprise Information Management System (EIMS):}\\\large Clean-Room Multi-Tenant Architecture, Dual-Driver Relational Persistence, and Defensive Runtime Error Shields}
+
+\author{
+    \textbf{Department of Information Technology}\\
+    Cavite State University\\
+    \texttt{eims-cvsu.lyra-on.top}
+}
+
+\date{Academic Year 2026--2027 $\cdot$ Final Capstone Defense}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+This monograph presents the formal specification, engineering methodology, and architectural verification of the Enterprise Information Management System (EIMS). Developed for Cavite State University (CvSU) under DICT24 Information Management, EIMS achieves complete multi-tenant administrative isolation without external framework overhead. The system implements clean-room native PHP 8.3, a mathematical bitmask Role-Based Access Control (RBAC) model, dual-driver relational persistence abstracting primary MySQL 8.0 and offline SQLite3 failover, and a live panel sabotage defense kernel. Empirical verification confirms sub-millisecond route resolution across 13 canonical system endpoints and continuous fault interception.
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+\input{sections/01-introduction}
+\input{sections/02-architecture}
+\input{sections/03-relational-model}
+\input{sections/04-security-rbac}
+\input{sections/05-error-kernel}
+\input{sections/06-verification}
+
+\bibliographystyle{plain}
+\bibliography{references}
+
+\end{document}

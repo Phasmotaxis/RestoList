@@ -67,6 +67,14 @@ The Enterprise Information Management System (EIMS) provides a secure multi-tena
   - Positive: Clear separation of operational concerns between platform-level operators and tenant administrators. Single audit plane for institutional governance.
   - Negative: Super Admin endpoints must strictly enforce bitmask checks to prevent privilege escalation from tenant-level administrators.
 
+### ADR-007: Canonical 13-Route Dispatching, Automated Testing, and XeLaTeX Defense Monograph
+- **Status**: Accepted
+- **Context**: Comprehensive panel evaluation requires deterministic verification of all functional entrypoints and publication-grade academic defense documentation without framework sprawl.
+- **Decision**: Implement a canonical 13-route inventory covering public, superadmin, admin, user, and diagnostic error endpoints in `src/public/index.php`. Support dual web and JSON response negotiation. Author a modular XeLaTeX capstone monograph under `Paper/` compiled via `latexmk -xelatex`, alongside automated route testing in `dev/scripts/py/screenshot_routes.py`.
+- **Consequences**:
+  - Positive: Complete empirical test coverage, deterministic route verification, and formal academic documentation adhering to university capstone standards.
+  - Negative: Requires maintaining LaTeX document structure in lockstep with codebase evolution.
+
 ---
 
 ## 3. Failure Mode Analysis & Defenses

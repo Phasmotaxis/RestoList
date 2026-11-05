@@ -10,8 +10,8 @@ default:
 # Initialize environment and directories
 setup:
     @test -f .env || cp .env.example .env
-    @mkdir -p storage dev/tmp
-    @echo "[SUCCESS] Environment configured (.env, storage/, dev/tmp/)"
+    @mkdir -p storage dev/tmp docs/specimens/screenshots
+    @echo "[SUCCESS] Environment configured (.env, storage/, dev/tmp/, docs/specimens/screenshots/)"
 
 # Build container images
 build: setup
@@ -29,15 +29,41 @@ down:
 logs:
     docker compose logs -f
 
-# Run tests and configuration verification
-test: setup
-    @echo "[INFO] Validating Docker Compose configuration..."
-    docker compose config --quiet
-    @echo "[INFO] Checking required directory structure..."
-    @test -f README.md && test -f docs/CHANGELOG.md && test -f docs/GETTING-STARTED.md
-    @echo "[INFO] Running panel sabotage and kernel tests..."
+# Execute PHP syntax lint across application source
+lint:
+    docker compose exec app find /var/www/html -name "*.php" -exec php -l {} +
+
+# Execute panel sabotage defense verification
+test-sabotage:
     ./dev/scripts/sh/test-panel-sabotage.sh
-    @echo "[SUCCESS] Base verification suite passed."
+
+# Run database migrations
+migrate:
+    python3 dev/scripts/py/migrate.py --migrate
+
+# Load database seed records
+seed:
+    python3 dev/scripts/py/migrate.py --seed
+
+# Capture visual specimens and verify 13-route inventory
+screenshot:
+    python3 dev/scripts/py/screenshot_routes.py
+
+# Compile academic defense LaTeX monograph via XeLaTeX
+paper:
+    cd Paper && latexmk -xelatex -interaction=nonstopmode main.tex
+
+# Clean LaTeX build artifacts
+paper-clean:
+    cd Paper && latexmk -c main.tex
+
+# Validate static asset optimization and air-gap integrity
+optimize-assets:
+    ./dev/scripts/sh/optimize-assets.sh
+
+# Run all automated tests and quality gates
+test: setup lint test-sabotage screenshot optimize-assets
+    @echo "[SUCCESS] All EIMS verification suites passed."
 
 # Export Docker images for air-gapped deployment
 pre-cache:

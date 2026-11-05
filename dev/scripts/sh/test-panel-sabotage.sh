@@ -52,7 +52,7 @@ HEADER_TEST=$(docker run --rm -v "$(pwd)/src:/var/www/html:ro" -v "$(pwd)/dev:/v
     ob_start();
     require "/var/www/html/app/Views/partials/header.php";
     $output = ob_get_clean();
-    if (strpos($output, "Enterprise Information Management System") !== false && strpos($output, "eims.cvsu.edu.ph") !== false) {
+    if (strpos($output, "Enterprise Information Management System") !== false && strpos($output, "eims-cvsu.lyra-on.top") !== false) {
         echo "[HEADER_CONFIRMED]";
     } else {
         echo "[HEADER_FAILED] " . $output;

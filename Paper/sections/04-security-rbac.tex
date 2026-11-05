@@ -1,0 +1,26 @@
+\section{Security Architecture and Mathematical Bitmask RBAC}
+
+\subsection{Bitmask Role Representation}
+EIMS models user permissions using bitwise integers (\cite{sandhu1996role}). Each role corresponds to a power-of-two bit position:
+\begin{align}
+    \text{ROLE\_SUPERADMIN} &= 1 \ll 0 = 1 \\
+    \text{ROLE\_ADMIN} &= 1 \ll 1 = 2 \\
+    \text{ROLE\_USER} &= 1 \ll 2 = 4
+\end{align}
+
+Permission resolution evaluates via bitwise conjunction:
+\begin{equation}
+    \text{HasAccess}(U, R) \iff (U \land \text{ROLE\_SUPERADMIN} \neq 0) \lor ((U \land R) = R)
+\end{equation}
+where $U$ is the user's role mask and $R$ is the required resource mask. Under Architecture Decision Record 006 (ADR-006), SuperAdmin possesses an absolute cross-tenant supervisory override, granting global access across organizations, users, and audit records.
+
+\subsection{Authentication and Cryptographic Standards}
+Credentials are verified using memory-hard password hashing algorithms (Argon2id and Bcrypt, \cite{biryukov2016argon2}). Sessions enforce strict browser security attributes:
+\begin{itemize}
+    \item \texttt{HttpOnly}: Mitigates Cross-Site Scripting (XSS) session interception.
+    \item \texttt{SameSite=Lax}: Prevents Cross-Site Request Forgery (CSRF).
+    \item Explicit session destruction and cookie expiration upon \texttt{/logout}.
+\end{itemize}
+
+\subsection{Data Portability and Compliance (RA 10173)}
+In accordance with Republic Act 10173 (Data Privacy Act of 2012, \cite{ra10173}), standard users possess an explicit data portability endpoint (\texttt{/user/export}). The endpoint generates a formatted CSV containing the user's identity records, organizational affiliation, and immutable audit trail.

@@ -7,10 +7,22 @@ docs/dev/ai/condom/
 docs/.obsidian/
 
 # User-Ignored Files
+Paper/*.aux
+Paper/*.log
+Paper/*.fls
+Paper/*.fdb_latexmk
+Paper/*.out
+Paper/*.toc
+Paper/*.bbl
+Paper/*.blg
+Paper/*.synctex.gz
+Paper/*.xdv
 
 # User-Unignored Folders
 
 # User-Unignored Files
+!docs/dev/testing-runbook.md
+!docs/dev/tooling.md
 
 ################################################################################
 #                                   TEMPLATE                                   #
@@ -45,6 +57,8 @@ docker-compose.yml
 
 # Template Unignored Files
 !.env.example
+!docs/dev/testing-runbook.md
+!docs/dev/tooling.md
 
 ################################################################################
 #                                 GITIGNORE.IO                                 #

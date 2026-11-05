@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta name="apple-mobile-web-app-title" content="Global Audit Logs - SuperAdmin" />
+    <meta name="twitter:title" content="Global Audit Logs - SuperAdmin" />
+    <meta property="og:site_name" content="Global Audit Logs - SuperAdmin" />
+    <meta property="og:title" content="Global Audit Logs - SuperAdmin" />
+    <title>Global Audit Logs - SuperAdmin</title>
+
+    <meta name="author" content="EIMS Development Team">
+
+    <meta name="description" content="Enterprise Information Management System for Multi-Tenant Data Governance" />
+    <meta property="og:description" content="Enterprise Information Management System for Multi-Tenant Data Governance" />
+
+    <meta name="twitter:site:domain" content="eims-cvsu.lyra-on.top" />
+    <meta name="twitter:url" content="https://eims-cvsu.lyra-on.top" />
+    <meta property="og:url" content="https://eims-cvsu.lyra-on.top" />
+    <link rel="canonical" href="https://eims-cvsu.lyra-on.top" />
+
+    <meta name="twitter:card" content="/assets/images/banner.png" />
+    <meta name="twitter:image" content="/assets/images/banner.png" />
+    <meta property="og:image" content="/assets/images/banner.png" />
+    <meta property="og:image:width" content="1280" />
+    <meta property="og:image:height" content="800" />
+
+    <link rel="icon" type="image/x-icon" href="/assets/images/icons/logo.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/assets/images/icons/logo.png" />
+
+    <meta property="twitter:card" content="summary_large_image" />
+
+    <meta property="og:type" content="website" />
+
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
+
+    <link rel="preload stylesheet" as="style" href="/assets/css/style.css" />
+    <script defer src="/assets/js/app.js"></script>
+</head>
+<body>
+    <header class="site-header">
+        <div class="container">
+            <h1>Enterprise Information Management System</h1>
+            <p class="subtitle">Cavite State University - Main Campus - 2nd year 1st semester 2026-27</p>
+        </div>
+    </header>
+    <main class="container">
+<section class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+        <div>
+            <h2>Global Security Audit Stream</h2>
+            <p class="subtitle">System-wide immutable security and administrative event ledger</p>
+        </div>
+        <a href="/superadmin/dashboard" style="color: var(--color-primary); font-weight: 500;">&larr; Back to Dashboard</a>
+    </div>
+</section>
+
+<section class="card">
+    <div style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse; text-align: left;">
+            <thead>
+                <tr style="border-bottom: 2px solid var(--color-border);">
+                    <th style="padding: 0.5rem;">Event ID</th>
+                    <th style="padding: 0.5rem;">Action</th>
+                    <th style="padding: 0.5rem;">Tenant</th>
+                    <th style="padding: 0.5rem;">Entity</th>
+                    <th style="padding: 0.5rem;">Details</th>
+                    <th style="padding: 0.5rem;">IP Address</th>
+                    <th style="padding: 0.5rem;">Timestamp</th>
+                </tr>
+            </thead>
+            <tbody>
+                                    <tr style="border-bottom: 1px solid var(--color-border);">
+                        <td style="padding: 0.5rem;"><code>log-0a84cb44f28cefa3</code></td>
+                        <td style="padding: 0.5rem;"><code style="font-weight: 600;">AUTH_LOGIN</code></td>
+                        <td style="padding: 0.5rem;">Cavite State University Main Campus</td>
+                        <td style="padding: 0.5rem;">users:usr-user-003</td>
+                        <td style="padding: 0.5rem;">User logged in successfully</td>
+                        <td style="padding: 0.5rem;"><code>172.18.0.1</code></td>
+                        <td style="padding: 0.5rem;">2026-11-05 23:24:31</td>
+                    </tr>
+                                    <tr style="border-bottom: 1px solid var(--color-border);">
+                        <td style="padding: 0.5rem;"><code>log-d07d3766fae15f6e</code></td>
+                        <td style="padding: 0.5rem;"><code style="font-weight: 600;">AUTH_LOGIN</code></td>
+                        <td style="padding: 0.5rem;">Cavite State University Main Campus</td>
+                        <td style="padding: 0.5rem;">users:usr-superadmin-001</td>
+                        <td style="padding: 0.5rem;">User logged in successfully</td>
+                        <td style="padding: 0.5rem;"><code>172.18.0.1</code></td>
+                        <td style="padding: 0.5rem;">2026-11-05 23:24:31</td>
+                    </tr>
+                                    <tr style="border-bottom: 1px solid var(--color-border);">
+                        <td style="padding: 0.5rem;"><code>log-68056562c5984ec5</code></td>
+                        <td style="padding: 0.5rem;"><code style="font-weight: 600;">AUTH_LOGIN</code></td>
+                        <td style="padding: 0.5rem;">Cavite State University Main Campus</td>
+                        <td style="padding: 0.5rem;">users:usr-admin-002</td>
+                        <td style="padding: 0.5rem;">User logged in successfully</td>
+                        <td style="padding: 0.5rem;"><code>172.18.0.1</code></td>
+                        <td style="padding: 0.5rem;">2026-11-05 23:24:31</td>
+                    </tr>
+                                    <tr style="border-bottom: 1px solid var(--color-border);">
+                        <td style="padding: 0.5rem;"><code>log-f93b899bc6726b6e</code></td>
+                        <td style="padding: 0.5rem;"><code style="font-weight: 600;">AUTH_LOGIN</code></td>
+                        <td style="padding: 0.5rem;">Cavite State University Main Campus</td>
+                        <td style="padding: 0.5rem;">users:usr-admin-002</td>
+                        <td style="padding: 0.5rem;">User logged in successfully</td>
+                        <td style="padding: 0.5rem;"><code>172.18.0.1</code></td>
+                        <td style="padding: 0.5rem;">2026-11-05 23:22:53</td>
+                    </tr>
+                                    <tr style="border-bottom: 1px solid var(--color-border);">
+                        <td style="padding: 0.5rem;"><code>log-9367be5075d17787</code></td>
+                        <td style="padding: 0.5rem;"><code style="font-weight: 600;">AUTH_LOGOUT</code></td>
+                        <td style="padding: 0.5rem;">Cavite State University Main Campus</td>
+                        <td style="padding: 0.5rem;">users:usr-user-003</td>
+                        <td style="padding: 0.5rem;">User logged out</td>
+                        <td style="padding: 0.5rem;"><code>172.18.0.1</code></td>
+                        <td style="padding: 0.5rem;">2026-11-05 23:22:53</td>
+                    </tr>
+                                    <tr style="border-bottom: 1px solid var(--color-border);">
+                        <td style="padding: 0.5rem;"><code>log-965c14c294485cbb</code></td>
+                        <td style="padding: 0.5rem;"><code style="font-weight: 600;">AUTH_LOGIN</code></td>
+                        <td style="padding: 0.5rem;">Cavite State University Main Campus</td>
+                        <td style="padding: 0.5rem;">users:usr-superadmin-001</td>
+                        <td style="padding: 0.5rem;">User logged in successfully</td>
+                        <td style="padding: 0.5rem;"><code>172.18.0.1</code></td>
+                        <td style="padding: 0.5rem;">2026-11-05 23:22:53</td>
+                    </tr>
+                                    <tr style="border-bottom: 1px solid var(--color-border);">
+                        <td style="padding: 0.5rem;"><code>log-9638e2f18a9852e3</code></td>
+                        <td style="padding: 0.5rem;"><code style="font-weight: 600;">AUTH_LOGIN</code></td>
+                        <td style="padding: 0.5rem;">Cavite State University Main Campus</td>
+                        <td style="padding: 0.5rem;">users:usr-user-003</td>
+                        <td style="padding: 0.5rem;">User logged in successfully</td>
+                        <td style="padding: 0.5rem;"><code>172.18.0.1</code></td>
+                        <td style="padding: 0.5rem;">2026-11-05 23:22:53</td>
+                    </tr>
+                                    <tr style="border-bottom: 1px solid var(--color-border);">
+                        <td style="padding: 0.5rem;"><code>log-9385acbd9585ec35</code></td>
+                        <td style="padding: 0.5rem;"><code style="font-weight: 600;">AUTH_LOGIN</code></td>
+                        <td style="padding: 0.5rem;">Cavite State University Main Campus</td>
+                        <td style="padding: 0.5rem;">users:usr-admin-002</td>
+                        <td style="padding: 0.5rem;">User logged in successfully</td>
+                        <td style="padding: 0.5rem;"><code>172.18.0.1</code></td>
+                        <td style="padding: 0.5rem;">2026-11-05 23:19:39</td>
+                    </tr>
+                                    <tr style="border-bottom: 1px solid var(--color-border);">
+                        <td style="padding: 0.5rem;"><code>log-d588500e5b102314</code></td>
+                        <td style="padding: 0.5rem;"><code style="font-weight: 600;">AUTH_LOGIN</code></td>
+                        <td style="padding: 0.5rem;">Cavite State University Main Campus</td>
+                        <td style="padding: 0.5rem;">users:usr-superadmin-001</td>
+                        <td style="padding: 0.5rem;">User logged in successfully</td>
+                        <td style="padding: 0.5rem;"><code>172.18.0.1</code></td>
+                        <td style="padding: 0.5rem;">2026-11-05 23:19:39</td>
+                    </tr>
+                                    <tr style="border-bottom: 1px solid var(--color-border);">
+                        <td style="padding: 0.5rem;"><code>log-d433b5a41d14d092</code></td>
+                        <td style="padding: 0.5rem;"><code style="font-weight: 600;">AUTH_LOGOUT</code></td>
+                        <td style="padding: 0.5rem;">Cavite State University Main Campus</td>
+                        <td style="padding: 0.5rem;">users:usr-user-003</td>
+                        <td style="padding: 0.5rem;">User logged out</td>
+                        <td style="padding: 0.5rem;"><code>172.18.0.1</code></td>
+                        <td style="padding: 0.5rem;">2026-11-05 23:19:39</td>
+                    </tr>
+                                    <tr style="border-bottom: 1px solid var(--color-border);">
+                        <td style="padding: 0.5rem;"><code>log-28eefe180a11b4c0</code></td>
+                        <td style="padding: 0.5rem;"><code style="font-weight: 600;">AUTH_LOGIN</code></td>
+                        <td style="padding: 0.5rem;">Cavite State University Main Campus</td>
+                        <td style="padding: 0.5rem;">users:usr-user-003</td>
+                        <td style="padding: 0.5rem;">User logged in successfully</td>
+                        <td style="padding: 0.5rem;"><code>172.18.0.1</code></td>
+                        <td style="padding: 0.5rem;">2026-11-05 23:19:39</td>
+                    </tr>
+                                    <tr style="border-bottom: 1px solid var(--color-border);">
+                        <td style="padding: 0.5rem;"><code>log-3b3e470ae2ea975c</code></td>
+                        <td style="padding: 0.5rem;"><code style="font-weight: 600;">AUTH_LOGOUT</code></td>
+                        <td style="padding: 0.5rem;">Cavite State University Main Campus</td>
+                        <td style="padding: 0.5rem;">users:usr-user-003</td>
+                        <td style="padding: 0.5rem;">User logged out</td>
+                        <td style="padding: 0.5rem;"><code>172.18.0.1</code></td>
+                        <td style="padding: 0.5rem;">2026-11-05 23:19:05</td>
+                    </tr>
+                                    <tr style="border-bottom: 1px solid var(--color-border);">
+                        <td style="padding: 0.5rem;"><code>log-dce7db3a376a3796</code></td>
+                        <td style="padding: 0.5rem;"><code style="font-weight: 600;">AUTH_LOGIN</code></td>
+                        <td style="padding: 0.5rem;">Cavite State University Main Campus</td>
+                        <td style="padding: 0.5rem;">users:usr-user-003</td>
+                        <td style="padding: 0.5rem;">User logged in successfully</td>
+                        <td style="padding: 0.5rem;"><code>172.18.0.1</code></td>
+                        <td style="padding: 0.5rem;">2026-11-05 23:18:48</td>
+                    </tr>
+                                    <tr style="border-bottom: 1px solid var(--color-border);">
+                        <td style="padding: 0.5rem;"><code>log-4b795c07d3ecc144</code></td>
+                        <td style="padding: 0.5rem;"><code style="font-weight: 600;">USER_CREATE</code></td>
+                        <td style="padding: 0.5rem;">Cavite State University Main Campus</td>
+                        <td style="padding: 0.5rem;">users:usr-a41e3d57b6c6</td>
+                        <td style="padding: 0.5rem;">Admin provisioned user maria.santos@cvsu.edu.ph</td>
+                        <td style="padding: 0.5rem;"><code>172.18.0.1</code></td>
+                        <td style="padding: 0.5rem;">2026-11-05 23:18:44</td>
+                    </tr>
+                                    <tr style="border-bottom: 1px solid var(--color-border);">
+                        <td style="padding: 0.5rem;"><code>log-2fdc124a31a2bb33</code></td>
+                        <td style="padding: 0.5rem;"><code style="font-weight: 600;">AUTH_LOGIN</code></td>
+                        <td style="padding: 0.5rem;">Cavite State University Main Campus</td>
+                        <td style="padding: 0.5rem;">users:usr-admin-002</td>
+                        <td style="padding: 0.5rem;">User logged in successfully</td>
+                        <td style="padding: 0.5rem;"><code>172.18.0.1</code></td>
+                        <td style="padding: 0.5rem;">2026-11-05 23:18:32</td>
+                    </tr>
+                                    <tr style="border-bottom: 1px solid var(--color-border);">
+                        <td style="padding: 0.5rem;"><code>log-fdc3001c14cd14e3</code></td>
+                        <td style="padding: 0.5rem;"><code style="font-weight: 600;">TENANT_CREATE</code></td>
+                        <td style="padding: 0.5rem;">CvSU Trece Campus</td>
+                        <td style="padding: 0.5rem;">tenants:tenant-23180c3b77fc</td>
+                        <td style="padding: 0.5rem;">Provisioned organization CvSU Trece Campus (cvsu-trece)</td>
+                        <td style="padding: 0.5rem;"><code>172.18.0.1</code></td>
+                        <td style="padding: 0.5rem;">2026-11-05 23:18:21</td>
+                    </tr>
+                                    <tr style="border-bottom: 1px solid var(--color-border);">
+                        <td style="padding: 0.5rem;"><code>log-2176d202cad02389</code></td>
+                        <td style="padding: 0.5rem;"><code style="font-weight: 600;">AUTH_LOGIN</code></td>
+                        <td style="padding: 0.5rem;">Cavite State University Main Campus</td>
+                        <td style="padding: 0.5rem;">users:usr-superadmin-001</td>
+                        <td style="padding: 0.5rem;">User logged in successfully</td>
+                        <td style="padding: 0.5rem;"><code>172.18.0.1</code></td>
+                        <td style="padding: 0.5rem;">2026-11-05 23:17:47</td>
+                    </tr>
+                                    <tr style="border-bottom: 1px solid var(--color-border);">
+                        <td style="padding: 0.5rem;"><code>log-init-001</code></td>
+                        <td style="padding: 0.5rem;"><code style="font-weight: 600;">SYSTEM_INIT</code></td>
+                        <td style="padding: 0.5rem;">Cavite State University Main Campus</td>
+                        <td style="padding: 0.5rem;">system:root</td>
+                        <td style="padding: 0.5rem;">Initial system genesis provisioning executed</td>
+                        <td style="padding: 0.5rem;"><code>127.0.0.1</code></td>
+                        <td style="padding: 0.5rem;">2026-11-05 23:13:13</td>
+                    </tr>
+                                    <tr style="border-bottom: 1px solid var(--color-border);">
+                        <td style="padding: 0.5rem;"><code>log-init-002</code></td>
+                        <td style="padding: 0.5rem;"><code style="font-weight: 600;">TENANT_PROVISION</code></td>
+                        <td style="padding: 0.5rem;">Cavite State University Main Campus</td>
+                        <td style="padding: 0.5rem;">tenants:tenant-cvsu-main-001</td>
+                        <td style="padding: 0.5rem;">Tenant verified and activated</td>
+                        <td style="padding: 0.5rem;"><code>127.0.0.1</code></td>
+                        <td style="padding: 0.5rem;">2026-11-05 23:13:13</td>
+                    </tr>
+                                    <tr style="border-bottom: 1px solid var(--color-border);">
+                        <td style="padding: 0.5rem;"><code>log-init-003</code></td>
+                        <td style="padding: 0.5rem;"><code style="font-weight: 600;">USER_ONBOARD</code></td>
+                        <td style="padding: 0.5rem;">Cavite State University Main Campus</td>
+                        <td style="padding: 0.5rem;">users:usr-user-003</td>
+                        <td style="padding: 0.5rem;">Standard user initialized</td>
+                        <td style="padding: 0.5rem;"><code>127.0.0.1</code></td>
+                        <td style="padding: 0.5rem;">2026-11-05 23:13:13</td>
+                    </tr>
+                            </tbody>
+        </table>
+    </div>
+</section>
+    </main>
+    <footer class="site-footer container">
+        <p>&copy; 2026 EIMS Development Team. All rights reserved.</p>
+    </footer>
+    <script src="/assets/js/app.js"></script>
+</body>
+</html>

@@ -33,10 +33,10 @@ require_once __DIR__ . '/../layouts/header.php';
 <section class="card">
     <h3>SuperAdmin Operations</h3>
     <ul style="list-style-type: none; padding-left: 0; display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 1rem;">
-        <li><a href="/api/superadmin/tenants" style="color: var(--color-primary); font-weight: 500;">Manage Organizations &rarr;</a></li>
-        <li><a href="/api/superadmin/admins" style="color: var(--color-primary); font-weight: 500;">Audit Organization Admins &rarr;</a></li>
-        <li><a href="/api/superadmin/users" style="color: var(--color-primary); font-weight: 500;">All Users Directory &rarr;</a></li>
-        <li><a href="/api/superadmin/audit-logs" style="color: var(--color-primary); font-weight: 500;">Global Security Logs &rarr;</a></li>
+        <li><a href="/superadmin/organizations" style="color: var(--color-primary); font-weight: 500;">Manage Organizations &rarr;</a></li>
+        <li><a href="/superadmin/users" style="color: var(--color-primary); font-weight: 500;">All Users Directory &rarr;</a></li>
+        <li><a href="/superadmin/audit-logs" style="color: var(--color-primary); font-weight: 500;">Global Security Logs &rarr;</a></li>
+        <li><form method="POST" action="/logout" style="display: inline;"><button type="submit" style="background: none; border: none; color: var(--color-danger, #dc2626); cursor: pointer; font-weight: 500; font-size: 1rem; padding: 0;">Logout &rarr;</button></form></li>
     </ul>
 </section>
 <?php

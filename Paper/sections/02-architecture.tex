@@ -1,0 +1,38 @@
+\section{System Architecture and Clean-Room Engineering}
+
+\subsection{Architectural Invariants and Topology}
+EIMS is structured around a three-tier clean-room topology:
+\begin{enumerate}
+    \item \textbf{Edge Reverse Proxy (Nginx 1.25 Alpine)}: Manages incoming HTTP connections, static asset streaming, buffer allocation (16 KB), and FastCGI delegation.
+    \item \textbf{Application Compute Engine (PHP 8.3 FPM)}: Headless execution worker operating under non-interactive runtime guards.
+    \item \textbf{Dual Relational Storage Engine}: Primary MySQL 8.0 instance backed by persistent container volumes, coupled with a localized SQLite3 embedded database.
+\end{enumerate}
+
+\subsection{Zero-Dependency Configuration Engine}
+Rather than importing bulky YAML parsing packages or relying on compiled PECL extensions, EIMS implements an internal pure-PHP YAML parser via \texttt{App\textbackslash Core\textbackslash Config}. The parser processes two-level key-value dictionaries from \texttt{dev/values/constants/main.yaml}:
+
+\begin{lstlisting}[language=PHP, caption={Native Zero-Dependency YAML Parser Core}]
+public static function parseYamlFile(string $filePath): array
+{
+    $lines = file($filePath, FILE_IGNORE_NEW_LINES);
+    $data = [];
+    $currentSection = null;
+    foreach ($lines as $rawLine) {
+        $trimmed = trim($rawLine);
+        if ($trimmed === '' || $trimmed[0] === '#') continue;
+        if (preg_match('/^([a-zA-Z0-9_\-]+):\s*$/', $rawLine, $m)) {
+            $currentSection = $m[1];
+            $data[$currentSection] = [];
+            continue;
+        }
+        if (preg_match('/^\s{2,4}([a-zA-Z0-9_\-]+):\s*(.*)$/', $rawLine, $m)) {
+            $val = self::castValue($m[2]);
+            if ($currentSection !== null) $data[$currentSection][$m[1]] = $val;
+            else $data[$m[1]] = $val;
+        }
+    }
+    return $data;
+}
+\end{lstlisting}
+
+This parser guarantees dynamic branding, meta tags, and site descriptors are loaded consistently across all HTTP responses without runtime latency.

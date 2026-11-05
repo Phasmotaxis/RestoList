@@ -14,6 +14,9 @@ class RoleMiddleware
 
     public static function checkPermission(int $userMask, int $requiredMask): bool
     {
+        if (($userMask & self::ROLE_SUPERADMIN) === self::ROLE_SUPERADMIN) {
+            return true;
+        }
         return ($userMask & $requiredMask) === $requiredMask;
     }
 
