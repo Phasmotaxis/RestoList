@@ -1,0 +1,5 @@
+app:
+  name: eims
+  target: test
+  php_version: "8.3"
+  nginx_version: "1.25"

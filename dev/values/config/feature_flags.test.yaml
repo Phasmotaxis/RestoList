@@ -1,0 +1,5 @@
+features:
+  audit_logging: true
+  sqlite_fallback: true
+  diagnostic_overlay: true
+  test_mock_driver: true

@@ -1,0 +1,4 @@
+cli:
+  timeout: 30
+  retry_count: 2
+  non_interactive: true

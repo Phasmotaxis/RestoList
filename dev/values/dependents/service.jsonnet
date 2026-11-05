@@ -1,0 +1,7 @@
+{
+  services: [
+    "web",
+    "app",
+    "db"
+  ]
+}

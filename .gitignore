@@ -1,0 +1,35 @@
+# Operational & AI Condom (Sensitive & Session State)
+docs/dev/ai/condom/
+
+# Environment Configuration
+.env
+.env.local
+
+# Database files & Local storage
+*.sqlite
+*.sqlite3
+*.db
+dev/tmp/
+storage/
+
+# Container & Offline Tar Archives
+*.tar
+*.tar.gz
+
+# Python cache & virtual environments
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+
+# Dependencies
+vendor/
+node_modules/
+
+# OS and Editor Artifacts
+.DS_Store
+Thumbs.db
+docs/.obsidian/
+.idea/
+.vscode/

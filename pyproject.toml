@@ -1,0 +1,13 @@
+[project]
+name = "eims-devtools"
+version = "0.1.0"
+description = "Development utilities and migration runners for EIMS"
+authors = [
+    { name = "Lyra Phasma", email = "whinyaan@gmail.com" }
+]
+requires-python = ">=3.10"
+dependencies = []
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
