@@ -1,260 +1,433 @@
 <?php
-
 declare(strict_types=1);
 
 namespace App\Controllers;
 
-use App\Core\Audit;
 use App\Core\Database;
-use App\Core\ListQuery;
 use App\Core\Request;
 use App\Core\Response;
 use App\Core\Session;
-use App\Core\Validator;
-use App\Middleware\RoleMiddleware;
-use PDOException;
+use App\Services\AuditLogger;
 
 /**
- * SuperAdmin Controller: Cross-Tenant System Administration.
+ * SuperAdminController: Unified SuperAdmin Portal (Tenant Management + Feature Flags + Audit Logs + Sessions)
  *
- * Provides global visibility and management across all tenants (restaurants, locations, institutions).
- * SuperAdmin manages tenant CRUD, assigns admins across tenants, and views system-wide audit logs.
- * No tenant isolation: all data visible to SuperAdmin.
+ * Wave 1: SuperAdmin-only endpoints for org lifecycle, feature toggles, audit viewing, and emergency session revocation.
+ * All endpoints enforce SuperAdmin role via middleware + Session context.
+ * Multi-tenant: SuperAdmin views/manages data across ALL orgs (not scoped to single tenant).
+ *
+ * Routes:
+ * GET    /superadmin/tenants               → listTenants()
+ * GET    /superadmin/tenants/create        → createForm()
+ * POST   /superadmin/tenants               → store()
+ * GET    /superadmin/tenants/:id/edit      → editForm()
+ * POST   /superadmin/tenants/:id           → update()
+ * POST   /superadmin/tenants/:id/flags/:flag/toggle → toggleFlag()
+ * POST   /superadmin/tenants/:id/invite    → issueInvite()
+ * GET    /superadmin/audit                 → viewAuditLogs()
+ * GET    /superadmin/sessions              → listSessions()
+ * POST   /superadmin/sessions/:id/revoke   → revokeSession()
+ *
+ * Security:
+ * - CSRF token validation on all POST endpoints
+ * - Org-agnostic viewing (not filtered by tenant_id); logs all changes
+ * - Email stubs: invite tokens generated but not sent (logged to audit)
+ * - Error handling: 422 validation, 404 not found, 403 unauthorized, 500 server error
+ *
+ * @author DICT24 Wave 1 Layer 1
  */
 class SuperAdminController
 {
-    private const USER_SORT_COLUMNS = [
-        'name' => ['u.last_name', 'u.first_name'],
-        'email' => ['u.email'],
-        'tenant' => ['t.name'],
-        'role' => ['u.role_mask'],
-        'created' => ['u.created_at'],
-    ];
+    private Database $pdo;
+    private Request $request;
+    private Response $response;
+    private AuditLogger $auditLogger;
 
-    private const USER_ROLE_FILTERS = [
-        'superadmin' => RoleMiddleware::ROLE_SUPERADMIN,
-        'admin' => RoleMiddleware::ROLE_ADMIN,
-        'user' => RoleMiddleware::ROLE_USER,
-    ];
+    public function __construct(Database $pdo, Request $request, Response $response, AuditLogger $auditLogger)
+    {
+        $this->pdo = $pdo;
+        $this->request = $request;
+        $this->response = $response;
+        $this->auditLogger = $auditLogger;
+
+        // Enforce SuperAdmin role
+        if (Session::get('role') !== 'superadmin') {
+            http_response_code(403);
+            exit('Access denied: SuperAdmin role required');
+        }
+    }
+
+    // ========== Tenant Management ==========
 
     /**
-     * Helper: Detect JSON request format (Accept header or ?format=json).
+     * List all organizations with subscription tier, feature flags summary, user count
      *
-     * @return bool true if Accept header contains application/json or ?format=json parameter present.
+     * GET /superadmin/tenants
      */
-    private function isJsonRequest(): bool
+    public function listTenants(): void
     {
-        return (strpos($_SERVER['HTTP_ACCEPT'] ?? '', 'application/json') !== false) || isset($_GET['format']) && $_GET['format'] === 'json';
+        $stmt = $this->pdo->prepare('
+            SELECT id, name, subscription_tier, feature_flags, created_at, archived_at,
+                   (SELECT COUNT(*) FROM users WHERE org_id = organizations.id AND archived_at IS NULL) AS user_count
+            FROM organizations
+            ORDER BY created_at DESC
+        ');
+        $stmt->execute();
+        $orgs = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+        // Render view: src/app/Views/superadmin/tenants/index.php
+        extract(['orgs' => $orgs]);
+        require_once __DIR__ . '/../Views/superadmin/tenants/index.php';
     }
 
     /**
-     * Render SuperAdmin global dashboard: cross-tenant metrics and system overview.
+     * Show tenant creation form
      *
-     * Requires SuperAdmin role. Displays counts of tenants, admins, users, and audit log entries
-     * across entire system (not tenant-scoped).
-     *
-     * @param Request $request HTTP request object.
-     * @param Response $response HTTP response object.
-     *
-     * @return void Requires superadmin dashboard view.
-     *
-     * @throws Exit On role check failure (HTTP 403).
+     * GET /superadmin/tenants/create
      */
-    public function dashboard(Request $request, Response $response): void
+    public function createForm(): void
     {
-        RoleMiddleware::handle(RoleMiddleware::ROLE_SUPERADMIN);
-
-        $tenantsCount = (int) (Database::executeQuery('SELECT COUNT(*) as count FROM tenants')->fetch()['count'] ?? 0);
-        $adminsCount = (int) (Database::executeQuery('SELECT COUNT(*) as count FROM users WHERE (role_mask & :mask) > 0', [
-            'mask' => RoleMiddleware::ROLE_ADMIN,
-        ])->fetch()['count'] ?? 0);
-        $usersCount = (int) (Database::executeQuery('SELECT COUNT(*) as count FROM users')->fetch()['count'] ?? 0);
-        $logsCount = (int) (Database::executeQuery('SELECT COUNT(*) as count FROM audit_logs')->fetch()['count'] ?? 0);
-
-        require_once __DIR__ . '/../Views/dashboards/superadmin.php';
-    }
-
-    public function organizations(Request $request, Response $response): void
-    {
-        RoleMiddleware::handle(RoleMiddleware::ROLE_SUPERADMIN);
-        $this->renderOrganizations($response, [], [], 200);
-    }
-
-    public function createOrganization(Request $request, Response $response): void
-    {
-        RoleMiddleware::handle(RoleMiddleware::ROLE_SUPERADMIN);
-        Session::verifyCsrf();
-
-        $old = [
-            'name' => trim((string) ($_POST['name'] ?? '')),
-            'subdomain' => strtolower(trim((string) ($_POST['subdomain'] ?? ''))),
-        ];
-
-        $errors = array_filter([
-            'name' => Validator::name($old['name'], 'Organization name', 255),
-            'subdomain' => Validator::subdomain($old['subdomain']),
+        $subscriptionTiers = ['free', 'professional', 'enterprise'];
+        $defaultFlags = json_encode([
+            'enable_floor_plan' => false,
+            'enable_inventory_erp' => false,
+            'enable_deposits' => false,
+            'enable_loyalty' => false,
         ]);
-        if ($errors !== []) {
-            $this->renderOrganizations($response, $errors, $old, 422);
-            return;
+
+        require_once __DIR__ . '/../Views/superadmin/tenants/form.php';
+    }
+
+    /**
+     * Store new organization
+     *
+     * POST /superadmin/tenants
+     *
+     * @return void
+     * @throws \Exception If insertion fails
+     */
+    public function store(): void
+    {
+        // Validate CSRF token
+        if ($_POST['_csrf'] !== Session::getCsrfToken()) {
+            http_response_code(403);
+            exit('CSRF token mismatch');
         }
 
-        $id = 'tenant-' . bin2hex(random_bytes(6));
+        $name = trim($_POST['name'] ?? '');
+        $subscriptionTier = trim($_POST['subscription_tier'] ?? 'free');
+
+        // Validation
+        if (empty($name)) {
+            http_response_code(422);
+            exit(json_encode(['error' => 'Organization name is required']));
+        }
+
+        $featureFlags = json_encode([
+            'enable_floor_plan' => isset($_POST['enable_floor_plan']),
+            'enable_inventory_erp' => isset($_POST['enable_inventory_erp']),
+            'enable_deposits' => isset($_POST['enable_deposits']),
+            'enable_loyalty' => isset($_POST['enable_loyalty']),
+        ]);
+
         try {
-            Database::executeQuery(
-                'INSERT INTO tenants (id, name, subdomain, is_active) VALUES (:id, :name, :subdomain, 1)',
-                ['id' => $id, 'name' => $old['name'], 'subdomain' => $old['subdomain']]
+            $stmt = $this->pdo->prepare('
+                INSERT INTO organizations (name, subscription_tier, feature_flags, created_at)
+                VALUES (:name, :tier, :flags, NOW())
+            ');
+            $stmt->execute([
+                ':name' => $name,
+                ':tier' => $subscriptionTier,
+                ':flags' => $featureFlags,
+            ]);
+
+            $orgId = (int)$this->pdo->lastInsertId();
+
+            // Audit log
+            AuditLogger::log(
+                org_id: 0, // SuperAdmin scope (org 0)
+                actor_id: (int)Session::get('user_id'),
+                action: 'CREATE',
+                entity: 'organization',
+                after: ['id' => $orgId, 'name' => $name, 'tier' => $subscriptionTier]
             );
-        } catch (PDOException $e) {
-            if (Validator::isUniqueViolation($e)) {
-                $this->renderOrganizations($response, ['subdomain' => 'This subdomain is already in use.'], $old, 422);
-                return;
-            }
-            throw $e;
+
+            header("Location: /superadmin/tenants/$orgId/edit");
+            exit;
+        } catch (\Exception $e) {
+            http_response_code(500);
+            exit(json_encode(['error' => 'Failed to create organization']));
         }
-
-        Audit::record($id, 'TENANT_CREATE', 'tenants', $id, "Provisioned organization {$old['name']} ({$old['subdomain']})");
-
-        if ($this->isJsonRequest()) {
-            $response->json(['status' => 'created', 'tenant_id' => $id], 201);
-            return;
-        }
-
-        $response->redirect('/superadmin/organizations');
     }
 
-    public function editOrganization(Request $request, Response $response): void
+    /**
+     * Show organization edit form
+     *
+     * GET /superadmin/tenants/:id/edit
+     */
+    public function editForm(int $orgId): void
     {
-        RoleMiddleware::handle(RoleMiddleware::ROLE_SUPERADMIN);
-        $tenant = $this->findTenant((string) ($_GET['id'] ?? ''));
-        if ($tenant === null) {
-            $this->renderNotFound($response);
-            return;
+        $stmt = $this->pdo->prepare('SELECT * FROM organizations WHERE id = :id');
+        $stmt->execute([':id' => $orgId]);
+        $org = $stmt->fetch(\PDO::FETCH_ASSOC);
+
+        if (!$org) {
+            http_response_code(404);
+            exit('Organization not found');
         }
-        $this->renderEditOrganization($response, $tenant, [], 200);
+
+        $subscriptionTiers = ['free', 'professional', 'enterprise'];
+        $flags = json_decode($org['feature_flags'] ?? '{}', true);
+
+        require_once __DIR__ . '/../Views/superadmin/tenants/form.php';
     }
 
-    public function updateOrganization(Request $request, Response $response): void
+    /**
+     * Update organization
+     *
+     * POST /superadmin/tenants/:id
+     */
+    public function update(int $orgId): void
     {
-        RoleMiddleware::handle(RoleMiddleware::ROLE_SUPERADMIN);
-        Session::verifyCsrf();
-
-        $current = $this->findTenant((string) ($_POST['id'] ?? ''));
-        if ($current === null) {
-            $this->renderNotFound($response);
-            return;
+        if ($_POST['_csrf'] !== Session::getCsrfToken()) {
+            http_response_code(403);
+            exit('CSRF token mismatch');
         }
 
-        $submitted = [
-            'name' => trim((string) ($_POST['name'] ?? '')),
-            'is_active' => isset($_POST['is_active']) && $_POST['is_active'] === '1' ? 1 : 0,
-        ];
-        $errors = array_filter([
-            'name' => Validator::name($submitted['name'], 'Organization name', 255),
+        $name = trim($_POST['name'] ?? '');
+        $subscriptionTier = trim($_POST['subscription_tier'] ?? '');
+
+        if (empty($name)) {
+            http_response_code(422);
+            exit(json_encode(['error' => 'Organization name is required']));
+        }
+
+        $featureFlags = json_encode([
+            'enable_floor_plan' => isset($_POST['enable_floor_plan']),
+            'enable_inventory_erp' => isset($_POST['enable_inventory_erp']),
+            'enable_deposits' => isset($_POST['enable_deposits']),
+            'enable_loyalty' => isset($_POST['enable_loyalty']),
         ]);
-        if ($errors !== []) {
-            $this->renderEditOrganization($response, array_merge($current, $submitted), $errors, 422);
-            return;
-        }
 
-        $changes = [];
-        if ($current['name'] !== $submitted['name']) {
-            $changes[] = "Name: {$current['name']} -> {$submitted['name']}";
-        }
-        if ((int) $current['is_active'] !== $submitted['is_active']) {
-            $changes[] = 'Active: ' . ($current['is_active'] ? 'yes' : 'no') . ' -> ' . ($submitted['is_active'] ? 'yes' : 'no');
-        }
+        try {
+            $stmt = $this->pdo->prepare('
+                UPDATE organizations
+                SET name = :name, subscription_tier = :tier, feature_flags = :flags
+                WHERE id = :id
+            ');
+            $stmt->execute([
+                ':name' => $name,
+                ':tier' => $subscriptionTier,
+                ':flags' => $featureFlags,
+                ':id' => $orgId,
+            ]);
 
-        if ($changes !== []) {
-            Database::executeQuery(
-                'UPDATE tenants SET name = :name, is_active = :is_active, updated_at = CURRENT_TIMESTAMP WHERE id = :id',
-                ['name' => $submitted['name'], 'is_active' => $submitted['is_active'], 'id' => $current['id']]
+            AuditLogger::log(
+                org_id: 0,
+                actor_id: (int)Session::get('user_id'),
+                action: 'UPDATE',
+                entity: 'organization',
+                after: ['id' => $orgId, 'name' => $name, 'flags' => $featureFlags]
             );
-            foreach ($changes as $change) {
-                Audit::record((string) $current['id'], 'TENANT_UPDATE', 'tenants', (string) $current['id'], $change);
-            }
-        }
 
-        $response->redirect('/superadmin/organizations');
+            header("Location: /superadmin/tenants");
+            exit;
+        } catch (\Exception $e) {
+            http_response_code(500);
+            exit(json_encode(['error' => 'Failed to update organization']));
+        }
     }
 
-    public function users(Request $request, Response $response): void
+    /**
+     * Toggle a feature flag for organization
+     *
+     * POST /superadmin/tenants/:id/flags/:flag/toggle
+     * Body: _csrf, enabled (1 or 0)
+     */
+    public function toggleFlag(int $orgId, string $flag): void
     {
-        RoleMiddleware::handle(RoleMiddleware::ROLE_SUPERADMIN);
+        if ($_POST['_csrf'] !== Session::getCsrfToken()) {
+            http_response_code(403);
+            exit('CSRF token mismatch');
+        }
 
-        $list = ListQuery::fromRequest(self::USER_SORT_COLUMNS, self::USER_ROLE_FILTERS);
-        $sql = 'SELECT u.id, u.email, u.first_name, u.last_name, u.role_mask, u.tenant_id, u.created_at, t.name as tenant_name
-                FROM users u
-                JOIN tenants t ON u.tenant_id = t.id
-                WHERE 1 = 1';
+        $enabled = isset($_POST['enabled']) ? (bool)$_POST['enabled'] : false;
+
+        try {
+            $stmt = $this->pdo->prepare('
+                UPDATE organizations
+                SET feature_flags = JSON_SET(feature_flags, :path, :value)
+                WHERE id = :id
+            ');
+            $stmt->execute([
+                ':path' => "$.enable_$flag",
+                ':value' => $enabled ? 'true' : 'false',
+                ':id' => $orgId,
+            ]);
+
+            AuditLogger::log(
+                org_id: 0,
+                actor_id: (int)Session::get('user_id'),
+                action: 'UPDATE',
+                entity: 'feature_flag',
+                after: ['org_id' => $orgId, 'flag' => $flag, 'enabled' => $enabled]
+            );
+
+            http_response_code(200);
+            echo json_encode(['success' => true]);
+        } catch (\Exception $e) {
+            http_response_code(500);
+            echo json_encode(['error' => 'Failed to toggle flag']);
+        }
+    }
+
+    /**
+     * Issue admin invite token for organization
+     *
+     * POST /superadmin/tenants/:id/invite
+     * Body: _csrf, email
+     */
+    public function issueInvite(int $orgId): void
+    {
+        if ($_POST['_csrf'] !== Session::getCsrfToken()) {
+            http_response_code(403);
+            exit('CSRF token mismatch');
+        }
+
+        $email = trim($_POST['email'] ?? '');
+
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            http_response_code(422);
+            exit(json_encode(['error' => 'Invalid email address']));
+        }
+
+        // Generate hashed invite token
+        $token = bin2hex(random_bytes(32));
+        $tokenHash = hash('sha256', $token);
+
+        try {
+            $stmt = $this->pdo->prepare('
+                INSERT INTO org_invites (org_id, email, token_hash, created_at, expires_at)
+                VALUES (:org_id, :email, :token_hash, NOW(), DATE_ADD(NOW(), INTERVAL 7 DAY))
+            ');
+            $stmt->execute([
+                ':org_id' => $orgId,
+                ':email' => $email,
+                ':token_hash' => $tokenHash,
+            ]);
+
+            AuditLogger::log(
+                org_id: 0,
+                actor_id: (int)Session::get('user_id'),
+                action: 'CREATE',
+                entity: 'org_invite',
+                after: ['org_id' => $orgId, 'email' => $email, 'token' => '***REDACTED***']
+            );
+
+            // Stub: email not sent, log only
+            error_log("Invite token for $email: $token (org_id=$orgId)");
+
+            http_response_code(201);
+            echo json_encode(['success' => true, 'token_hash' => substr($tokenHash, 0, 8) . '...']);
+        } catch (\Exception $e) {
+            http_response_code(500);
+            echo json_encode(['error' => 'Failed to issue invite']);
+        }
+    }
+
+    // ========== Audit Logs ==========
+
+    /**
+     * View audit logs across all organizations
+     *
+     * GET /superadmin/audit?org_id=1&action=CREATE&entity=reservation
+     */
+    public function viewAuditLogs(): void
+    {
+        $orgId = (int)($_GET['org_id'] ?? 0);
+        $action = trim($_GET['action'] ?? '');
+        $entity = trim($_GET['entity'] ?? '');
+        $limit = 50;
+        $offset = (int)($_GET['page'] ?? 0) * $limit;
+
+        $sql = 'SELECT * FROM audit_logs';
         $params = [];
-        if ($list['q'] !== '') {
-            // Each named placeholder is used once; emulated prepares are off, so reuse is not allowed.
-            $sql .= " AND (u.email LIKE :q_email ESCAPE '!' OR u.first_name LIKE :q_first ESCAPE '!' OR u.last_name LIKE :q_last ESCAPE '!')";
-            $params += ['q_email' => $list['likePattern'], 'q_first' => $list['likePattern'], 'q_last' => $list['likePattern']];
-        }
-        if ($list['roleMask'] !== null) {
-            $sql .= ' AND u.role_mask = :role_mask';
-            $params['role_mask'] = $list['roleMask'];
-        }
-        $sql .= " ORDER BY {$list['orderBy']}";
-        $users = Database::executeQuery($sql, $params)->fetchAll();
 
-        if ($this->isJsonRequest()) {
-            $response->json(['users' => $users]);
-            return;
+        if ($orgId > 0) {
+            $sql .= ' WHERE org_id = :org_id';
+            $params[':org_id'] = $orgId;
+        }
+        if ($action) {
+            $sql .= ($orgId > 0 ? ' AND' : ' WHERE') . ' action = :action';
+            $params[':action'] = $action;
+        }
+        if ($entity) {
+            $sql .= ($orgId > 0 || $action ? ' AND' : ' WHERE') . ' target_entity = :entity';
+            $params[':entity'] = $entity;
         }
 
-        $sortLabels = ['name' => 'Name', 'email' => 'Email', 'tenant' => 'Tenant', 'role' => 'Role', 'created' => 'Created'];
-        require_once __DIR__ . '/../Views/superadmin/users.php';
-    }
+        $sql .= ' ORDER BY created_at DESC LIMIT :limit OFFSET :offset';
+        $params[':limit'] = $limit;
+        $params[':offset'] = $offset;
 
-    public function auditLogs(Request $request, Response $response): void
-    {
-        RoleMiddleware::handle(RoleMiddleware::ROLE_SUPERADMIN);
-
-        $sql = 'SELECT a.*, t.name as tenant_name
-                FROM audit_logs a
-                LEFT JOIN tenants t ON a.tenant_id = t.id
-                ORDER BY a.created_at DESC
-                LIMIT 100';
-        $logs = Database::executeQuery($sql)->fetchAll();
-
-        if ($this->isJsonRequest()) {
-            $response->json(['audit_logs' => $logs]);
-            return;
-        }
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
+        $logs = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
         require_once __DIR__ . '/../Views/superadmin/audit_logs.php';
     }
 
-    private function findTenant(string $id): ?array
+    // ========== Sessions ==========
+
+    /**
+     * List active user sessions
+     *
+     * GET /superadmin/sessions
+     */
+    public function listSessions(): void
     {
-        $row = Database::executeQuery('SELECT id, name, subdomain, is_active FROM tenants WHERE id = :id', ['id' => $id])->fetch();
-        return $row === false ? null : $row;
+        $stmt = $this->pdo->prepare('
+            SELECT s.id, u.email, u.org_id, s.created_at, s.last_activity_at
+            FROM sessions s
+            JOIN users u ON s.user_id = u.id
+            WHERE s.expires_at > NOW()
+            ORDER BY s.last_activity_at DESC
+        ');
+        $stmt->execute();
+        $sessions = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+        require_once __DIR__ . '/../Views/superadmin/sessions.php';
     }
 
-    private function renderOrganizations(Response $response, array $errors, array $old, int $status): void
+    /**
+     * Revoke user session (emergency access control)
+     *
+     * POST /superadmin/sessions/:id/revoke
+     */
+    public function revokeSession(string $sessionId): void
     {
-        $tenants = Database::executeQuery('SELECT * FROM tenants ORDER BY created_at DESC')->fetchAll();
-
-        if ($this->isJsonRequest()) {
-            $response->json($errors === [] ? ['tenants' => $tenants] : ['errors' => $errors], $status);
+        if ($_POST['_csrf'] !== Session::getCsrfToken()) {
+            http_response_code(403);
+            exit('CSRF token mismatch');
         }
 
-        http_response_code($status);
-        require_once __DIR__ . '/../Views/superadmin/organizations.php';
-    }
+        try {
+            $stmt = $this->pdo->prepare('DELETE FROM sessions WHERE id = :id');
+            $stmt->execute([':id' => $sessionId]);
 
-    private function renderEditOrganization(Response $response, array $tenant, array $errors, int $status): void
-    {
-        http_response_code($status);
-        require_once __DIR__ . '/../Views/superadmin/organization_edit.php';
-    }
+            AuditLogger::log(
+                org_id: 0,
+                actor_id: (int)Session::get('user_id'),
+                action: 'DELETE',
+                entity: 'session',
+                before: ['id' => $sessionId]
+            );
 
-    private function renderNotFound(Response $response): void
-    {
-        $response->setStatusCode(404);
-        require_once __DIR__ . '/../Views/errors/404.php';
+            header("Location: /superadmin/sessions");
+            exit;
+        } catch (\Exception $e) {
+            http_response_code(500);
+            exit(json_encode(['error' => 'Failed to revoke session']));
+        }
     }
 }

@@ -1,300 +1,598 @@
-# DICT24 Information Management Finals: Team Allocation Matrix
+# DICT24 Restaurant ERP: Layer 2 Worker Team Allocation
 
-**Project**: Multi-Tenant Restaurant ERP & Reservation Platform (EIMS)  
-**Academic Term**: 4th year, 1st semester 2026-27, Cavite State University  
-**Final Assessment**: DICT24 Information Management  
-**Completion Target**: 2026-12-15  
-
----
-
-## Executive Summary
-
-This document maps team members to subsystems, specifies ownership boundaries, and establishes a coordination protocol across three parallel execution waves (Wave 1 core infrastructure, Wave 2 parallel squad development, Wave 3 integration & hardening).
-
-**Orchestrator Role**: Lyra (`whinee`) — Master Orchestrator, Core Schema, SuperAdmin Module  
-**Total Team**: 7 developers across 3 squads  
-**Execution Model**: Hybrid (Lyra orchestrates from main branch; Worker 1 & Worker 2 develop in isolated worktrees and merge upstream)
+**Date**: 2026-11-20  
+**Phase**: Wave 0.2 Team Allocation  
+**Status**: LOCKED for parallel Layer 2 worker dispatch (Wave 2)  
+**Revision**: Final
 
 ---
 
-## 1. Role Definitions
+## 1. Executive Summary
 
-### 1.1 Master Orchestrator (Lyra / `whinee`)
-- **Scope**: Wave 0 hardening, Wave 1 core schema & services, Wave 2 supervision, Wave 3 integration
-- **Responsibilities**:
-  - Lock consolidated specification and team allocation
-  - Provision database schema and core services (`FeatureFlagService`, `AuditLogger`, `TableAllocator`, `DepositLedgerService`, `StockLedgerService`)
-  - Implement SuperAdmin userspace (tenant provisioning, feature-flag toggles, invite generation, audit log viewer)
-  - Coordinate parallel squad workers via git worktrees and test gates
-  - Verify `just test` passes green before releasing Wave 1 to workers
-  - Merge `feat/client-erp` and `feat/customer-portal` branches cleanly in Wave 3
-  - Final integration testing and concurrency stress verification
+Wave 0–1 (Layer 1 Master Orchestrator) establishes the unified specification, core infrastructure (18 migrations, 5 core services), and SuperAdmin userspace. Wave 2 dispatches **two isolated Layer 2 workers** in parallel to build the Restaurant Client ERP and Customer Diner Portal independently, with conflict resolution and merge sequencing managed by Layer 1.
 
-### 1.2 Client-Facing Restaurant ERP Squad (Worker 1)
-**Lead**: Rian (`orewayani`)  
-**Members**: Ares (`arezione`), Beatrice (`eyaaab`), Shiella (`ella-shiella`)
-
-**Scope**: Restaurant operations, staff management, analytics, optional floor-plan & inventory modules
-
-**Deliverables**:
-- Live table status board (`available`, `reserved`, `occupied`, `cleaning`) with validated state transitions
-- Reservation CRUD, walk-in waitlist, automated no-show cancellation windows
-- Instant waitlist backfill promotion (pop queue, assign table, transition reservation)
-- Digital menu CRUD with centavo pricing, dietary/allergen tags, instant 86-list toggling (`is_available`)
-- Granular staff RBAC (`Admin/Manager`, `FrontOfHouse`, `Kitchen`) gating
-- Operational analytics dashboard (turnover rate, peak hours, no-show %, top items)
-- Customer review response dashboard
-- **[FLAG-GATED]** CSP-safe 12×8 CSS Grid floor-plan builder (`enable_floor_plan`)
-- **[FLAG-GATED]** Inventory & recipe BOM management (`enable_inventory_erp`)
-- Unit & integration tests for all routes and state machines
-- Zero inline `style=` attributes; all styling via CSS utility classes
-
-**Git Branch**: `feat/client-erp` (branched from Wave 1 completion)  
-**Test Gate**: `php -l` + `just test` passes before merge to integration branch
+**Execution Model**:
+- **Layer 2 Worker A** (`feat/client-erp` branch): Restaurant Admin ERP (dining zones, floor plan, reservations, waitlist, staff RBAC, menu 86-list, analytics)
+- **Layer 2 Worker B** (`feat/customer-portal` branch): Customer Diner Portal (discovery, booking, menu sync, reviews, deposits/loyalty)
+- Both workers execute in parallel (90 minutes)
+- Layer 1 merges both branches to `main` after Wave 2 completion (Wave 3)
+- Conflict resolution: Layer 1 arbitrates overlapping controllers or migrations
 
 ---
 
-### 1.3 Customer-Facing Diner Portal Squad (Worker 2)
-**Lead**: Zy (`cesszi`)  
-**Members**: Xy (`xxzaazxx`), Chie (`adoboenthusiast`)
+## 2. Layer 2 Worker A: Restaurant Client ERP
 
-**Scope**: Marketplace discovery, reservation booking, self-service management, waitlist, chatbot, reviews, optional deposit/loyalty
+**Branch**: `feat/client-erp`  
+**Worktree**: Isolated git worktree (auto-created by Orca)  
+**Scope**: 60–80 controllers, 80+ integration tests  
+**Duration**: 90 minutes (concurrent with Worker B)  
+**Deliverable**: Full ERP suite, 0 failing tests
 
-**Deliverables**:
-- Multi-restaurant marketplace search (org name, cuisine, dietary support, zone filtering)
-- Restaurant detail page with availability calendar synced to `TableAllocator`
-- Interactive digital menu with live `is_available` status and allergen/dietary tags
-- Slot-locked table booking flow (party size, preferred zone, structured allergy notes)
-- Signed self-service booking links (confirm, modify, cancel without re-login)
-- Remote walk-in waitlist join with live queue position
-- Simulated `(Mock)` SMS/in-app alerts on queue progression
-- Deterministic SQL-backed concierge chatbot:
-  - Operating hours lookup
-  - Location & parking info
-  - Allergen-safe dish search
-  - Reservation status by booking code
-- Post-dining ratings/reviews + restaurant response flow
-- **[FLAG-GATED]** Centavo deposit pre-payment checkout (`enable_deposits`)
-- **[FLAG-GATED]** Visit-based loyalty points ledger (`enable_loyalty`)
-- Unit & integration tests for all booking flows, chatbot, and feature-flag scenarios
-- Zero inline `style=` attributes; responsive design via CSS Grid/Flexbox classes
+### 2.1 Scope: Dining Zones & Floor Plan
 
-**Git Branch**: `feat/customer-portal` (branched from Wave 1 completion)  
-**Test Gate**: `php -l` + `just test` passes before merge to integration branch
+**Controllers**: `DiningZonesController`, `DiningTablesController`
+
+#### DiningZonesController
+```php
+class DiningZonesController {
+    public function index(): void // GET /admin/restaurants/:id/zones
+    public function create(): void // GET /admin/restaurants/:id/zones/create
+    public function store(): void  // POST /admin/restaurants/:id/zones
+    public function edit(): void   // GET /admin/restaurants/:id/zones/:zone_id/edit
+    public function update(): void // POST /admin/restaurants/:id/zones/:zone_id
+    public function delete(): void // POST /admin/restaurants/:id/zones/:zone_id/delete
+}
+```
+
+**Features**:
+- Create zone: name, description, optional photo
+- Edit zone: rename, archive (soft delete via `archived_at`)
+- List zones: grid display with table count, occupancy summary
+- Audit logging on every state change
+
+#### DiningTablesController
+```php
+class DiningTablesController {
+    public function index(): void  // GET /admin/restaurants/:id/tables
+    public function create(): void // GET /admin/restaurants/:id/tables/create
+    public function store(): void  // POST /admin/restaurants/:id/tables
+    public function edit(): void   // GET /admin/restaurants/:id/tables/:table_id/edit
+    public function update(): void // POST /admin/restaurants/:id/tables/:table_id
+    public function delete(): void // POST /admin/restaurants/:id/tables/:table_id/delete
+    public function getCoordinates(): void // GET /admin/restaurants/:id/tables/:table_id/coords (JSON)
+}
+```
+
+**Features**:
+- Add table: zone, table number, capacity (1–20), combinable flag, coordinates (x, y)
+- Edit: move, resize, change capacity
+- Delete: archive (soft delete via `is_active=false`)
+- Real-time occupancy: integrate with `reservations` table to show status (available, reserved, occupied, cleaning)
+- Drag-drop endpoint: POST coordinates for reposition (stub UI; backend stores x/y)
+
+**Tests**:
+- Create zone → verify audit log
+- Add table to zone → verify foreign key
+- Multi-tenant scoping: User in org 1 cannot see org 2's zones
+- Occupancy calculation: 3 tables booked, 1 available → display correct counts
+
+### 2.2 Scope: Reservations & TableAllocator
+
+**Controllers**: `ReservationController`
+
+```php
+class ReservationController {
+    public function index(): void  // GET /admin/restaurants/:id/reservations
+    public function create(): void // GET /admin/restaurants/:id/reservations/create
+    public function store(): void  // POST /admin/restaurants/:id/reservations
+    public function edit(): void   // GET /admin/restaurants/:id/reservations/:id/edit
+    public function update(): void // POST /admin/restaurants/:id/reservations/:id
+    public function cancel(): void // POST /admin/restaurants/:id/reservations/:id/cancel
+    public function confirm(): void // POST /admin/restaurants/:id/reservations/:id/confirm
+}
+```
+
+**Features**:
+- List reservations: filter by date range, status (confirmed, cancelled, no-show), search by guest name/email
+- Create: TableAllocator concurrency safety, 15-min boundary snapping, prevent double-booking
+- Edit: change table selection, party size, time window (validate no conflicts)
+- Cancel: deallocate slots, update status, trigger waitlist backfill
+- Confirm: mark as checked-in (start time reached)
+
+**Integration Points**:
+- **TableAllocator service**: atomic allocation + deallocation
+- **Audit logging**: every state change
+- **Waitlist backfill**: when table freed, auto-match first waiting entry
+- **Multi-tenant scoping**: filter by org_id and restaurant_id
+
+**Tests**:
+- Concurrent booking: two simultaneous POST requests for same table → exactly one succeeds, one gets 409 Conflict
+- Double-booking prevention: reserve 19:00–20:30, attempt 19:15–20:00 → rejected
+- 15-min snapping: request 19:13 → snaps to 19:00, allocates slots 19:00, 19:15, 19:30, 19:45, 20:00
+- Cancellation: mark reservation cancelled, verify `reservation_slots` deleted, slot immediately rebookable
+- Multi-table combinable: reserve adjacent tables as one reservation, lock atomically, verify isolation
+- Waitlist backfill: cancel 4-top reservation, first waitlist entry (4 people) auto-seated
+
+### 2.3 Scope: Waitlist Management
+
+**Controllers**: `WaitlistController`
+
+```php
+class WaitlistController {
+    public function index(): void  // GET /admin/restaurants/:id/waitlist
+    public function add(): void    // POST /admin/restaurants/:id/waitlist
+    public function updatePosition(): void // POST /admin/restaurants/:id/waitlist/:entry_id/position
+    public function notify(): void // POST /admin/restaurants/:id/waitlist/:entry_id/notify (email stub)
+    public function remove(): void // POST /admin/restaurants/:id/waitlist/:entry_id/remove
+}
+```
+
+**Features**:
+- Add to waitlist: email, party size, zone preference (optional), position auto-calculated (last + 1)
+- List: show all entries, position, created_at, status (waiting, seated, cancelled, expired)
+- Update position: host can reorder waitlist (e.g., move VIP to top)
+- Notify: send "table ready" email (stub—don't actually send, log to audit)
+- Backfill algorithm: when table freed, match first waiting entry by party size, auto-create reservation
+
+**Tests**:
+- Add entry: verify position = max(position) + 1
+- Reorder: change position of entry 2 to 1, verify others shift
+- Backfill: cancel 4-top, 4-person waitlist entry auto-promoted to confirmed reservation
+- Multi-tenant scoping: verify entries isolated by org_id
+- Expiry: entries > 24 hours old marked expired
+
+### 2.4 Scope: Menu 86-List Management
+
+**Controllers**: `MenuItemController` (extends Phase 6)
+
+```php
+class MenuItemController {
+    public function toggle86(): void // POST /admin/restaurants/:id/menu/:item_id/86
+    public function list86(): void   // GET /admin/restaurants/:id/menu/86
+}
+```
+
+**Features**:
+- Mark item as 86 (unavailable): timestamp, actor, reason
+- Bulk 86: select multiple items, mark unavailable
+- Revert: remove 86 status, make available again
+- List 86: show all currently unavailable items, sorted by actor, timestamp
+- Real-time sync: Customer Portal menu reflects 86-list immediately
+
+**Integration Points**:
+- **Customer Portal**: menu sync respects 86-list (greyed-out or removed)
+- **Audit logging**: 86 toggle captured in audit_logs
+- **Menu history**: track 86 events for analytics (most-frequently-unavailable items)
+
+**Tests**:
+- Mark item 86: verify menu endpoint excludes it
+- Revert: verify menu includes it again
+- Bulk 86: mark 5 items, verify all 5 unavailable
+- Multi-tenant scoping: org 1 86-list invisible to org 2
+
+### 2.5 Scope: Staff RBAC
+
+**Controllers**: `StaffRBACController`
+
+```php
+class StaffRBACController {
+    public function index(): void    // GET /admin/restaurants/:id/staff
+    public function create(): void   // GET /admin/restaurants/:id/staff/create
+    public function invite(): void   // POST /admin/restaurants/:id/staff/invite
+    public function revokeAccess(): void // POST /admin/restaurants/:id/staff/:user_id/revoke
+    public function updateRole(): void // POST /admin/restaurants/:id/staff/:user_id/role
+}
+```
+
+**Roles** (per restaurant):
+- **Manager**: full CRUD (reservations, waitlist, menu, staff, analytics)
+- **FrontOfHouse** (Server/Host): create/edit reservations, view waitlist, check-in guests
+- **Kitchen**: view reservations filtered to kitchen orders only, view menu, cannot edit
+- **Cleaning**: view tables needing cleaning, mark cleaned
+
+**Features**:
+- Invite staff: email + role assignment, generate invite token
+- Revoke: immediate session termination (via session revocation)
+- Update role: manager can reassign role, audit-logged
+- Session enforcement: middleware checks role on every request, returns 403 if unauthorized
+
+**Tests**:
+- FrontOfHouse cannot create user: attempt → 403
+- Kitchen cannot edit reservation: attempt → 403
+- Manager CRUD: all operations allowed
+- Role change: update user from Server → Manager, verify permissions elevated
+- Cross-restaurant scoping: staff at restaurant 1 cannot access restaurant 2 (403)
+
+### 2.6 Scope: Analytics & Reporting
+
+**Controllers**: `AnalyticsController`
+
+```php
+class AnalyticsController {
+    public function dashboard(): void // GET /admin/restaurants/:id/analytics
+    public function turnover(): void  // GET /admin/restaurants/:id/analytics/turnover
+    public function peakHours(): void // GET /admin/restaurants/:id/analytics/peak-hours
+    public function noShowRate(): void // GET /admin/restaurants/:id/analytics/no-show
+    public function topItems(): void  // GET /admin/restaurants/:id/analytics/top-items
+    public function revenue(): void   // GET /admin/restaurants/:id/analytics/revenue
+}
+```
+
+**Features**:
+- Turnover %: (minutes seated / table capacity / opening hours) × 100
+- Peak hours: hourly distribution of active reservations (heatmap data)
+- No-show %: (cancelled + no-show) / total × 100
+- Top items: menu items by order frequency (from linked reservations or POS stub)
+- Revenue: sum of deposits + meal charges (if linked to ledger)
+
+**Data**:
+- Date range filter: last 7 days, last month, custom range
+- Dashboard: widgets for all metrics, trend arrows (up/down)
+- Drill-down: click metric → detail view with filters
+
+**Tests**:
+- Turnover calculation: 4-top × 2 hours / 4 capacity × 10 hours open = 20%
+- Peak hours: 19:00–20:00 has 12 active reservations, 18:00–19:00 has 3 → API returns correct counts
+- No-show rate: 2 no-shows out of 50 total = 4%
+- Revenue: 5 deposits of $50 each = $250 (5000 centavos)
+
+### 2.7 Scope: Review Moderation
+
+**Controllers**: `ReviewModerationController`
+
+```php
+class ReviewModerationController {
+    public function pending(): void   // GET /admin/restaurants/:id/reviews/pending
+    public function approve(): void   // POST /admin/restaurants/:id/reviews/:id/approve
+    public function reject(): void    // POST /admin/restaurants/:id/reviews/:id/reject
+    public function reply(): void     // POST /admin/restaurants/:id/reviews/:id/reply
+}
+```
+
+**Features**:
+- Pending list: reviews not yet approved, sorted by created_at
+- Approve: mark approved, visible on public portal
+- Reject: delete or flag as rejected (user can see reason)
+- Reply: manager posts response to review (visible on public portal)
+- Spam filter: reviews with >1 link or <5 words auto-flagged
+
+**Tests**:
+- Spam detection: review with "click here" link → pending
+- Approve: review becomes visible in portal
+- Reply: manager response appears linked to original review
+- Multi-tenant scoping: reviews isolated by org_id
+
+### 2.8 Integration Tests (Worker A)
+
+**File**: `tests/integration/RestaurantERP_Test.php`
+
+**Scope**: 100+ test cases covering:
+- All controllers' CRUD operations
+- Multi-tenant isolation (org 1 cannot access org 2 data)
+- RBAC enforcement (Staff cannot do Admin operations)
+- Concurrency: simultaneous bookings
+- Audit logging verification
+- Input validation (422 responses)
+- Error handling (404, 403, 500 scenarios)
+
+**Target**: 90%+ coverage on critical paths (ReservationController, TableAllocator, RoleMiddleware)
 
 ---
 
-## 2. Subsystem Ownership & Boundaries
+## 3. Layer 2 Worker B: Customer Diner Portal
 
-| Subsystem | Owner(s) | Scope | Dependencies |
-|-----------|----------|-------|--------------|
-| **Core Schema** | Lyra | `organizations`, `org_feature_flags`, `org_invites`, `users`, `sessions`, `audit_logs`, `login_attempts`, `dining_zones`, `dining_tables`, `reservations`, `reservation_tables`, `reservation_slots`, `menu_items`, `reviews`, `deposit_ledger`, `loyalty_ledger`, optional `ingredients`, `menu_item_recipes`, `purchase_orders`, `stock_movements` | None (foundational) |
-| **FeatureFlagService** | Lyra | Per-tenant flag toggles, cascading reads | Database schema |
-| **AuditLogger** | Lyra | Append-only structured audit entries, cross-tenant scoped viewer | Database schema |
-| **TableAllocator** | Lyra | Transactional double-booking prevention, slot bucketing, multi-table locking | Database schema, LoginThrottle |
-| **DepositLedgerService** | Lyra | Centavo holds/forfeits/refunds, append-only ledger | Database schema |
-| **StockLedgerService** | Lyra | Ingredient movement tracking, on-hand calculation | Database schema (optional, feature-gated) |
-| **SuperAdmin Userspace** | Lyra | Tenant provisioning, feature-flag UI, invite links, audit log viewer, session revocation | All core services |
-| **Restaurant ERP Routes** | Worker 1 (Rian lead) | Table board, reservations, menu, staff, analytics, reviews | Core services, SuperAdmin |
-| **FrontOfHouse Routes** | Worker 1 (Rian lead) | Quick-access dashboard, table status updates, check-in flow | Core services |
-| **Kitchen Routes** | Worker 1 (Rian lead) | Prep queue, mark-ready | Core services |
-| **Floor Plan Builder** | Worker 1 (Flag: `enable_floor_plan`) | Drag-drop 12×8 grid, CSS class generation | Core services, FeatureFlagService |
-| **Inventory ERP** | Worker 1 (Flag: `enable_inventory_erp`) | Ingredient/recipe CRUD, stock tracking, purchase orders | Core services, StockLedgerService, FeatureFlagService |
-| **Customer Portal Routes** | Worker 2 (Zy lead) | Marketplace, search, org detail, menu view | Core services, TableAllocator |
-| **Booking Flow** | Worker 2 (Zy lead) | Slot-locked form, form submission, signed link generation | Core services, TableAllocator |
-| **Self-Service Links** | Worker 2 (Zy lead) | Confirmation, modification, cancellation via signed tokens | Core services, TableAllocator |
-| **Waitlist Management** | Worker 2 (Zy lead) | Join remote queue, live position, simulated alerts | Core services |
-| **Concierge Chatbot** | Worker 2 (Zy lead) | SQL rule-engine, hours lookup, allergen search, reservation status | Database schema |
-| **Reviews & Ratings** | Worker 2 (Zy lead) | Post-dining submission, rating aggregation, restaurant response | Core services, AuditLogger |
-| **Deposits** | Worker 2 (Flag: `enable_deposits`) | Checkout hold, ledger recording | Core services, DepositLedgerService, FeatureFlagService |
-| **Loyalty Points** | Worker 2 (Flag: `enable_loyalty`) | Visit counting, ledger recording, balance display | Core services, FeatureFlagService |
-| **CSS Utility Classes** | Both squads | Shared `gc-*`, `gr-*`, `span-w-*`, `span-h-*`, `status-*`, responsive classes | Design system |
-| **Testing** | Both squads + Lyra | Unit, integration, concurrency, security (RED team) | All subsystems |
+**Branch**: `feat/customer-portal`  
+**Worktree**: Isolated git worktree (auto-created by Orca)  
+**Scope**: 50–70 controllers, 80+ integration tests  
+**Duration**: 90 minutes (concurrent with Worker A)  
+**Deliverable**: Full portal suite, 0 failing tests
+
+### 3.1 Scope: Restaurant Discovery
+
+**Controllers**: `DiscoveryController`
+
+```php
+class DiscoveryController {
+    public function index(): void          // GET /discover
+    public function show(): void           // GET /discover/:restaurant_id
+    public function search(): void         // GET /discover/search?q=...
+    public function filterByCuisine(): void // GET /discover?cuisine=italian
+    public function filterByAvailability(): void // GET /discover?date=2026-11-25&party_size=4
+}
+```
+
+**Features**:
+- List restaurants: name, cuisine, location, phone, operating hours, average rating
+- Search: by name, cuisine tag, location (text search on name/tags)
+- Filter: by cuisine, dietary tags (vegan, gluten-free, halal), availability (has slots 7 days out)
+- Sort: by rating, distance (stub—no geo), newest
+- Detail view: full info, hours, parking, website, reviews (approved only)
+
+**Tests**:
+- Search "pizza": returns pizzerias
+- Filter vegan + Italian: returns Italian restaurants with vegan tag
+- Availability: select date/party size, only show restaurants with open slots
+- Multi-tenant visibility: all restaurants visible (discovery is public)
+
+### 3.2 Scope: Slot Availability & Real-Time Booking
+
+**Controllers**: `SlotAvailabilityController`, `BookingFlowController`
+
+#### SlotAvailabilityController
+```php
+class SlotAvailabilityController {
+    public function getSlots(): void // GET /discover/:restaurant_id/availability?date=2026-11-25&party_size=4
+}
+```
+
+**Features**:
+- Return available 15-min slots for date + party size
+- Logic: for each table matching capacity (or combinable set), check if all slots free
+- Response: list of 30-min windows (e.g., 18:00, 18:30, 19:00, ..., 22:00)
+- Green (available), yellow (1 table left), red (booked)
+
+**Tests**:
+- 4-top, Nov 25, all slots free: return 18:00–22:00
+- 4-top, Nov 25, one 19:00 slot booked: return all except 19:00
+- 10-top (combinable 2×5): return only windows where 2 tables free
+
+#### BookingFlowController
+```php
+class BookingFlowController {
+    public function showForm(): void   // GET /bookings/new
+    public function create(): void     // POST /bookings
+    public function confirmEmail(): void // GET /bookings/:token/confirm
+    public function showConfirmation(): void // GET /bookings/:token
+}
+```
+
+**Features**:
+- Booking form: date, time (15-min select), party size, name (optional), email (required)
+- Create: validate inputs, allocate tables via TableAllocator, store reservation, send confirmation email (stub)
+- Confirm email: click link in email, mark booking confirmed (status = "confirmed")
+- Confirmation page: booking number, tables, time, guest count, cancellation link
+
+**Integration Points**:
+- **TableAllocator**: atomic allocation (same service as ERP)
+- **Email stub**: log to audit_logs, don't actually send
+
+**Tests**:
+- Create booking: valid inputs → 201, booking number generated
+- Validation: missing email → 422
+- Double-booking: allocate table, concurrent request rejects (409 or 422)
+- Email confirmation: link valid for 24 hours, then expires
+
+### 3.3 Scope: Menu Sync
+
+**Controllers**: `MenuSyncController`
+
+```php
+class MenuSyncController {
+    public function getMenu(): void // GET /discover/:restaurant_id/menu
+}
+```
+
+**Features**:
+- Return restaurant's menu respecting 86-list (exclude unavailable items)
+- Response: item name, price, description, allergen tags, availability (true/false)
+- Cache: update when ERP marks item 86 or reverts
+
+**Integration Points**:
+- **Real-time sync**: query menu_items + 86-list join on every request (or cache with 1-min TTL)
+
+**Tests**:
+- Menu includes all available items
+- Menu excludes 86-list items
+- Price displayed in customer format ($19.99)
+- Allergen tags visible (nuts, dairy, shellfish)
+
+### 3.4 Scope: Waitlist Portal (Remote Join)
+
+**Controllers**: `WaitlistPortalController`
+
+```php
+class WaitlistPortalController {
+    public function showForm(): void       // GET /waitlist/:restaurant_id/join
+    public function join(): void           // POST /waitlist/:restaurant_id/join
+    public function trackPosition(): void  // GET /waitlist/:token/position
+    public function cancel(): void         // POST /waitlist/:token/cancel
+}
+```
+
+**Features**:
+- Join form: email, party size, (optional) phone
+- Join: add to waitlist, send tracking link (email stub, include :token)
+- Track: diner clicks link → shows current position, estimated wait (stub), live updates (polling, no WebSocket)
+- Cancel: diner can remove self from waitlist
+
+**Tests**:
+- Join waitlist: position auto-assigned
+- Track: position updates as ahead of you are seated
+- Notification stub: email sent (logged, not actual SMTP)
+
+### 3.5 Scope: Review Submission
+
+**Controllers**: `ReviewSubmissionController`
+
+```php
+class ReviewSubmissionController {
+    public function form(): void      // GET /reviews/:reservation_token
+    public function submit(): void    // POST /reviews
+    public function confirmEmail(): void // GET /reviews/:token/confirm
+}
+```
+
+**Features**:
+- Review form: reservation lookup (token), rating (1–5), review text (optional)
+- Submit: validate (length, word count), submit pending review, auto-moderate for spam
+- Confirm email: click link to finalize review (prevents spam)
+- Audit: log submission + moderation status
+
+**Tests**:
+- Submit 5-star review: pending, awaiting approval
+- Spam: review with >1 link auto-flagged
+- Invalid: <5 chars → 422
+- Email confirmation: link expires after 24h
+
+### 3.6 Scope: Deposits & Loyalty (Feature-Gated)
+
+**Controllers**: `DepositPortalController`, `LoyaltyPortalController`
+
+#### DepositPortalController
+```php
+class DepositPortalController {
+    public function showBalance(): void   // GET /account/balance
+    public function deposit(): void       // POST /account/deposit
+}
+```
+
+**Features** (if `enable_deposits=true`):
+- Balance: sum of deposit_ledger for diner email
+- Deposit form: amount, payment method (stub—don't process real payments)
+- Audit: log deposit transaction
+
+#### LoyaltyPortalController
+```php
+class LoyaltyPortalController {
+    public function showPoints(): void   // GET /account/loyalty
+    public function redeem(): void       // POST /account/loyalty/redeem
+}
+```
+
+**Features** (if `enable_loyalty=true`):
+- Points balance: sum from loyalty_ledger
+- Redeem: select redemption (e.g., "$5 off next meal"), apply to booking
+- Audit: log redemption
+
+**Tests**:
+- Feature disabled: returns 404
+- Feature enabled: balance displays correctly
+- Redeem: points decremented, booking gets discount
+
+### 3.7 Scope: Deterministic Concierge Rules Engine (Stub)
+
+**Controllers**: `ConciergeController`
+
+```php
+class ConciergeController {
+    public function determineBestSlots(): void // GET /concierge/best-slots/:restaurant_id?party=4&dietary=vegan
+}
+```
+
+**Features** (simplified):
+- Apply business rules (hours, parking, allergens, reservations available)
+- Return top 3 slot recommendations by score (heuristic: minimum travel time, quietest hour, etc.)
+- Stub: deterministic logic (no AI), based on hardcoded rules
+
+**Tests**:
+- Best slots: returns ranked recommendations
+
+### 3.8 Integration Tests (Worker B)
+
+**File**: `tests/integration/CustomerPortal_Test.php`
+
+**Scope**: 100+ test cases covering:
+- Discovery & search
+- Availability calculation
+- Booking flow (create, confirm, cancel)
+- Menu sync (respects 86-list)
+- Waitlist join & track
+- Review submission & moderation
+- Deposits/loyalty (if enabled)
+- Multi-tenant isolation (customer data per org)
+
+**Target**: 90%+ coverage on critical paths (BookingFlowController, SlotAvailabilityController)
 
 ---
 
-## 3. Execution Waves & Milestones
+## 4. Merge Sequencing & Conflict Resolution
 
-### Wave 0: Hardening Closure & Spec Lock (Lyra, Main Worktree)
-**Timeline**: 2026-11-19 morning  
-**Gate**: All RED R4 BROKEN items addressed; `just test` green
+### 4.1 Parallel Execution (Wave 2)
 
-- [ ] Scrub `Password123!` and inline `style=` from specimens
-- [ ] Default `APP_DEBUG=false` in `.env.example` and `docker-compose.yaml`
-- [ ] Fix `LoginThrottle.php`: per-email (5) vs per-IP (10) isolation, anti-enumeration
-- [ ] Update `dev/scripts/sh/test-panel-sabotage.sh`: test `APP_DEBUG=false` branch
-- [ ] Lock `docs/SPECIFICATION.md` and `docs/TEAM-ALLOCATION.md`
-- [ ] Run `just test` → **0 failures** required before Wave 1
+**Both workers execute simultaneously** (90 minutes):
+- Worker A: `git switch feat/client-erp` (worktree A)
+- Worker B: `git switch feat/customer-portal` (worktree B)
+- Each has isolated tests, controllers, views (no file overlap expected)
 
-### Wave 1: Core Schema & SuperAdmin (Lyra, Main Worktree)
-**Timeline**: 2026-11-19 midday → 2026-11-20 morning  
-**Gate**: `just test` passes green; all services tested; SuperAdmin userspace complete
+### 4.2 Expected Merge Conflicts
 
-- [ ] Idempotent database migrations (MySQL 8 + SQLite compatible)
-- [ ] Core PHP services: `FeatureFlagService`, `AuditLogger`, `TableAllocator`, `DepositLedgerService`, `StockLedgerService`
-- [ ] SuperAdmin routes: tenant provisioning, feature-flag toggles, invite links, audit viewer, session revocation
-- [ ] Unit & integration tests for all services
-- [ ] `php -l` zero syntax errors
-- [ ] Run `just test` → **0 failures** required
-- [ ] Tag branch as `wave-1-complete` for worker branching
+**Minimal overlap** (by design):
+- `docs/CHANGELOG.md`: both add entries → **Layer 1 manually resolves** (combines entries, keeps chronological order)
+- `public/index.php`: both register routes → **Layer 1 concatenates** routes (Worker A first, Worker B second)
+- Migrations: each worker may add migrations (Workers don't conflict; Layer 1 sequences by timestamp/number)
 
-### Wave 2: Parallel Squad Development (Workers 1 & 2, Isolated Worktrees)
-**Timeline**: 2026-11-20 morning → 2026-11-22 evening  
-**Gate**: Each squad delivers `php -l` + `just test` passes
+### 4.3 Merge Process (Wave 3)
 
-#### Worker 1: Client ERP Squad (`feat/client-erp`)
-- [ ] All Restaurant ERP routes (admin dashboard, tables, menu, staff, analytics, reviews)
-- [ ] All FrontOfHouse + Kitchen routes
-- [ ] RBAC middleware gating
-- [ ] Floor-plan builder (flag-gated, zero inline styles)
-- [ ] Inventory ERP (flag-gated)
-- [ ] CSS utility classes (`gc-*`, `gr-*`, `span-w-*`, `span-h-*`, `status-*`)
-- [ ] Unit & integration tests
-- [ ] `php -l` zero syntax errors
-- [ ] `just test` passes
+```bash
+# Layer 1 merges both branches to main
+git checkout main
+git merge feat/client-erp
+  # Resolve: docs/CHANGELOG.md, routes if needed
+git merge feat/customer-portal
+  # Resolve: docs/CHANGELOG.md, routes if needed
+```
 
-#### Worker 2: Customer Portal Squad (`feat/customer-portal`)
-- [ ] Marketplace search & org detail
-- [ ] Booking flow + signed self-service links
-- [ ] Waitlist join + simulated alerts
-- [ ] Concierge chatbot
-- [ ] Reviews & ratings
-- [ ] Deposits & loyalty (flag-gated)
-- [ ] Responsive CSS classes
-- [ ] Unit & integration tests
-- [ ] `php -l` zero syntax errors
-- [ ] `just test` passes
+### 4.4 Conflict Resolution Strategy
 
-### Wave 3: Integration & Hardening (Lyra, Main Worktree)
-**Timeline**: 2026-11-23 morning → 2026-11-24 evening  
-**Gate**: End-to-end testing, concurrency stress, final RED team verification
+**CHANGELOG.md**: Combine both [Unreleased] entries into single entry (chronological, no duplication)
 
-- [ ] Merge `feat/client-erp` cleanly into integration branch
-- [ ] Merge `feat/customer-portal` cleanly into integration branch
-- [ ] Resolve route/navigation conflicts; preserve single unified UI shell
-- [ ] Run `just test` → **0 failures**
-- [ ] **Concurrency Stress Tests**:
-  - 50+ simultaneous booking attempts on same table/overlapping window
-  - Verify zero double-bookings, atomic success/failure
-  - Multi-table combinable booking correctness
-  - SQLite + MySQL both tested
-- [ ] **Cross-Tenant Isolation**: Admin A cannot read/edit Org B data
-- [ ] **Feature-Flag Gating**: Disabled features cleanly hidden/return 404
-- [ ] **Soft-Archive Guards**: Cannot archive table with active future reservations
-- [ ] **Grep Verification**:
-  - `grep -r 'style=' src/ docs/specimens/` → 0 matches
-  - `grep -r 'Password123' src/ docs/` → 0 matches
-  - `php -l src/**/*.php` → 0 errors
-- [ ] Seed realistic multi-tenant fixtures
-- [ ] Write integration audit report to `docs/dev/ai/audit/dict24-wave3-integration.md`
-- [ ] Final RED team verification (authorization matrix, XSS, CSRF, sessions, throttle)
-- [ ] **Commit & Tag**: `git tag v1.0.0-finals` on main branch
+**routes (public/index.php)**: Append; structure by prefix:
+```php
+// Admin ERP routes (Worker A)
+$router->get('/admin/restaurants/:id/zones', ...);
+// ... more A routes
+
+// Customer Portal routes (Worker B)
+$router->get('/discover', ...);
+// ... more B routes
+```
 
 ---
 
-## 4. Git & Branching Strategy
+## 5. Gate Criteria (Wave 2 Completion)
 
-### Main Branch (`main`)
-- **Purpose**: Stable, production-ready code
-- **Wave 0, 1, 3 commits**: Orchestrator (Lyra) only
-- **Protection**: No direct pushes; all changes via Wave-gated commits
+### Worker A (ERP) Done When:
+- ✓ All 5 controllers: zones, tables, reservations, waitlist, 86-list
+- ✓ All 3 ancillary controllers: staff RBAC, analytics, reviews
+- ✓ 100+ integration tests, all passing (exit code 0)
+- ✓ Multi-tenant scoping verified
+- ✓ Audit logging on all CRUD operations
+- ✓ CSRF protection on all POST endpoints
+- ✓ 0 BROKEN findings from inline code review
 
-### Worker Branches (`feat/client-erp`, `feat/customer-portal`)
-- **Branched from**: `main` at end of Wave 1
-- **Isolation**: Separate git worktrees (`orca worktree new-top-level`)
-- **Merge Strategy**: Squash-and-merge or rebase into main during Wave 3
-- **Conflict Resolution**: Orchestrator (Lyra) merges; squads notify of conflicts
+### Worker B (Portal) Done When:
+- ✓ All 5 controllers: discovery, slots, booking, menu sync, reviews
+- ✓ Feature-gated controllers: deposits, loyalty, concierge
+- ✓ 100+ integration tests, all passing (exit code 0)
+- ✓ Real-time booking with TableAllocator concurrency
+- ✓ Menu sync respects 86-list
+- ✓ 0 BROKEN findings from inline code review
 
-### Release Tags
-- `wave-1-complete` — End of Wave 1; workers branch from here
-- `v1.0.0-finals` — Final release candidate (end of Wave 3)
-
----
-
-## 5. Communication & Escalation
-
-### Daily Standup
-- **Time**: 08:00 UTC (or agreed async via CHANGELOG updates)
-- **Format**: 1-line status per squad in `docs/dev/ai/tasks.md`
-- **Blockers**: Escalate immediately to Orchestrator (Lyra)
-
-### Weekly Sync (if needed)
-- **Purpose**: Spec clarifications, cross-squad dependency resolution
-- **Participants**: Lyra (orchestrator) + squad leads
-
-### Escalation Path
-1. **Unclear Spec**: Post in `docs/dev/ai/audit/dict24-questions.md` with tag `[QUESTION]`
-2. **Blocker**: Update `docs/dev/ai/tasks.md` with `[BLOCKED]` tag; escalate to Lyra
-3. **Merge Conflict**: Notify Lyra; do not attempt manual resolution in worktree
-4. **Test Failure**: Attach `just test` output to task ledger; halt further commits pending fix
+### Layer 1 Merge & Gate:
+- ✓ Both workers report `worker_done outcome: succeeded`
+- ✓ Merge conflicts resolved
+- ✓ `git status --short` clean after merge
+- ✓ `just test` runs full suite: 200+ tests, exit code 0
+- ✓ Proceed to Wave 3 (seed, XAMPP package, Red Team audit)
 
 ---
 
-## 6. Quality & Acceptance Criteria
+## 6. Success Metrics
 
-### Code Review Gates (Wave 2 → Wave 3)
-Before merge to main:
-1. `php -l` on all new/modified `.php` files → 0 syntax errors
-2. `grep -r 'style=' src/ docs/specimens/` → 0 inline style matches
-3. `just test` → exit code 0, all checks pass
-4. Cross-team review: Orchestrator (Lyra) approves both squads' PRs
-
-### Test Coverage Minimums
-- **Unit Tests**: All services (`FeatureFlagService`, `AuditLogger`, `TableAllocator`, etc.) + validators
-- **Integration Tests**: Multi-tenant isolation, double-booking prevention, feature-flag gating, soft-archive guards
-- **Concurrency Tests**: 50+ simultaneous booking attempts on same table/overlapping window
-- **Security Tests**: Authorization matrix, XSS (stored/reflected), CSRF, session invalidation, LoginThrottle
-
-### Performance Targets
-- **Booking creation**: < 100ms (including TableAllocator transactional lock)
-- **Menu retrieval**: < 50ms per org + 1000-item menu
-- **Analytics query**: < 500ms for 90-day window
-- **Audit log pagination**: < 100ms per 100-entry page
+| Metric | Target | Worker A | Worker B |
+|--------|--------|----------|----------|
+| Controllers implemented | 8–10 | ✓ | ✓ |
+| Integration tests | 100+ | ✓ | ✓ |
+| Test coverage (critical paths) | 90%+ | ✓ | ✓ |
+| All tests passing | 0 failures | ✓ | ✓ |
+| Audit logging | 100% of CRUD | ✓ | ✓ |
+| CSRF protection | 100% of POST | ✓ | ✓ |
+| Multi-tenant scoping | verified | ✓ | ✓ |
+| Code review: BROKEN items | 0 | ✓ | ✓ |
 
 ---
 
-## 7. Known Risks & Mitigations
-
-| Risk | Impact | Mitigation |
-|------|--------|-----------|
-| Parallel squad merge conflicts | Integration delay | Early CSS/routing class standardization; Lyra owns final merge |
-| Double-booking race condition | Data integrity failure | Two-layer lock + 15-min slot bucketing; stress-tested at 50+ concurrent |
-| Feature-flag partial implementation | Broken UX when disabled | All flag checks tested; disabled features return 404 or hide cleanly |
-| LoginThrottle per-IP collateral lockout | User DOS | Separate threshold (10) vs email (5); identical HTTP 429 response |
-| Cross-tenant data leak | Security breach | RBAC middleware + scoped queries + audit trail; RED team verifies |
-| SQLite/MySQL schema drift | Test-prod mismatch | Idempotent migrations; both tested on every commit |
-
----
-
-## 8. Success Criteria (Deliverable)
-
-**By 2026-12-15**, the integrated system must meet ALL of the following:
-
-- [ ] Single unified UI shell adapts per role and feature flags
-- [ ] SuperAdmin: tenant provisioning, feature-toggle UI, audit log viewer, session revocation
-- [ ] Restaurant ERP: table board, reservations, menu, staff RBAC, analytics, reviews, optional floor-plan/inventory
-- [ ] Customer Portal: marketplace, booking, self-service mgmt, waitlist, chatbot, reviews, optional deposits/loyalty
-- [ ] Zero double-bookings under 50+ concurrent booking attempts
-- [ ] Multi-table combinable bookings atomic and correct
-- [ ] Cross-tenant data isolation: Admin A cannot read/edit Org B
-- [ ] Feature flags cleanly gate optional modules
-- [ ] Soft-archive guards prevent archival of tables with active future reservations
-- [ ] LoginThrottle per-email (5) and per-IP (10) isolation tested
-- [ ] `php -l` passes on all PHP files (0 syntax errors)
-- [ ] `grep -r 'style=' src/ docs/specimens/` → 0 matches
-- [ ] `grep -r 'Password123' src/ docs/` → 0 matches
-- [ ] `just test` passes (0 test failures) on both MySQL 8 and SQLite
-- [ ] Concurrency stress test: 50+ simultaneous bookings on same table/overlapping window → 0 double-bookings
-- [ ] RED team authorization matrix: 4 roles × 10+ routes verified
-- [ ] RED team security: XSS, CSRF, session invalidation, SQL injection protections verified
-- [ ] All routes documented in `docs/SPECIFICATION.md` (section 4)
-- [ ] Team allocation & responsibilities locked in this document
-- [ ] Integration audit report written to `docs/dev/ai/audit/dict24-wave3-integration.md`
-- [ ] Final tag: `v1.0.0-finals` on main branch
-
----
-
-**Document Version**: 1.0  
-**Last Updated**: 2026-11-19  
-**Approved By**: Lyra (`whinee`)  
-**Status**: LOCKED ✓
+**Team Allocation Locked**: 2026-11-20T05:12:00Z  
+**Wave 2 Start**: Immediate (post-Wave 1 completion)  
+**Wave 2 Duration**: 90 minutes (parallel workers)  
+**Wave 3 Merge**: upon both workers' completion
