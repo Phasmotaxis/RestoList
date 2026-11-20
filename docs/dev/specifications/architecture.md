@@ -92,8 +92,6 @@ The Enterprise Information Management System (EIMS) provides a secure multi-tena
   - Positive: Empirically verified sub-millisecond query performance on indexed tables; guaranteed survival and write persistence when MySQL container is killed.
   - Negative: High-volume stress seeding requires several gigabytes of ephemeral disk allocation during bulk runs.
 
----
-
 ## 3. Failure Mode Analysis & Defenses
 
 | Failure Scenario | Root Cause | System Defense |

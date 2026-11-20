@@ -39,7 +39,7 @@ During this operational cycle, the Lead Systems Architect and Heavy AI Orchestra
   - [ ] T4 Resolve remaining `org_id`/`tenant_id` integration contract before merging domain workers.
 - **Immediate next step**: Keep core fixes isolated; retry one worker only after provider quota reset and inspect its actual branch/files before merge.
 
-## 4. Operational Continuity for Phase 5 (Future Directives)
+## 5. Operational Continuity for Phase 5 (Future Directives)
 Incoming subagents executing future tasks must observe:
 1. **Generic Administrative Core**: Do not invent speculative domain entities (e.g., student grading, patient tracking, course catalogs) until formal syllabus specifications are released by the faculty.
 2. **Documentation Triad**: Always maintain `architecture.md` (WHY), `tasks.md` (WHAT IS), and `CHANGELOG.md` (WHEN) in lockstep with feature additions.

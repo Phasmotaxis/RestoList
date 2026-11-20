@@ -11,6 +11,7 @@ default:
 setup:
     @test -f .env || cp .env.example .env
     @mkdir -p storage dev/tmp docs/specimens/screenshots
+    @chmod 777 storage dev/tmp docs/specimens/screenshots 2>/dev/null || true
     @echo "[SUCCESS] Environment configured (.env, storage/, dev/tmp/, docs/specimens/screenshots/)"
 
 # Build container images
@@ -37,6 +38,18 @@ lint:
 test-sabotage:
     ./dev/scripts/sh/test-panel-sabotage.sh
 
+# Execute application security, injection, and hardening verification suite
+test-hardening:
+    docker run --rm -v "$PWD/src":/app -v "$PWD/dev":/dev-scripts:ro -e DB_CONNECTION=sqlite -e DB_SQLITE_PATH=/tmp/hardening.sqlite -w /app php:8.3-cli php /dev-scripts/scripts/php/test-hardening.php
+
+# Execute consolidated integration test suite (RBAC, logout, rate-limit, XSS, CSP, debug suppression)
+test-integration:
+    docker run --rm -v "$PWD/tests":/tests:ro -w /tests php:8.3-cli php runner.php
+
+# Execute database failover chaos engineering test
+test-chaos:
+    ./dev/scripts/sh/test-failover-chaos.sh
+
 # Run database migrations
 migrate:
     python3 dev/scripts/py/migrate.py --migrate
@@ -44,6 +57,14 @@ migrate:
 # Load database seed records
 seed:
     python3 dev/scripts/py/migrate.py --seed
+
+# Execute chunked high-load stress seeder (10^5+ records)
+seed-stress:
+    python3 dev/scripts/py/seed_stress.py
+
+# Benchmark database query latency and SLA conformance
+benchmark-db:
+    python3 dev/scripts/py/benchmark_queries.py
 
 # Capture visual specimens and verify 13-route inventory
 screenshot:
@@ -62,7 +83,7 @@ optimize-assets:
     ./dev/scripts/sh/optimize-assets.sh
 
 # Run all automated tests and quality gates
-test: setup lint test-sabotage screenshot optimize-assets
+test: setup lint test-hardening test-integration test-sabotage screenshot optimize-assets check-links
     @echo "[SUCCESS] All EIMS verification suites passed."
 
 # Export Docker images for air-gapped deployment
@@ -71,4 +92,4 @@ pre-cache:
 
 # Verify markdown hyperlinks integrity
 check-links:
-    @python3 -c "import os, re, sys; errors = []; [errors.extend([f'{root}/{f} -> {m}' for m in re.findall(r'\[.*?\]\((?!http|#)(.*?)\)', open(os.path.join(root, f)).read()) if not os.path.exists(os.path.normpath(os.path.join(root, m.split('#')[0])))]) for root, _, files in os.walk('.') if 'condom' not in root and '.git' not in root for f in files if f.endswith('.md')]; sys.exit(f'Broken links:\n' + '\n'.join(errors) if errors else print('[SUCCESS] All markdown links verified.'))"
+    python3 dev/scripts/py/check_links.py

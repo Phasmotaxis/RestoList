@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta name="apple-mobile-web-app-title" content="Tenant Administration - EIMS" />
+    <meta name="twitter:title" content="Tenant Administration - EIMS" />
+    <meta property="og:site_name" content="Tenant Administration - EIMS" />
+    <meta property="og:title" content="Tenant Administration - EIMS" />
+    <title>Tenant Administration - EIMS</title>
+
+    <meta name="author" content="EIMS Development Team">
+
+    <meta name="description" content="Enterprise Information Management System for Multi-Tenant Data Governance" />
+    <meta property="og:description" content="Enterprise Information Management System for Multi-Tenant Data Governance" />
+
+    <meta name="twitter:site:domain" content="eims-cvsu.lyra-on.top" />
+    <meta name="twitter:url" content="https://eims-cvsu.lyra-on.top" />
+    <meta property="og:url" content="https://eims-cvsu.lyra-on.top" />
+    <link rel="canonical" href="https://eims-cvsu.lyra-on.top" />
+
+    <meta name="twitter:card" content="/assets/images/banner.png" />
+    <meta name="twitter:image" content="/assets/images/banner.png" />
+    <meta property="og:image" content="/assets/images/banner.png" />
+    <meta property="og:image:width" content="1280" />
+    <meta property="og:image:height" content="800" />
+
+    <link rel="icon" type="image/x-icon" href="/assets/images/icons/logo.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/assets/images/icons/logo.png" />
+
+    <meta property="twitter:card" content="summary_large_image" />
+
+    <meta property="og:type" content="website" />
+
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
+
+    <link rel="stylesheet" href="/assets/css/base.css" />
+    <link rel="stylesheet" href="/assets/css/themes/default.css" />
+    <link rel="stylesheet" href="/assets/css/themes/lyra.css" />
+    <script src="/assets/css/theme-engine.js"></script>
+    <script defer src="/assets/js/app.js"></script>
+</head>
+<body>
+    <header class="site-header">
+        <div class="container site-header-content">
+            <div>
+                <h1><a href="/">Enterprise Information Management System</a></h1>
+                <p class="subtitle">Cavite State University - Main Campus - 2nd year 1st semester 2026-27</p>
+            </div>
+            <div class="theme-switcher-container">
+                <label for="theme-select" class="theme-switcher-label">Theme:</label>
+                <select id="theme-select" class="theme-select" aria-label="Select Color Theme">
+                    <option value="default">Default (Neutral)</option>
+                    <option value="lyra">Lyra (Piiiiink WCAG AA)</option>
+                </select>
+            </div>
+        </div>
+    </header>
+    <main class="container">
+<section class="card">
+    <h2>Tenant Administration: Cavite State University Main Campus</h2>
+    <p class="subtitle">Subdomain: <code>cvsu-main</code></p>
+</section>
+
+<div class="specimen-grid-cards">
+    <div class="card specimen-card-tight">
+        <h3>Scoped Users</h3>
+        <p class="specimen-stat-primary">5</p>
+        <p class="subtitle">Users within this organization</p>
+    </div>
+    <div class="card specimen-card-tight">
+        <h3>Organization Status</h3>
+        <p class="specimen-status-active">ACTIVE</p>
+        <p class="subtitle">Tenant operational status</p>
+    </div>
+</div>
+
+<section class="card">
+    <h3>Administration Actions</h3>
+    <ul class="specimen-action-list">
+        <li><a href="/admin/users" class="specimen-link-primary">Manage Tenant Users &rarr;</a></li>
+        <li><form method="POST" action="/logout" class="specimen-inline-form"><input type="hidden" name="_csrf" value="074ca216b19f6e183a6e68cb30898fa0f52f7ee035c2ca1aa1e45408c9736a14"><button type="submit" class="specimen-button-danger">Logout &rarr;</button></form></li>
+    </ul>
+</section>
+
+<section class="card">
+    <h3>Recent Tenant Audit Activity</h3>
+            <div class="specimen-table-scroll">
+            <table class="specimen-table-spaced">
+                <thead>
+                    <tr class="specimen-row-header">
+                        <th class="specimen-cell">Action</th>
+                        <th class="specimen-cell">Entity</th>
+                        <th class="specimen-cell">Details</th>
+                        <th class="specimen-cell">Timestamp</th>
+                    </tr>
+                </thead>
+                <tbody>
+                                            <tr class="specimen-row">
+                            <td class="specimen-cell"><code>AUTH_LOGOUT</code></td>
+                            <td class="specimen-cell">users</td>
+                            <td class="specimen-cell">User logged out</td>
+                            <td class="specimen-cell">2026-11-20 04:29:37</td>
+                        </tr>
+                                            <tr class="specimen-row">
+                            <td class="specimen-cell"><code>AUTH_LOGIN</code></td>
+                            <td class="specimen-cell">users</td>
+                            <td class="specimen-cell">User logged in successfully</td>
+                            <td class="specimen-cell">2026-11-20 04:29:33</td>
+                        </tr>
+                                            <tr class="specimen-row">
+                            <td class="specimen-cell"><code>AUTH_LOGIN</code></td>
+                            <td class="specimen-cell">users</td>
+                            <td class="specimen-cell">User logged in successfully</td>
+                            <td class="specimen-cell">2026-11-20 04:29:33</td>
+                        </tr>
+                                            <tr class="specimen-row">
+                            <td class="specimen-cell"><code>AUTH_LOGOUT</code></td>
+                            <td class="specimen-cell">users</td>
+                            <td class="specimen-cell">User logged out</td>
+                            <td class="specimen-cell">2026-11-20 04:28:32</td>
+                        </tr>
+                                            <tr class="specimen-row">
+                            <td class="specimen-cell"><code>AUTH_LOGIN</code></td>
+                            <td class="specimen-cell">users</td>
+                            <td class="specimen-cell">User logged in successfully</td>
+                            <td class="specimen-cell">2026-11-20 04:28:27</td>
+                        </tr>
+                                            <tr class="specimen-row">
+                            <td class="specimen-cell"><code>AUTH_LOGIN</code></td>
+                            <td class="specimen-cell">users</td>
+                            <td class="specimen-cell">User logged in successfully</td>
+                            <td class="specimen-cell">2026-11-20 04:28:27</td>
+                        </tr>
+                                            <tr class="specimen-row">
+                            <td class="specimen-cell"><code>AUTH_LOGOUT</code></td>
+                            <td class="specimen-cell">users</td>
+                            <td class="specimen-cell">User logged out</td>
+                            <td class="specimen-cell">2026-11-20 04:25:54</td>
+                        </tr>
+                                            <tr class="specimen-row">
+                            <td class="specimen-cell"><code>AUTH_LOGIN</code></td>
+                            <td class="specimen-cell">users</td>
+                            <td class="specimen-cell">User logged in successfully</td>
+                            <td class="specimen-cell">2026-11-20 04:25:50</td>
+                        </tr>
+                                            <tr class="specimen-row">
+                            <td class="specimen-cell"><code>AUTH_LOGIN</code></td>
+                            <td class="specimen-cell">users</td>
+                            <td class="specimen-cell">User logged in successfully</td>
+                            <td class="specimen-cell">2026-11-20 04:25:49</td>
+                        </tr>
+                                            <tr class="specimen-row">
+                            <td class="specimen-cell"><code>AUTH_LOGOUT</code></td>
+                            <td class="specimen-cell">users</td>
+                            <td class="specimen-cell">User logged out</td>
+                            <td class="specimen-cell">2026-11-20 04:24:15</td>
+                        </tr>
+                                    </tbody>
+            </table>
+        </div>
+    </section>
+    </main>
+    <footer class="site-footer container">
+        <p>&copy; 2026 EIMS Development Team. All rights reserved.</p>
+    </footer>
+    <script src="/assets/js/app.js"></script>
+</body>
+</html>

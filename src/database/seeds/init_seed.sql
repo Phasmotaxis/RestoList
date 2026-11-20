@@ -17,12 +17,8 @@ INSERT INTO tenants (id, name, subdomain, is_active) VALUES
 ('tenant-cvsu-educ-002', 'CvSU College of Education', 'cvsu-educ', TRUE)
 ON DUPLICATE KEY UPDATE name = VALUES(name), is_active = VALUES(is_active);
 
--- Default Passwords: Password123!
-INSERT INTO users (id, tenant_id, email, password_hash, first_name, last_name, role_mask) VALUES
-('usr-superadmin-001', 'tenant-cvsu-main-001', 'superadmin@cvsu.edu.ph', '$2y$10$pBfdqS2Ky8Tzq6dvOQPEdeDVr2xWzXvldmf5kAR6upGYHZ3V/CHra', 'System', 'SuperAdmin', 1),
-('usr-admin-002', 'tenant-cvsu-main-001', 'admin@cvsu.edu.ph', '$2y$10$pBfdqS2Ky8Tzq6dvOQPEdeDVr2xWzXvldmf5kAR6upGYHZ3V/CHra', 'Campus', 'Administrator', 2),
-('usr-user-003', 'tenant-cvsu-main-001', 'user@cvsu.edu.ph', '$2y$10$pBfdqS2Ky8Tzq6dvOQPEdeDVr2xWzXvldmf5kAR6upGYHZ3V/CHra', 'Standard', 'StudentUser', 4)
-ON DUPLICATE KEY UPDATE password_hash = VALUES(password_hash), role_mask = VALUES(role_mask);
+-- No user rows are seeded. Create the first SuperAdmin with:
+--   SUPERADMIN_EMAIL=... SUPERADMIN_PASSWORD=... php src/database/bootstrap_superadmin.php
 
 INSERT INTO audit_logs (id, tenant_id, user_id, action, entity, entity_id, details, ip_address) VALUES
 ('log-init-001', 'tenant-cvsu-main-001', 'usr-superadmin-001', 'SYSTEM_INIT', 'system', 'root', 'Initial system genesis provisioning executed', '127.0.0.1'),

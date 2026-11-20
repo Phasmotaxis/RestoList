@@ -15,10 +15,27 @@ This software uses [Semantic Versioning v2.0.0](https://semver.org/spec/v2.0.0.h
 
 ## [Unreleased]
 
+### Added
+
+- Added tenant-scoped restaurant ERP operations for dining zones, tables, reservation intake, and reservation administration.
+- Added customer restaurant browsing, menu detail, and CSRF-protected reservation booking routes.
+
+### Changed
+
+- Repaired conflicted dashboard views while preserving strict typing, CSRF fields, and semantic CSS classes.
+- Changed `APP_DEBUG` default from `true` to `false` in `.env.example` and `docker-compose.yaml` for production-safe defaults; developers must explicitly opt in to debug mode.
+
 ### Fixed
 
 - Replaced MySQL-only feature-flag upserts and timestamp expressions in reservation, audit, stock, and deposit services with SQLite-compatible statements.
 - Fixed reservation overlap detection to fetch from the prepared statement after executing it.
+- Removed hardcoded test password `Password123!` from tracked specimen `docs/specimens/screenshots/09_admin_users.html` (line 74).
+
+### Security
+
+- Expanded `dev/scripts/sh/test-panel-sabotage.sh` with test 5/5 to verify `APP_DEBUG=false` suppresses stack traces and exception details in HTTP 500 responses, enabling production hardening validation.
+- Documented targeted account lockout (3-day hold) as a known design trade-off in `docs/GETTING-STARTED.md`, explaining the restaurant ERP security-availability balance: per-email rate limit (5 failures/15min) blocks brute force without emergency database intervention, per-IP limit (10 failures/15min) prevents collateral lockout on shared IPs.
+- Verified `App\Core\LoginThrottle` dual-scope rate limiting: per-IP (10 failures/15min) and per-email (5 failures/15min) tracked separately, with only per-email counter cleared on successful login to deter distributed attacks.
 
 ### Security
 

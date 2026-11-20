@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Core\Database;
+use App\Core\LoginThrottle;
 use App\Core\Request;
 use App\Core\Response;
 use App\Core\Session;
@@ -12,6 +13,12 @@ use App\Middleware\RoleMiddleware;
 
 class AuthController
 {
+    /**
+     * Bcrypt hash of a random string nobody knows. Unknown emails verify against it so they pay
+     * the same bcrypt cost as a real account. A constant avoids depending on per-process state.
+     */
+    private const DUMMY_HASH = '$2y$10$aWpO3NylBq3SqsmQm1GCruhcUeyROHLVGpi7H6mW9tXfkU5McxBH6';
+
     public function showLogin(Request $request, Response $response): void
     {
         Session::start();
@@ -36,12 +43,21 @@ class AuthController
     public function login(Request $request, Response $response): void
     {
         Session::start();
+        Session::verifyCsrf();
         $body = $request->getBody();
         $email = trim((string) ($body['email'] ?? ''));
         $password = (string) ($_POST['password'] ?? '');
 
         if ($email === '' || $password === '') {
             $error = 'Email and password are required.';
+            require_once __DIR__ . '/../Views/auth/login.php';
+            return;
+        }
+
+        $ip = LoginThrottle::resolveClientIp();
+        if (LoginThrottle::isBlocked($ip, $email)) {
+            $error = 'Too many failed attempts. Try again in 15 minutes.';
+            http_response_code(429);
             require_once __DIR__ . '/../Views/auth/login.php';
             return;
         }
@@ -53,7 +69,13 @@ class AuthController
             );
             $user = $stmt->fetch();
 
-            if ($user && password_verify($password, (string) $user['password_hash'])) {
+            // Verify against a dummy hash when the email is unknown, so both paths take similar time.
+            $hash = $user ? (string) $user['password_hash'] : self::DUMMY_HASH;
+            $passwordOk = password_verify($password, $hash);
+
+            if ($user && $passwordOk) {
+                LoginThrottle::reset($email);
+                Session::regenerate();
                 Session::set('user_id', $user['id']);
                 Session::set('tenant_id', $user['tenant_id']);
                 Session::set('email', $user['email']);
@@ -96,6 +118,7 @@ class AuthController
             error_log('[ERROR] Login authentication error: ' . $e->getMessage());
         }
 
+        LoginThrottle::recordFailure($ip, $email);
         $error = 'Invalid email or password.';
         http_response_code(401);
         require_once __DIR__ . '/../Views/auth/login.php';
@@ -104,6 +127,9 @@ class AuthController
     public function logout(Request $request, Response $response): void
     {
         Session::start();
+        if ($request->getMethod() === 'POST') {
+            Session::verifyCsrf();
+        }
         $userId = Session::get('user_id');
         $tenantId = Session::get('tenant_id');
 

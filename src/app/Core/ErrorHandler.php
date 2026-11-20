@@ -17,6 +17,22 @@ class ErrorHandler
 {
     private static bool $registered = false;
 
+    /**
+     * Register global error and exception handlers.
+     *
+     * Activates unified exception kernel: converts runtime PHP errors (E_ALL) to ErrorException,
+     * routes unhandled exceptions through handleException(), and registers shutdown handler
+     * for fatal errors (E_ERROR, E_PARSE, E_COMPILE_ERROR). Disables display_errors to stderr;
+     * all output routed to renderDiagnosticScreen() with debug flag control.
+     *
+     * Idempotent: repeated calls are no-ops (guarded by $registered flag).
+     *
+     * @return void
+     *
+     * @see ErrorHandler::handleError() PHP error handler.
+     * @see ErrorHandler::handleException() Unhandled exception handler.
+     * @see ErrorHandler::handleShutdown() Fatal error shutdown handler.
+     */
     public static function register(): void
     {
         if (self::$registered) {
@@ -33,6 +49,22 @@ class ErrorHandler
         self::$registered = true;
     }
 
+    /**
+     * Convert PHP error to ErrorException for unified handling.
+     *
+     * Called by set_error_handler(). Returns false to stop normal PHP error handling,
+     * allowing exception machinery to catch and render the error through handleException().
+     * Respects error_reporting() mask: returns false if error type is suppressed.
+     *
+     * @param int $severity PHP error constant (E_WARNING, E_NOTICE, E_USER_ERROR, etc.).
+     * @param string $message Human-readable error message.
+     * @param string $file Absolute path to file where error occurred.
+     * @param int $line Line number in file.
+     *
+     * @return bool false to prevent normal PHP error handling; true to continue.
+     *
+     * @throws ErrorException Always throws for non-suppressed errors, triggering handleException().
+     */
     public static function handleError(int $severity, string $message, string $file, int $line): bool
     {
         if (!(error_reporting() & $severity)) {
@@ -41,6 +73,19 @@ class ErrorHandler
         throw new ErrorException($message, 0, $severity, $file, $line);
     }
 
+    /**
+     * Render diagnostic screen for unhandled exception (interactive defense mode).
+     *
+     * Called by set_exception_handler(). Captures exception type, message, file, line, and trace.
+     * If APP_DEBUG=true, renders full trace and source snippet to browser; otherwise safe generic error.
+     * Always logs to error_log() with request ID for audit trail. Exits with code 1.
+     *
+     * @param Throwable $throwable Exception or Error thrown.
+     *
+     * @return void Exits with code 1 after rendering.
+     *
+     * @see ErrorHandler::renderDiagnosticScreen() Screen rendering logic.
+     */
     public static function handleException(Throwable $throwable): void
     {
         self::renderDiagnosticScreen(
@@ -53,6 +98,17 @@ class ErrorHandler
         exit(1);
     }
 
+    /**
+     * Intercept fatal PHP errors at shutdown (E_ERROR, E_PARSE, E_COMPILE_ERROR).
+     *
+     * Called by register_shutdown_function(). Checks error_get_last() for fatal error.
+     * Renders diagnostic screen with fatal error type string and halted-execution context.
+     * Returns normally (no exit); PHP runtime terminates after all shutdown functions.
+     *
+     * @return void
+     *
+     * @see ErrorHandler::isFatalType() Fatal error type check.
+     */
     public static function handleShutdown(): void
     {
         $lastError = error_get_last();
@@ -67,11 +123,25 @@ class ErrorHandler
         }
     }
 
+    /**
+     * Check if error type is fatal (E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR).
+     *
+     * @param int $type PHP error constant.
+     *
+     * @return bool true if fatal, false otherwise.
+     */
     private static function isFatalType(int $type): bool
     {
         return in_array($type, [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR], true);
     }
 
+    /**
+     * Map PHP error constant to human-readable string (E_ERROR, E_PARSE, etc.).
+     *
+     * @param int $type PHP error constant.
+     *
+     * @return string Error type string or 'UNKNOWN_FATAL' if not recognized.
+     */
     private static function errorTypeToString(int $type): string
     {
         return match ($type) {
@@ -84,6 +154,19 @@ class ErrorHandler
         };
     }
 
+    /**
+     * Extract source code snippet around error line for visual context.
+     *
+     * Reads $file and returns an array of line objects with content around $targetLine.
+     * Each object: ['line' => int, 'content' => string, 'is_target' => bool].
+     * Returns empty array if file is unreadable or not found.
+     *
+     * @param string $file Absolute path to PHP source file.
+     * @param int $targetLine Line number to highlight.
+     * @param int $context Number of lines before/after to include (default 5).
+     *
+     * @return array Associative array [line_num => ['line' => int, 'content' => string, 'is_target' => bool], ...].
+     */
     private static function getSourceSnippet(string $file, int $targetLine, int $context = 5): array
     {
         if (!is_file($file) || !is_readable($file)) {
@@ -110,6 +193,34 @@ class ErrorHandler
         return $snippet;
     }
 
+    /**
+     * Query debug mode status: APP_DEBUG=true enables full trace/source exposure.
+     *
+     * Debug mode allows full stack trace and source code snippet in browser response.
+     * Production deployments must set APP_DEBUG to any value except 'true' (false, 0, empty string).
+     *
+     * @return bool true if APP_DEBUG environment variable === 'true' (exact string match).
+     */
+    public static function isDebug(): bool
+    {
+        return getenv('APP_DEBUG') === 'true';
+    }
+
+    /**
+     * Render interactive diagnostic screen or safe error page.
+     *
+     * In debug mode (APP_DEBUG=true): displays full exception type, message, file, line, source snippet,
+     * and stack trace to aide panel defense debugging. In production mode: displays generic error page
+     * with safe request ID for support correlation. Always logs full details to error_log().
+     *
+     * @param string $errorType Exception class name (e.g. 'RuntimeException', 'Fatal Error [E_PARSE]').
+     * @param string $message Human-readable error message.
+     * @param string $file Absolute path to file where error occurred.
+     * @param int $line Line number.
+     * @param string $trace Stack trace string from getTraceAsString().
+     *
+     * @return void Outputs HTML and returns (does not exit; caller exits with code 1).
+     */
     private static function renderDiagnosticScreen(
         string $errorType,
         string $message,
@@ -117,15 +228,38 @@ class ErrorHandler
         int $line,
         string $trace
     ): void {
+        // Clear any partial output buffers to prevent corruption.
         while (ob_get_level() > 0) {
             ob_end_clean();
         }
 
+        // Set HTTP response headers if not already sent.
         if (!headers_sent()) {
             http_response_code(500);
             header('Content-Type: text/html; charset=UTF-8');
         }
 
+        $requestId = bin2hex(random_bytes(6));
+        // Always log full error details to error log (file, syslog, etc.) for backend audit.
+        error_log(sprintf(
+            '[ERROR] request_id=%s type=%s message=%s location=%s:%d trace=%s',
+            $requestId,
+            $errorType,
+            $message,
+            $file,
+            $line,
+            $trace
+        ));
+
+        if (!self::isDebug()) {
+            // Production mode: generic error page with safe request ID for support tickets.
+            $title = 'Internal Server Error';
+            $safeRequestId = htmlspecialchars($requestId, ENT_QUOTES, 'UTF-8');
+            require __DIR__ . '/../Views/errors/500.php';
+            return;
+        }
+
+        // Debug mode: full diagnostic console with source snippet and stack trace.
         $snippet = self::getSourceSnippet($file, $line);
         $escapedMessage = htmlspecialchars($message, ENT_QUOTES, 'UTF-8');
         $escapedFile = htmlspecialchars($file, ENT_QUOTES, 'UTF-8');
@@ -139,105 +273,7 @@ class ErrorHandler
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Diagnostic Alert - EIMS Defense Kernel</title>
-    <style>
-        :root {
-            --bg-color: #0b0f19;
-            --surface-color: #161e2e;
-            --text-color: #e5e7eb;
-            --text-muted: #9ca3af;
-            --border-color: #2e384d;
-            --danger-color: #ef4444;
-            --danger-bg: #450a0a;
-            --highlight-bg: rgba(239, 68, 68, 0.25);
-            --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-        }
-        body {
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            font-family: var(--font-mono);
-            margin: 0;
-            padding: 2rem;
-            line-height: 1.5;
-        }
-        .container {
-            max-width: 1100px;
-            margin: 0 auto;
-        }
-        .header {
-            background: var(--danger-bg);
-            border: 1px solid var(--danger-color);
-            border-radius: 6px;
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
-        }
-        .header h1 {
-            color: var(--danger-color);
-            font-size: 1.25rem;
-            margin: 0 0 0.5rem 0;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-        .header .meta {
-            font-size: 0.875rem;
-            color: var(--text-muted);
-        }
-        .card {
-            background: var(--surface-color);
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
-        }
-        .card h2 {
-            font-size: 1rem;
-            margin-top: 0;
-            margin-bottom: 1rem;
-            color: #38bdf8;
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 0.5rem;
-        }
-        .code-block {
-            background: #000000;
-            border-radius: 4px;
-            padding: 1rem;
-            overflow-x: auto;
-            font-size: 0.875rem;
-        }
-        .code-line {
-            display: flex;
-            padding: 0.125rem 0.5rem;
-        }
-        .code-line.target {
-            background-color: var(--highlight-bg);
-            border-left: 4px solid var(--danger-color);
-            font-weight: bold;
-        }
-        .line-num {
-            width: 3.5rem;
-            color: var(--text-muted);
-            user-select: none;
-            flex-shrink: 0;
-        }
-        .line-text {
-            white-space: pre-wrap;
-            word-break: break-all;
-        }
-        pre.trace {
-            background: #000000;
-            padding: 1rem;
-            border-radius: 4px;
-            overflow-x: auto;
-            font-size: 0.8125rem;
-            color: #d1d5db;
-        }
-        .suggestion {
-            background: rgba(14, 165, 233, 0.1);
-            border-left: 4px solid #0ea5e9;
-            padding: 0.75rem 1rem;
-            font-size: 0.875rem;
-            color: #e0f2fe;
-        }
-    </style>
+    <link rel="stylesheet" href="/assets/css/diagnostic.css">
 </head>
 <body>
     <div class="container">

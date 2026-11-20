@@ -1,55 +1,65 @@
 <?php
+use App\Core\Session;
+
 $title = 'Tenant Organizations - SuperAdmin';
 require_once __DIR__ . '/../layouts/header.php';
+$errors = $errors ?? [];
+$old = $old ?? [];
+$e = static fn (string $field): string => htmlspecialchars((string) ($errors[$field] ?? ''), ENT_QUOTES, 'UTF-8');
 ?>
 <section class="card">
-    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+    <div class="header-actions">
         <div>
             <h2>Tenant Organizations</h2>
             <p class="subtitle">Global multi-tenant provisioning and quota management</p>
         </div>
-        <a href="/superadmin/dashboard" style="color: var(--color-primary); font-weight: 500;">&larr; Back to Dashboard</a>
+        <a href="/superadmin/dashboard" class="link-nav">&larr; Back to Dashboard</a>
     </div>
 </section>
 
 <section class="card">
     <h3>Provision New Tenant Organization</h3>
-    <form method="POST" action="/superadmin/organizations" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; align-items: end; margin-top: 1rem;">
+    <form method="POST" action="/superadmin/organizations" class="form-grid-org" novalidate>
+        <?= Session::csrfField() ?>
         <div>
-            <label for="name" style="display: block; margin-bottom: 0.25rem;">Organization Name</label>
-            <input type="text" id="name" name="name" required placeholder="e.g. CvSU Silang Campus" style="width: 100%; padding: 0.5rem; border: 1px solid var(--color-border); border-radius: var(--radius-sm);">
+            <label for="name" class="form-label">Organization Name</label>
+            <input type="text" id="name" name="name" class="form-input" required maxlength="255" value="<?= htmlspecialchars((string) ($old['name'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" placeholder="e.g. CvSU Silang Campus" aria-describedby="name_error">
+            <?php if (isset($errors['name'])): ?><p id="name_error" class="field-error"><?= $e('name') ?></p><?php endif; ?>
         </div>
         <div>
-            <label for="subdomain" style="display: block; margin-bottom: 0.25rem;">Subdomain Slug</label>
-            <input type="text" id="subdomain" name="subdomain" required placeholder="e.g. cvsu-silang" style="width: 100%; padding: 0.5rem; border: 1px solid var(--color-border); border-radius: var(--radius-sm);">
+            <label for="subdomain" class="form-label">Subdomain Slug</label>
+            <input type="text" id="subdomain" name="subdomain" class="form-input" required maxlength="64" value="<?= htmlspecialchars((string) ($old['subdomain'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" placeholder="e.g. cvsu-silang" aria-describedby="subdomain_error">
+            <?php if (isset($errors['subdomain'])): ?><p id="subdomain_error" class="field-error"><?= $e('subdomain') ?></p><?php endif; ?>
         </div>
         <div>
-            <button type="submit" style="background: var(--color-primary); color: white; border: none; padding: 0.6rem 1.2rem; border-radius: var(--radius-sm); cursor: pointer; font-weight: 500;">Provision Tenant</button>
+            <button type="submit" class="btn-primary">Provision Tenant</button>
         </div>
     </form>
 </section>
 
 <section class="card">
     <h3>Existing Tenant Organizations</h3>
-    <div style="overflow-x: auto; margin-top: 0.5rem;">
-        <table style="width: 100%; border-collapse: collapse; text-align: left;">
+    <div class="table-wrapper">
+        <table class="data-table">
             <thead>
-                <tr style="border-bottom: 2px solid var(--color-border);">
-                    <th style="padding: 0.5rem;">Tenant ID</th>
-                    <th style="padding: 0.5rem;">Organization Name</th>
-                    <th style="padding: 0.5rem;">Subdomain</th>
-                    <th style="padding: 0.5rem;">Status</th>
-                    <th style="padding: 0.5rem;">Created At</th>
+                <tr>
+                    <th>Tenant ID</th>
+                    <th>Organization Name</th>
+                    <th>Subdomain</th>
+                    <th>Status</th>
+                    <th>Created At</th>
+                    <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
                 <?php foreach (($tenants ?? []) as $t): ?>
-                    <tr style="border-bottom: 1px solid var(--color-border);">
-                        <td style="padding: 0.5rem;"><code><?= htmlspecialchars($t['id'], ENT_QUOTES, 'UTF-8') ?></code></td>
-                        <td style="padding: 0.5rem; font-weight: 500;"><?= htmlspecialchars($t['name'], ENT_QUOTES, 'UTF-8') ?></td>
-                        <td style="padding: 0.5rem;"><code><?= htmlspecialchars($t['subdomain'], ENT_QUOTES, 'UTF-8') ?></code></td>
-                        <td style="padding: 0.5rem;"><span style="color: <?= !empty($t['is_active']) ? '#16a34a' : '#dc2626' ?>; font-weight: bold;"><?= !empty($t['is_active']) ? 'Active' : 'Disabled' ?></span></td>
-                        <td style="padding: 0.5rem;"><?= htmlspecialchars($t['created_at'], ENT_QUOTES, 'UTF-8') ?></td>
+                    <tr>
+                        <td><code><?= htmlspecialchars($t['id'], ENT_QUOTES, 'UTF-8') ?></code></td>
+                        <td class="text-bold"><?= htmlspecialchars($t['name'], ENT_QUOTES, 'UTF-8') ?></td>
+                        <td><code><?= htmlspecialchars($t['subdomain'], ENT_QUOTES, 'UTF-8') ?></code></td>
+                        <td><span class="<?= !empty($t['is_active']) ? 'badge-status-active' : 'badge-status-danger' ?>"><?= !empty($t['is_active']) ? 'Active' : 'Disabled' ?></span></td>
+                        <td><?= htmlspecialchars($t['created_at'], ENT_QUOTES, 'UTF-8') ?></td>
+                        <td><a href="/superadmin/organizations/edit?id=<?= urlencode($t['id']) ?>" class="link-nav">Edit</a></td>
                     </tr>
                 <?php endforeach; ?>
             </tbody>

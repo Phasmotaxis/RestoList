@@ -1,6 +1,8 @@
-# Enterprise Information Management System (EIMS)
+# Enterprise Information Management System (EIMS) — Multi-Tenant Restaurant ERP
 
-A high-assurance, multi-tenant enterprise data management system engineered for rigorous academic evaluation and live oral panel defense. Demonstrates computer science algorithmic foundations (bitwise access control, unified exception kernels, clean-room design) alongside resilient information technology infrastructure (multi-container orchestration, failover persistence, and air-gapped pre-caching).
+A high-assurance, multi-tenant restaurant operations management platform engineered for rigorous academic evaluation and live oral panel defense. Demonstrates computer science algorithmic foundations (bitwise RBAC, unified exception kernels, clean-room design) alongside resilient IT infrastructure (multi-container orchestration, failover persistence, air-gapped pre-caching).
+
+**Domain**: Restaurant enterprise resource planning — multi-location inventory management, staff scheduling, POS integration, supplier management, and audit-trail financial reconciliation. Designed for Cavite State University academic demonstration (DICT24: Information Management, 4th year, 1st semester 2026-2027).
 
 ---
 

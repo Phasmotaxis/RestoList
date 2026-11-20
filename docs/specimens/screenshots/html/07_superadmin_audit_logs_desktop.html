@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta name="apple-mobile-web-app-title" content="Login - EIMS" />
+    <meta name="twitter:title" content="Login - EIMS" />
+    <meta property="og:site_name" content="Login - EIMS" />
+    <meta property="og:title" content="Login - EIMS" />
+    <title>Login - EIMS</title>
+
+    <meta name="author" content="EIMS Development Team">
+
+    <meta name="description" content="Enterprise Information Management System for Multi-Tenant Data Governance" />
+    <meta property="og:description" content="Enterprise Information Management System for Multi-Tenant Data Governance" />
+
+    <meta name="twitter:site:domain" content="eims-cvsu.lyra-on.top" />
+    <meta name="twitter:url" content="https://eims-cvsu.lyra-on.top" />
+    <meta property="og:url" content="https://eims-cvsu.lyra-on.top" />
+    <link rel="canonical" href="https://eims-cvsu.lyra-on.top" />
+
+    <meta name="twitter:card" content="/assets/images/banner.png" />
+    <meta name="twitter:image" content="/assets/images/banner.png" />
+    <meta property="og:image" content="/assets/images/banner.png" />
+    <meta property="og:image:width" content="1280" />
+    <meta property="og:image:height" content="800" />
+
+    <link rel="icon" type="image/x-icon" href="/assets/images/icons/logo.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/assets/images/icons/logo.png" />
+
+    <meta property="twitter:card" content="summary_large_image" />
+
+    <meta property="og:type" content="website" />
+
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
+
+    <link rel="stylesheet" href="/assets/css/base.css" />
+    <link rel="stylesheet" href="/assets/css/themes/default.css" />
+    <link rel="stylesheet" href="/assets/css/themes/lyra.css" />
+    <script src="/assets/css/theme-engine.js"></script>
+    <script defer src="/assets/js/app.js"></script>
+</head>
+<body>
+    <header class="site-header">
+        <div class="container site-header-content">
+            <div>
+                <h1><a href="/">Enterprise Information Management System</a></h1>
+                <p class="subtitle">Cavite State University - Main Campus - 2nd year 1st semester 2026-27</p>
+            </div>
+            <div class="theme-switcher-container">
+                <label for="theme-select" class="theme-switcher-label">Theme:</label>
+                <select id="theme-select" class="theme-select" aria-label="Select Color Theme">
+                    <option value="default">Default (Neutral)</option>
+                    <option value="lyra">Lyra (Piiiiink WCAG AA)</option>
+                </select>
+            </div>
+        </div>
+    </header>
+    <main class="container">
+<section class="card card-auth">
+    <h2>Authentication</h2>
+        <form method="POST" action="/login">
+        <input type="hidden" name="_csrf" value="eae2454f494ab7dcacbc59768a8392b2c9722e15c9329a44eb029fb5a6690503">        <div class="form-group">
+            <label for="email" class="form-label">Email Address</label>
+            <input type="email" id="email" name="email" class="form-input" required autocomplete="email">
+        </div>
+        <div class="form-group-lg">
+            <label for="password" class="form-label">Password</label>
+            <input type="password" id="password" name="password" class="form-input" required autocomplete="current-password">
+        </div>
+        <button type="submit" class="btn-primary">Sign In</button>
+    </form>
+</section>
+    </main>
+    <footer class="site-footer container">
+        <p>&copy; 2026 EIMS Development Team. All rights reserved.</p>
+    </footer>
+    <script src="/assets/js/app.js"></script>
+</body>
+</html>

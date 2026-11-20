@@ -1,0 +1,65 @@
+/* EIMS Default Clean-Room Theme */
+
+:root {
+    /* Surfaces & Backgrounds */
+    --bg-primary: #f8fafc;
+    --bg-secondary: #ffffff;
+    --bg-surface: #f1f5f9;
+    --bg-elevated: #e2e8f0;
+
+    /* Borders & Dividers */
+    --border-subtle: #cbd5e1;
+    --border-strong: #1e3a8a;
+
+    /* Text & Foreground (WCAG AA Conformance) */
+    --text-primary: #0f172a;
+    --text-secondary: #334155;
+    --text-muted: #64748b;
+
+    /* Brand & Interactive Accents */
+    --accent-primary: #1e3a8a;
+    --accent-primary-hover: #172554;
+    --accent-secondary: #0284c7;
+    --accent-tertiary: #0ea5e9;
+
+    /* Status Tokens */
+    --status-success: #16a34a;
+    --status-warning: #d97706;
+    --status-error: #dc2626;
+
+    /* Focus & Accessibility */
+    --focus-ring: 0 0 0 3px rgba(30, 58, 138, 0.45);
+
+    /* Dimensions & Geometry */
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --spacing-unit: 1rem;
+    --max-width: 1200px;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]):not([data-theme="lyra"]) {
+        --bg-primary: #090d16;
+        --bg-secondary: #111827;
+        --bg-surface: #1f2937;
+        --bg-elevated: #1e293b;
+
+        --border-subtle: #374151;
+        --border-strong: #3b82f6;
+
+        --text-primary: #f3f4f6;
+        --text-secondary: #e2e8f0;
+        --text-muted: #94a3b8;
+
+        --accent-primary: #3b82f6;
+        --accent-primary-hover: #60a5fa;
+        --accent-secondary: #38bdf8;
+        --accent-tertiary: #7dd3fc;
+
+        --status-success: #22c55e;
+        --status-warning: #f59e0b;
+        --status-error: #ef4444;
+
+        --focus-ring: 0 0 0 3px rgba(59, 130, 246, 0.5);
+    }
+}

@@ -1,0 +1,39 @@
+/* EIMS Lyra Theme - Extracted from piiiiink.json */
+/* Contrast Ratios: Body >= 4.5:1, Headings/Borders >= 3:1 (WCAG AA Conformance) */
+
+[data-theme="lyra"] {
+    /* Surfaces & Backgrounds */
+    --bg-primary: #191a28;        /* Editor background */
+    --bg-secondary: #161824;      /* Sidebar / Card background */
+    --bg-surface: #2a2e45;        /* Input / Container background */
+    --bg-elevated: #282b3f;       /* Dropdown / Modal background */
+
+    /* Borders & Dividers */
+    --border-subtle: #2d314f;     /* Subtle container border */
+    --border-strong: #ff59c6;     /* High-visibility active border */
+
+    /* Text & Foreground */
+    --text-primary: #ffffff;      /* Pure white for primary body (high contrast) */
+    --text-secondary: #fcd7ff;    /* Soft lavender-pink for secondary text */
+    --text-muted: #dec1cf;        /* Muted accessible text */
+
+    /* Brand & Interactive Accents */
+    --accent-primary: #ff59c6;    /* Hot pink (links, primary actions) */
+    --accent-primary-hover: #ff89cc;
+    --accent-secondary: #ae89ff;  /* Lavender accent */
+    --accent-tertiary: #75beff;   /* Cyan-blue info accent */
+
+    /* Status Tokens */
+    --status-success: #23d18b;    /* High-contrast terminal green */
+    --status-warning: #ffd100;    /* Amber warning */
+    --status-error: #f48771;      /* Coral red error */
+
+    /* Focus & Accessibility */
+    --focus-ring: 0 0 0 3px rgba(255, 89, 198, 0.45);
+
+    /* Dimensions & Geometry */
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --spacing-unit: 1rem;
+    --max-width: 1200px;
+}

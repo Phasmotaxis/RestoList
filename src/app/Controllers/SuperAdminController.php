@@ -4,10 +4,15 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
+use App\Core\Audit;
 use App\Core\Database;
+use App\Core\ListQuery;
 use App\Core\Request;
 use App\Core\Response;
+use App\Core\Session;
+use App\Core\Validator;
 use App\Middleware\RoleMiddleware;
+use PDOException;
 
 /**
  * SuperAdmin Controller
@@ -17,6 +22,20 @@ use App\Middleware\RoleMiddleware;
  */
 class SuperAdminController
 {
+    private const USER_SORT_COLUMNS = [
+        'name' => ['u.last_name', 'u.first_name'],
+        'email' => ['u.email'],
+        'tenant' => ['t.name'],
+        'role' => ['u.role_mask'],
+        'created' => ['u.created_at'],
+    ];
+
+    private const USER_ROLE_FILTERS = [
+        'superadmin' => RoleMiddleware::ROLE_SUPERADMIN,
+        'admin' => RoleMiddleware::ROLE_ADMIN,
+        'user' => RoleMiddleware::ROLE_USER,
+    ];
+
     private function isJsonRequest(): bool
     {
         return (strpos($_SERVER['HTTP_ACCEPT'] ?? '', 'application/json') !== false) || isset($_GET['format']) && $_GET['format'] === 'json';
@@ -39,65 +58,104 @@ class SuperAdminController
     public function organizations(Request $request, Response $response): void
     {
         RoleMiddleware::handle(RoleMiddleware::ROLE_SUPERADMIN);
-
-        $tenants = Database::executeQuery('SELECT * FROM tenants ORDER BY created_at DESC')->fetchAll();
-
-        if ($this->isJsonRequest()) {
-            $response->json(['tenants' => $tenants]);
-            return;
-        }
-
-        require_once __DIR__ . '/../Views/superadmin/organizations.php';
+        $this->renderOrganizations($response, [], [], 200);
     }
 
     public function createOrganization(Request $request, Response $response): void
     {
         RoleMiddleware::handle(RoleMiddleware::ROLE_SUPERADMIN);
+        Session::verifyCsrf();
 
-        $body = $request->getBody();
-        $name = trim((string) ($body['name'] ?? ''));
-        $subdomain = strtolower(trim((string) ($body['subdomain'] ?? '')));
+        $old = [
+            'name' => trim((string) ($_POST['name'] ?? '')),
+            'subdomain' => strtolower(trim((string) ($_POST['subdomain'] ?? ''))),
+        ];
 
-        if ($name === '' || $subdomain === '') {
-            $response->json(['error' => 'Organization name and subdomain are required.'], 400);
+        $errors = array_filter([
+            'name' => Validator::name($old['name'], 'Organization name', 255),
+            'subdomain' => Validator::subdomain($old['subdomain']),
+        ]);
+        if ($errors !== []) {
+            $this->renderOrganizations($response, $errors, $old, 422);
             return;
         }
 
         $id = 'tenant-' . bin2hex(random_bytes(6));
-        Database::executeQuery(
-            'INSERT INTO tenants (id, name, subdomain, is_active) VALUES (:id, :name, :subdomain, 1)',
-            [
-                'id' => $id,
-                'name' => $name,
-                'subdomain' => $subdomain,
-            ]
-        );
-
-        // Record audit
         try {
             Database::executeQuery(
-                'INSERT INTO audit_logs (id, tenant_id, user_id, action, entity, entity_id, details, ip_address) VALUES (:id, :tenant_id, :user_id, :action, :entity, :entity_id, :details, :ip)',
-                [
-                    'id' => 'log-' . bin2hex(random_bytes(8)),
-                    'tenant_id' => $id,
-                    'user_id' => \App\Core\Session::get('user_id'),
-                    'action' => 'TENANT_CREATE',
-                    'entity' => 'tenants',
-                    'entity_id' => $id,
-                    'details' => "Provisioned organization {$name} ({$subdomain})",
-                    'ip' => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1',
-                ]
+                'INSERT INTO tenants (id, name, subdomain, is_active) VALUES (:id, :name, :subdomain, 1)',
+                ['id' => $id, 'name' => $old['name'], 'subdomain' => $old['subdomain']]
             );
-        } catch (\Throwable $e) {
-            // Non-fatal
+        } catch (PDOException $e) {
+            if (Validator::isUniqueViolation($e)) {
+                $this->renderOrganizations($response, ['subdomain' => 'This subdomain is already in use.'], $old, 422);
+                return;
+            }
+            throw $e;
         }
+
+        Audit::record($id, 'TENANT_CREATE', 'tenants', $id, "Provisioned organization {$old['name']} ({$old['subdomain']})");
 
         if ($this->isJsonRequest()) {
             $response->json(['status' => 'created', 'tenant_id' => $id], 201);
             return;
         }
 
-        http_response_code(201);
+        $response->redirect('/superadmin/organizations');
+    }
+
+    public function editOrganization(Request $request, Response $response): void
+    {
+        RoleMiddleware::handle(RoleMiddleware::ROLE_SUPERADMIN);
+        $tenant = $this->findTenant((string) ($_GET['id'] ?? ''));
+        if ($tenant === null) {
+            $this->renderNotFound($response);
+            return;
+        }
+        $this->renderEditOrganization($response, $tenant, [], 200);
+    }
+
+    public function updateOrganization(Request $request, Response $response): void
+    {
+        RoleMiddleware::handle(RoleMiddleware::ROLE_SUPERADMIN);
+        Session::verifyCsrf();
+
+        $current = $this->findTenant((string) ($_POST['id'] ?? ''));
+        if ($current === null) {
+            $this->renderNotFound($response);
+            return;
+        }
+
+        $submitted = [
+            'name' => trim((string) ($_POST['name'] ?? '')),
+            'is_active' => isset($_POST['is_active']) && $_POST['is_active'] === '1' ? 1 : 0,
+        ];
+        $errors = array_filter([
+            'name' => Validator::name($submitted['name'], 'Organization name', 255),
+        ]);
+        if ($errors !== []) {
+            $this->renderEditOrganization($response, array_merge($current, $submitted), $errors, 422);
+            return;
+        }
+
+        $changes = [];
+        if ($current['name'] !== $submitted['name']) {
+            $changes[] = "Name: {$current['name']} -> {$submitted['name']}";
+        }
+        if ((int) $current['is_active'] !== $submitted['is_active']) {
+            $changes[] = 'Active: ' . ($current['is_active'] ? 'yes' : 'no') . ' -> ' . ($submitted['is_active'] ? 'yes' : 'no');
+        }
+
+        if ($changes !== []) {
+            Database::executeQuery(
+                'UPDATE tenants SET name = :name, is_active = :is_active, updated_at = CURRENT_TIMESTAMP WHERE id = :id',
+                ['name' => $submitted['name'], 'is_active' => $submitted['is_active'], 'id' => $current['id']]
+            );
+            foreach ($changes as $change) {
+                Audit::record((string) $current['id'], 'TENANT_UPDATE', 'tenants', (string) $current['id'], $change);
+            }
+        }
+
         $response->redirect('/superadmin/organizations');
     }
 
@@ -105,17 +163,30 @@ class SuperAdminController
     {
         RoleMiddleware::handle(RoleMiddleware::ROLE_SUPERADMIN);
 
+        $list = ListQuery::fromRequest(self::USER_SORT_COLUMNS, self::USER_ROLE_FILTERS);
         $sql = 'SELECT u.id, u.email, u.first_name, u.last_name, u.role_mask, u.tenant_id, u.created_at, t.name as tenant_name
                 FROM users u
                 JOIN tenants t ON u.tenant_id = t.id
-                ORDER BY t.name ASC, u.last_name ASC';
-        $users = Database::executeQuery($sql)->fetchAll();
+                WHERE 1 = 1';
+        $params = [];
+        if ($list['q'] !== '') {
+            // Each named placeholder is used once; emulated prepares are off, so reuse is not allowed.
+            $sql .= " AND (u.email LIKE :q_email ESCAPE '!' OR u.first_name LIKE :q_first ESCAPE '!' OR u.last_name LIKE :q_last ESCAPE '!')";
+            $params += ['q_email' => $list['likePattern'], 'q_first' => $list['likePattern'], 'q_last' => $list['likePattern']];
+        }
+        if ($list['roleMask'] !== null) {
+            $sql .= ' AND u.role_mask = :role_mask';
+            $params['role_mask'] = $list['roleMask'];
+        }
+        $sql .= " ORDER BY {$list['orderBy']}";
+        $users = Database::executeQuery($sql, $params)->fetchAll();
 
         if ($this->isJsonRequest()) {
             $response->json(['users' => $users]);
             return;
         }
 
+        $sortLabels = ['name' => 'Name', 'email' => 'Email', 'tenant' => 'Tenant', 'role' => 'Role', 'created' => 'Created'];
         require_once __DIR__ . '/../Views/superadmin/users.php';
     }
 
@@ -136,5 +207,35 @@ class SuperAdminController
         }
 
         require_once __DIR__ . '/../Views/superadmin/audit_logs.php';
+    }
+
+    private function findTenant(string $id): ?array
+    {
+        $row = Database::executeQuery('SELECT id, name, subdomain, is_active FROM tenants WHERE id = :id', ['id' => $id])->fetch();
+        return $row === false ? null : $row;
+    }
+
+    private function renderOrganizations(Response $response, array $errors, array $old, int $status): void
+    {
+        $tenants = Database::executeQuery('SELECT * FROM tenants ORDER BY created_at DESC')->fetchAll();
+
+        if ($this->isJsonRequest()) {
+            $response->json($errors === [] ? ['tenants' => $tenants] : ['errors' => $errors], $status);
+        }
+
+        http_response_code($status);
+        require_once __DIR__ . '/../Views/superadmin/organizations.php';
+    }
+
+    private function renderEditOrganization(Response $response, array $tenant, array $errors, int $status): void
+    {
+        http_response_code($status);
+        require_once __DIR__ . '/../Views/superadmin/organization_edit.php';
+    }
+
+    private function renderNotFound(Response $response): void
+    {
+        $response->setStatusCode(404);
+        require_once __DIR__ . '/../Views/errors/404.php';
     }
 }

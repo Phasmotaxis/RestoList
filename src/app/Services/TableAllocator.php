@@ -8,25 +8,35 @@ use App\Core\Database;
 use Exception;
 
 /**
- * TableAllocator: Atomic reservation booking with two-layer double-booking prevention.
+ * Table Reservation Allocator: Atomic multi-table booking with double-booking prevention.
  *
- * Layer 1: Transactional row-level locks (FOR UPDATE / BEGIN IMMEDIATE)
- * Layer 2: 15-minute discretized slot bucketing with UNIQUE constraint
+ * Implements two-layer reservation locking strategy:
+ * - Layer 1: Transactional row-level locks (FOR UPDATE on MySQL, BEGIN IMMEDIATE on SQLite3).
+ * - Layer 2: 15-minute discretized slot bucketing with UNIQUE constraint to prevent overlaps.
+ *
+ * Supports restaurant floor plan management: reserve single or multi-table seating,
+ * check slot availability, and cancel reservations atomically.
  */
 class TableAllocator
 {
     /**
-     * Allocate a reservation atomically across one or more tables.
+     * Atomically allocate reservation across one or more dining tables.
      *
-     * @param string $orgId
-     * @param array $tableIds List of table IDs to reserve
-     * @param string $startAt ISO 8601 datetime (UTC)
-     * @param string $endAt ISO 8601 datetime (UTC)
-     * @param int $partySize
-     * @param string|null $customerId
-     * @param string|null $notes
-     * @return string Reservation ID
-     * @throws Exception if double-booking detected or lock fails
+     * Uses two-layer locking: row-level SELECT FOR UPDATE, then UNIQUE constraint on
+     * 15-minute slot buckets. Transaction rolls back on any conflict or overlap detection.
+     * All tables locked in deterministic (sorted) order to prevent deadlock.
+     *
+     * @param string $orgId Tenant/location identifier.
+     * @param array $tableIds List of dining table IDs to reserve (must not be empty).
+     * @param string $startAt Reservation start time (ISO 8601 UTC, e.g. '2026-11-20 18:00:00').
+     * @param string $endAt Reservation end time (ISO 8601 UTC).
+     * @param int $partySize Number of guests.
+     * @param ?string $customerId Customer primary key (optional, nullable for walk-ins).
+     * @param ?string $notes Reservation notes/special requests (optional).
+     *
+     * @return string Generated reservation ID.
+     *
+     * @throws Exception If tableIds empty, double-booking detected, or transaction fails.
      */
     public static function allocateReservation(
         string $orgId,
@@ -47,29 +57,25 @@ class TableAllocator
         try {
             $pdo->beginTransaction();
 
-            // Layer 1: Lock all candidate tables in deterministic order
+            // Layer 1: Lock all candidate tables in deterministic order (prevent deadlock).
             $tableIdsSorted = $tableIds;
             sort($tableIdsSorted);
             $placeholders = implode(',', array_fill(0, count($tableIdsSorted), '?'));
 
             if (Database::getDriverName() === 'sqlite') {
-                // SQLite: BEGIN IMMEDIATE is implicit via transaction
+                // SQLite: BEGIN IMMEDIATE handles locking implicitly.
             } else {
-                // MySQL: SELECT FOR UPDATE
+                // MySQL: SELECT FOR UPDATE acquires row-level locks on target tables.
                 $lockQuery = "SELECT id FROM dining_tables WHERE org_id = ? AND id IN ({$placeholders}) FOR UPDATE";
                 $lockStmt = $pdo->prepare($lockQuery);
                 $lockParams = array_merge([$orgId], $tableIdsSorted);
                 $lockStmt->execute($lockParams);
             }
 
-            // Verify: No overlapping active reservations on these tables
+            // Verify: No overlapping active reservations on these tables (status pending/confirmed/seated).
             foreach ($tableIds as $tableId) {
                 $overlapStmt = $pdo->prepare(
-                    'SELECT COUNT(*) as cnt FROM reservations r
-                     INNER JOIN reservation_tables rt ON r.id = rt.reservation_id
-                     WHERE rt.table_id = ? AND r.org_id = ?
-                     AND r.status IN (\'pending\', \'confirmed\', \'seated\')
-                     AND r.start_at < ? AND r.end_at > ?'
+                    'SELECT COUNT(*) as cnt FROM reservations r INNER JOIN reservation_tables rt ON r.id = rt.reservation_id WHERE rt.table_id = ? AND r.org_id = ? AND r.status IN (\'pending\', \'confirmed\', \'seated\') AND r.start_at < ? AND r.end_at > ?'
                 );
                 $overlapStmt->execute([$tableId, $orgId, $endAt, $startAt]);
                 $row = $overlapStmt->fetch();
@@ -78,7 +84,7 @@ class TableAllocator
                 }
             }
 
-            // Layer 2: Discretize into 15-minute buckets and lock via UNIQUE constraint
+            // Layer 2: Discretize time window into 15-minute buckets and lock via UNIQUE constraint.
             $startTime = new \DateTime($startAt, new \DateTimeZone('UTC'));
             $endTime = new \DateTime($endAt, new \DateTimeZone('UTC'));
             $slots = self::getSlotBuckets($startTime, $endTime);
@@ -100,10 +106,9 @@ class TableAllocator
                 }
             }
 
-            // Create reservation record
+            // Create reservation master record.
             $resStmt = $pdo->prepare(
-                'INSERT INTO reservations (id, org_id, customer_id, party_size, start_at, end_at, status, notes, created_at, updated_at)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)'
+                'INSERT INTO reservations (id, org_id, customer_id, party_size, start_at, end_at, status, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)'
             );
             $resStmt->execute([
                 $reservationId,
@@ -116,7 +121,7 @@ class TableAllocator
                 $notes
             ]);
 
-            // Link tables to reservation
+            // Link tables to reservation (many-to-many).
             $linkStmt = $pdo->prepare(
                 'INSERT INTO reservation_tables (reservation_id, table_id) VALUES (?, ?)'
             );
@@ -133,7 +138,17 @@ class TableAllocator
     }
 
     /**
-     * Get available 15-minute slots for a given table and time window.
+     * Get available 15-minute slots for table in time window.
+     *
+     * Returns list of unoccupied slot start times (ISO 8601 UTC) within the requested window.
+     * Useful for availability calendars in booking UI.
+     *
+     * @param string $orgId Tenant/location identifier.
+     * @param string $tableId Dining table ID.
+     * @param string $startAt Window start time (ISO 8601 UTC).
+     * @param string $endAt Window end time (ISO 8601 UTC).
+     *
+     * @return array List of available slot_start_utc timestamps (ISO 8601 format).
      */
     public static function getAvailableSlots(
         string $orgId,
@@ -149,8 +164,7 @@ class TableAllocator
         $placeholders = implode(',', array_fill(0, count($slots), '?'));
 
         $stmt = $pdo->prepare(
-            "SELECT slot_start_utc FROM reservation_slots
-             WHERE org_id = ? AND table_id = ? AND slot_start_utc IN ({$placeholders})"
+            "SELECT slot_start_utc FROM reservation_slots WHERE org_id = ? AND table_id = ? AND slot_start_utc IN ({$placeholders})"
         );
 
         $params = array_merge([$orgId, $tableId], $slots);
@@ -165,7 +179,16 @@ class TableAllocator
     }
 
     /**
-     * Cancel a reservation and free up its slots.
+     * Cancel reservation atomically and free all booked slots.
+     *
+     * Sets reservation status to 'cancelled' and deletes associated slot bucket entries.
+     * Transaction ensures consistency: if slot deletion fails, entire operation rolls back.
+     *
+     * @param string $reservationId Reservation primary key.
+     *
+     * @return void
+     *
+     * @throws Exception If transaction fails or reservation not found.
      */
     public static function cancelReservation(string $reservationId): void
     {
@@ -174,19 +197,13 @@ class TableAllocator
         try {
             $pdo->beginTransaction();
 
-            // Update reservation status
+            // Mark reservation as cancelled.
             $pdo->prepare('UPDATE reservations SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
                 ->execute(['cancelled', $reservationId]);
 
-            // Clean up slot buckets
+            // Delete slot bucket entries for this reservation (clean up via join to reservation_tables).
             $pdo->prepare(
-                'DELETE FROM reservation_slots
-                 WHERE (org_id, table_id, slot_start_utc) IN (
-                    SELECT rs.org_id, rs.table_id, rs.slot_start_utc
-                    FROM reservation_slots rs
-                    INNER JOIN reservation_tables rt ON rs.table_id = rt.table_id
-                    WHERE rt.reservation_id = ?
-                 )'
+                'DELETE FROM reservation_slots WHERE (org_id, table_id, slot_start_utc) IN (SELECT rs.org_id, rs.table_id, rs.slot_start_utc FROM reservation_slots rs INNER JOIN reservation_tables rt ON rs.table_id = rt.table_id WHERE rt.reservation_id = ?)'
             )->execute([$reservationId]);
 
             $pdo->commit();
@@ -197,8 +214,16 @@ class TableAllocator
     }
 
     /**
-     * Generate 15-minute discretized slot buckets between start and end time.
-     * @return array List of slot_start_utc strings (ISO 8601)
+     * Generate 15-minute discretized slot buckets covering time window.
+     *
+     * Divides reservation time window into 15-minute intervals starting from $start.
+     * Example: 18:00-19:15 becomes [18:00, 18:15, 18:30, 18:45, 19:00].
+     * Used for fine-grained double-booking prevention.
+     *
+     * @param \DateTime $start Start time (UTC).
+     * @param \DateTime $end End time (UTC).
+     *
+     * @return array<int, string> List of slot_start_utc timestamps (ISO 8601 format).
      */
     private static function getSlotBuckets(\DateTime $start, \DateTime $end): array
     {

@@ -9,76 +9,81 @@
 
 ---
 
-## 1. Prerequisites
-- Docker Engine 24.0+ and Docker Compose v2+
-- GNU `just` task runner (recommended) or direct `docker compose` CLI
-- Python 3.10+ (for host-level migration runners and test scripts, optional)
+## Document Purpose & Audience
+- **What this is for**: Executive onboarding portal, quickstart commands, and index for platform handbooks.
+- **Who reads this**: Students, developers, system administrators, and evaluation panelists.
+- **Last verified**: 2026-11-19 (verified live on Linux 7.2.15-300.fc45.x86_64).
 
 ---
 
-## 2. Standard Docker Deployment
+## 1. Operating System Onboarding Guides
+For complete step-by-step procedures, refer to the [Getting Started Handbook Index](getting-started/README.md) or select your operating system:
 
-### Step 1: Environment Initialization
-Copy the template configuration file:
+| Platform | Comprehensive Guide Path | Focus Topics |
+|---|---|---|
+| **Handbook Index** | [Getting Started Handbook](getting-started/README.md) | Central handbook index, terminology, and guide layout |
+| **Linux (Native)** | [Linux Onboarding Guide](getting-started/linux/installation.md) | Native Docker, systemd, fast loop, non-interactive execution |
+| **Windows 11 (WSL2)** | [Windows Onboarding Guide](getting-started/windows/installation.md) | WSL2 setup, Docker Desktop integration, CRLF safety, RAM limits |
+| **Classmate AI Troubleshooting** | [Student AI Prompt Templates](getting-started/windows/ai-troubleshooting-prompts.md) | Structured templates to feed errors into AI without breakage |
+
+---
+
+## 2. Fast-Path Quickstart (POSIX / Linux / WSL2)
+
 ```bash
+# 1. Clone repository and initialize environment
 cp .env.example .env
-```
 
-Inspect and tune `.env` as required for ports and database credentials.
-
-### Step 2: Build and Launch Containers
-Using `just`:
-```bash
+# 2. Build and boot containerized stack
 just setup
 just build
 just up
+
+# 3. Apply schema migrations and initial seed records
+just migrate
+just seed
+
+# 4. Verify system health and route inventory
+just test
 ```
 
-Or using standard `docker compose`:
-```bash
-docker compose build
-docker compose up -d
-```
-
-### Step 3: Verify Running Services
-```bash
-docker compose ps
-```
-The following endpoints will be accessible:
-- Web Application Gateway: `http://localhost:8080` (or `PORT` from `.env`)
-- MySQL 8.0 Daemon: `localhost:3306`
+Application endpoints:
+- Web Application Gateway: `http://localhost:8080`
+- Health Telemetry Probe: `http://localhost:8080/health`
+- Live Sabotage Shield: `http://localhost:8080/diagnostics/sabotage`
+- MySQL Primary Database: `localhost:3306`
 
 ---
 
-## 3. Air-Gapped / Offline Defense Venue Deployment
+## 2a. Known Design Trade-Offs
 
-When presenting in an offline evaluation venue lacking internet connectivity:
+### Targeted Account Lockout (3-Day Hold)
 
-### Step 1: Export Base Images (Online Stage)
-Run the pre-cache script while internet connectivity is available:
-```bash
-just pre-cache
-```
-This saves bundled Docker images to `dev/tmp/offline-images.tar`.
+**Design Decision**: Accounts locked by failed login attempts remain locked for 3 days of calendar time.
 
-### Step 2: Load Base Images (Offline Venue Stage)
-On the target presentation machine:
-```bash
-docker load -i dev/tmp/offline-images.tar
-just up
-```
-The stack will spin up entirely from pre-loaded local layers without network calls.
+**Rationale**: The restaurant ERP domain requires operational continuity over strict security lockout windows. A 3-day hold prevents rapid enumeration attacks while allowing legitimate operators to regain access via manager override or timer expiration without emergency database intervention.
+
+**Trade-Off**: A compromised account with a known email stays locked for up to 72 hours. An attacker who performs a lockout attack on a competitor's account denies access to that team for up to 3 days. This is acceptable in the restaurant use case because: (1) the ERP is not a public-facing auth system, (2) lockout affects only the targeted email, not the IP (per-IP limits are separate and higher), and (3) 72-hour hold + operational manager escalation paths provide sufficient attack friction without emergency on-call database resets.
+
+**Implementation**: See `src/app/Core/LoginThrottle.php` for per-IP and per-email rate limit configuration.
 
 ---
 
-## 4. Diagnostics & Troubleshooting
-- **Logs Inspection**:
-  ```bash
-  docker compose logs -f app
-  docker compose logs -f web
-  docker compose logs -f db
-  ```
-- **Live Sabotage Test**:
-  ```bash
-  just test
-  ```
+## 3. Dedicated Handbook Directory Structure
+
+```text
+docs/
+├── GETTING-STARTED.md (This executive landing page)
+└── getting-started/
+    ├── README.md (Comprehensive handbook index & terminology)
+    ├── linux/
+    │   ├── prerequisites.md
+    │   ├── installation.md
+    │   └── verification.md
+    └── windows/
+        ├── prerequisites.md
+        ├── wsl2-setup.md
+        ├── installation.md
+        ├── troubleshooting.md
+        └── ai-troubleshooting-prompts.md
+```

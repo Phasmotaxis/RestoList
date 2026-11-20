@@ -31,9 +31,9 @@ else
     exit 1
 fi
 
-# 3. Verify Visual Diagnostic Rendering on Uncaught Exception
+# 3. Verify Visual Diagnostic Rendering on Uncaught Exception (requires APP_DEBUG=true)
 echo "[TEST 3/4] Testing Visual Diagnostic Screen rendering on uncaught Throwable..."
-DIAGNOSTIC_OUTPUT=$(docker run --rm -v "$(pwd)/src:/var/www/html:ro" -v "$(pwd)/dev:/var/www/dev:ro" eims_app:latest php -r '
+DIAGNOSTIC_OUTPUT=$(docker run --rm -e APP_DEBUG=true -v "$(pwd)/src:/var/www/html:ro" -v "$(pwd)/dev:/var/www/dev:ro" eims_app:latest php -r '
     require "/var/www/html/app/Core/ErrorHandler.php";
     \App\Core\ErrorHandler::register();
     throw new \RuntimeException("Panel examiners deleted critical controller logic!");
@@ -63,6 +63,29 @@ if [[ "${HEADER_TEST}" == *"[HEADER_CONFIRMED]"* ]]; then
     echo "[PASS] Dynamic YAML header parsing verified."
 else
     echo "[FAIL] Header YAML resolution failed: ${HEADER_TEST}"
+    exit 1
+fi
+
+# 5. Verify APP_DEBUG=false hides stack traces in HTTP response (production hardening)
+echo "[TEST 5/5] Verifying APP_DEBUG=false suppresses HTTP response trace details..."
+TRACE_HIDDEN=$(docker run --rm -e APP_DEBUG=false -v "$(pwd)/src:/var/www/html:ro" -v "$(pwd)/dev:/var/www/dev:ro" eims_app:latest php -r '
+    require "/var/www/html/app/Core/ErrorHandler.php";
+    \App\Core\ErrorHandler::register();
+    ob_start();
+    try {
+        throw new \RuntimeException("Test exception");
+    } catch (\Throwable $e) {
+        http_response_code(500);
+        include "/var/www/html/app/Views/errors/500.php";
+    }
+    $output = ob_get_clean();
+    echo $output;
+' 2>&1)
+
+if [[ "${TRACE_HIDDEN}" != *"Stack trace"* ]] && [[ "${TRACE_HIDDEN}" != *"RuntimeException"* ]] && [[ "${TRACE_HIDDEN}" != *"Call Stack"* ]]; then
+    echo "[PASS] Production mode (APP_DEBUG=false) suppresses stack traces in HTTP response."
+else
+    echo "[FAIL] Stack traces or exception details visible in HTTP response: ${TRACE_HIDDEN:0:200}"
     exit 1
 fi
 

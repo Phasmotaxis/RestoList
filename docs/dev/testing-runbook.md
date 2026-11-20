@@ -34,11 +34,15 @@ This runbook establishes standard operating procedures for verifying application
 
 ## 3. Seed Credentials & Role Matrix
 
+No account ships with a password. Create the first SuperAdmin with
+`SUPERADMIN_EMAIL=... SUPERADMIN_PASSWORD=... php src/database/bootstrap_superadmin.php`
+(12 characters minimum). Org Admin and Standard User accounts are created from the SuperAdmin or Admin screens.
+
 | Role | Email | Password | Role Bitmask | Access Scope |
 |---|---|---|---|---|
-| Super Admin | `superadmin@cvsu.edu.ph` | `Password123!` | `1` (Bit 0) | Cross-tenant global governance |
-| Org Admin | `admin@cvsu.edu.ph` | `Password123!` | `2` (Bit 1) | Scoped tenant administration |
-| Standard User | `user@cvsu.edu.ph` | `Password123!` | `4` (Bit 2) | Scoped tenant user portal |
+| Super Admin | set via `SUPERADMIN_EMAIL` | set via `SUPERADMIN_PASSWORD` | `1` (Bit 0) | Cross-tenant global governance |
+| Org Admin | created in app | chosen by operator | `2` (Bit 1) | Scoped tenant administration |
+| Standard User | created in app | chosen by operator | `4` (Bit 2) | Scoped tenant user portal |
 
 ---
 

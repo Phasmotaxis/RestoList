@@ -54,6 +54,9 @@ $logo = htmlspecialchars($sys['logo_image'] ?? '/assets/images/icons/logo.png', 
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
 
-    <link rel="preload stylesheet" as="style" href="/assets/css/style.css" />
+    <link rel="stylesheet" href="/assets/css/base.css" />
+    <link rel="stylesheet" href="/assets/css/themes/default.css" />
+    <link rel="stylesheet" href="/assets/css/themes/lyra.css" />
+    <script src="/assets/css/theme-engine.js"></script>
     <script defer src="/assets/js/app.js"></script>
 </head>

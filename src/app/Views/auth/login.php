@@ -2,23 +2,24 @@
 $title = 'Login - EIMS';
 require_once __DIR__ . '/../layouts/header.php';
 ?>
-<section class="card" style="max-width: 480px; margin: 2rem auto;">
+<section class="card card-auth">
     <h2>Authentication</h2>
     <?php if (!empty($error)): ?>
-        <div style="background: rgba(220, 38, 38, 0.1); border: 1px solid var(--color-danger, #dc2626); color: var(--color-danger, #dc2626); padding: 0.75rem; border-radius: var(--radius-sm); margin-bottom: 1rem;">
+        <div class="alert-error" role="alert">
             <?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?>
         </div>
     <?php endif; ?>
     <form method="POST" action="/login">
-        <div style="margin-bottom: 1rem;">
-            <label for="email" style="display: block; margin-bottom: 0.5rem;">Email Address</label>
-            <input type="email" id="email" name="email" required style="width: 100%; padding: 0.5rem; border: 1px solid var(--color-border); border-radius: var(--radius-sm);">
+        <?= \App\Core\Session::csrfField() ?>
+        <div class="form-group">
+            <label for="email" class="form-label">Email Address</label>
+            <input type="email" id="email" name="email" class="form-input" required autocomplete="email">
         </div>
-        <div style="margin-bottom: 1.5rem;">
-            <label for="password" style="display: block; margin-bottom: 0.5rem;">Password</label>
-            <input type="password" id="password" name="password" required style="width: 100%; padding: 0.5rem; border: 1px solid var(--color-border); border-radius: var(--radius-sm);">
+        <div class="form-group-lg">
+            <label for="password" class="form-label">Password</label>
+            <input type="password" id="password" name="password" class="form-input" required autocomplete="current-password">
         </div>
-        <button type="submit" style="background: var(--color-primary); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: var(--radius-sm); cursor: pointer;">Sign In</button>
+        <button type="submit" class="btn-primary">Sign In</button>
     </form>
 </section>
 <?php

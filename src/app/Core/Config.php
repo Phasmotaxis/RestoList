@@ -9,14 +9,25 @@ namespace App\Core;
  *
  * Implements pure PHP string extraction for two-level nested YAML dictionaries
  * without requiring PECL ext-yaml or external composer packages.
+ * Supports dot-notation path access and fallback to hardcoded EIMS defaults.
  */
 class Config
 {
     private static ?array $data = null;
 
     /**
-     * Retrieve configuration value by key or dot-notation path.
-     * Example: Config::get('system') or Config::get('system.name')
+     * Retrieve configuration value by top-level key or dot-notation nested path.
+     *
+     * Loads configuration from candidate YAML files on first call, with fallback to
+     * hardcoded EIMS system defaults. Supports both 'system' and 'system.name' notation.
+     *
+     * @param string $key Top-level key (e.g. 'system') or dot-separated path (e.g. 'system.name').
+     * @param mixed $default Value to return if key not found (default null).
+     *
+     * @return mixed Configuration value, or $default if path not found.
+     *
+     * @example Config::get('system.name') returns 'Enterprise Information Management System'
+     * @example Config::get('system.domain', 'localhost') returns configured domain or 'localhost'
      */
     public static function get(string $key, mixed $default = null): mixed
     {
@@ -45,7 +56,15 @@ class Config
     }
 
     /**
-     * Load and parse configuration from candidate paths.
+     * Load and parse configuration from candidate YAML file paths.
+     *
+     * Searches for main.yaml in multiple candidate paths (relative to project root and
+     * common Docker mount points). If found, parses and caches; otherwise returns hardcoded
+     * EIMS system defaults for academic institution setup (CvSU Main Campus).
+     *
+     * @param ?string $customPath Optional custom file path to load (takes precedence over candidates).
+     *
+     * @return array Parsed configuration data.
      */
     public static function load(?string $customPath = null): array
     {
@@ -68,7 +87,7 @@ class Config
             }
         }
 
-        // Fallback default dictionary
+        // Fallback: hardcoded EIMS system defaults for CvSU academic deployment.
         self::$data = [
             'system' => [
                 'name' => 'Enterprise Information Management System',
@@ -88,7 +107,11 @@ class Config
     }
 
     /**
-     * Return all loaded configuration data.
+     * Retrieve all loaded configuration data as associative array.
+     *
+     * Lazily loads configuration if not yet loaded. Returns full parsed or fallback config dictionary.
+     *
+     * @return array Complete configuration data.
      */
     public static function all(): array
     {
@@ -99,7 +122,20 @@ class Config
     }
 
     /**
-     * Pure PHP string parser for YAML key-value dictionaries.
+     * Parse YAML file into nested associative array.
+     *
+     * Implements pure PHP parser for subset of YAML syntax: top-level sections (keys ending in :),
+     * nested key-value pairs (indented 2+ spaces), and inline string/number/boolean values.
+     * Strips quotes from values and auto-detects bool (true/false), null, numeric types.
+     * Ignores comment lines (#) and blank lines.
+     *
+     * Returns empty array if file not found or not readable.
+     *
+     * @param string $filePath Absolute path to YAML file.
+     *
+     * @return array Parsed YAML data structure.
+     *
+     * @example YAML: "system:\n  name: \"EIMS\"" parses to ['system' => ['name' => 'EIMS']]
      */
     public static function parseYamlFile(string $filePath): array
     {
@@ -142,6 +178,7 @@ class Config
                 ) {
                     $value = substr($rawValue, 1, -1);
                 } else {
+                    // Type coercion: bool, null, numeric, or string
                     $value = match (strtolower($rawValue)) {
                         'true' => true,
                         'false' => false,

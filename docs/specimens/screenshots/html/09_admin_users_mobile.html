@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta name="apple-mobile-web-app-title" content="Tenant Users - Admin" />
+    <meta name="twitter:title" content="Tenant Users - Admin" />
+    <meta property="og:site_name" content="Tenant Users - Admin" />
+    <meta property="og:title" content="Tenant Users - Admin" />
+    <title>Tenant Users - Admin</title>
+
+    <meta name="author" content="EIMS Development Team">
+
+    <meta name="description" content="Enterprise Information Management System for Multi-Tenant Data Governance" />
+    <meta property="og:description" content="Enterprise Information Management System for Multi-Tenant Data Governance" />
+
+    <meta name="twitter:site:domain" content="eims-cvsu.lyra-on.top" />
+    <meta name="twitter:url" content="https://eims-cvsu.lyra-on.top" />
+    <meta property="og:url" content="https://eims-cvsu.lyra-on.top" />
+    <link rel="canonical" href="https://eims-cvsu.lyra-on.top" />
+
+    <meta name="twitter:card" content="/assets/images/banner.png" />
+    <meta name="twitter:image" content="/assets/images/banner.png" />
+    <meta property="og:image" content="/assets/images/banner.png" />
+    <meta property="og:image:width" content="1280" />
+    <meta property="og:image:height" content="800" />
+
+    <link rel="icon" type="image/x-icon" href="/assets/images/icons/logo.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/assets/images/icons/logo.png" />
+
+    <meta property="twitter:card" content="summary_large_image" />
+
+    <meta property="og:type" content="website" />
+
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
+
+    <link rel="stylesheet" href="/assets/css/base.css" />
+    <link rel="stylesheet" href="/assets/css/themes/default.css" />
+    <link rel="stylesheet" href="/assets/css/themes/lyra.css" />
+    <script src="/assets/css/theme-engine.js"></script>
+    <script defer src="/assets/js/app.js"></script>
+</head>
+<body>
+    <header class="site-header">
+        <div class="container site-header-content">
+            <div>
+                <h1><a href="/">Enterprise Information Management System</a></h1>
+                <p class="subtitle">Cavite State University - Main Campus - 2nd year 1st semester 2026-27</p>
+            </div>
+            <div class="theme-switcher-container">
+                <label for="theme-select" class="theme-switcher-label">Theme:</label>
+                <select id="theme-select" class="theme-select" aria-label="Select Color Theme">
+                    <option value="default">Default (Neutral)</option>
+                    <option value="lyra">Lyra (Piiiiink WCAG AA)</option>
+                </select>
+            </div>
+        </div>
+    </header>
+    <main class="container">
+<section class="card">
+    <div class="header-actions">
+        <div>
+            <h2>Tenant User Management</h2>
+            <p class="subtitle">Scoped user provisioning and roster for your organization</p>
+        </div>
+        <a href="/admin/dashboard" class="link-nav">&larr; Back to Dashboard</a>
+    </div>
+</section>
+
+<section class="card">
+    <h3>Provision User Within Tenant</h3>
+        <form method="POST" action="/admin/users" class="form-grid-admin" novalidate>
+        <input type="hidden" name="_csrf" value="074ca216b19f6e183a6e68cb30898fa0f52f7ee035c2ca1aa1e45408c9736a14">        <div>
+            <label for="first_name" class="form-label">First Name</label>
+            <input type="text" id="first_name" name="first_name" class="form-input" required maxlength="128" value="" placeholder="Juan" aria-describedby="first_name_error">
+                    </div>
+        <div>
+            <label for="last_name" class="form-label">Last Name</label>
+            <input type="text" id="last_name" name="last_name" class="form-input" required maxlength="128" value="" placeholder="Dela Cruz" aria-describedby="last_name_error">
+                    </div>
+        <div>
+            <label for="email" class="form-label">Email Address</label>
+            <input type="email" id="email" name="email" class="form-input" required maxlength="255" value="" placeholder="user@cvsu.edu.ph" aria-describedby="email_error">
+                    </div>
+        <div>
+            <label for="password" class="form-label">Initial Password (12 characters minimum)</label>
+            <input type="password" id="password" name="password" class="form-input" required minlength="12" autocomplete="new-password" aria-describedby="password_error">
+                    </div>
+        <div>
+            <label for="role_mask" class="form-label">Role</label>
+            <select id="role_mask" name="role_mask" class="form-input" aria-describedby="role_mask_error">
+                <option value="4" selected>User</option>
+                <option value="2" >Admin</option>
+            </select>
+                    </div>
+        <div>
+            <button type="submit" class="btn-primary">Provision User</button>
+        </div>
+    </form>
+</section>
+
+<section class="card">
+    <h3>Tenant User Roster</h3>
+    <form method="GET" action="/admin/users" class="form-grid-admin" role="search">
+        <div>
+            <label for="q" class="form-label">Search email or name</label>
+            <input type="search" id="q" name="q" class="form-input" maxlength="100" value="">
+        </div>
+        <div>
+            <label for="role" class="form-label">Role</label>
+            <select id="role" name="role" class="form-input">
+                <option value="" selected>All roles</option>
+                <option value="admin" >Admin</option>
+                <option value="user" >User</option>
+            </select>
+        </div>
+        <div>
+            <label for="sort" class="form-label">Sort by</label>
+            <select id="sort" name="sort" class="form-input">
+                                    <option value="name" selected>Name</option>
+                                    <option value="email" >Email</option>
+                                    <option value="role" >Role</option>
+                                    <option value="created" >Registered</option>
+                            </select>
+        </div>
+        <div>
+            <label for="dir" class="form-label">Direction</label>
+            <select id="dir" name="dir" class="form-input">
+                <option value="ASC" selected>Ascending</option>
+                <option value="DESC" >Descending</option>
+            </select>
+        </div>
+        <div>
+            <button type="submit" class="btn-secondary">Apply</button>
+        </div>
+    </form>
+
+        <div class="table-wrapper">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>User ID</th>
+                    <th>Full Name</th>
+                    <th>Email</th>
+                    <th>Role Mask</th>
+                    <th>Registered</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                                                        <tr>
+                        <td><code>usr-admin-002</code></td>
+                        <td class="text-bold">Campus Administrator</td>
+                        <td>admin@cvsu.edu.ph</td>
+                        <td><span class="badge-role">Admin (2)</span></td>
+                        <td>2026-11-05 23:13:13</td>
+                        <td><a href="/admin/users/edit?id=usr-admin-002" class="link-nav">Edit</a></td>
+                    </tr>
+                                                        <tr>
+                        <td><code>usr-a41e3d57b6c6</code></td>
+                        <td class="text-bold">Maria Santos</td>
+                        <td>maria.santos@cvsu.edu.ph</td>
+                        <td><span class="badge-role">User (4)</span></td>
+                        <td>2026-11-05 23:18:44</td>
+                        <td><a href="/admin/users/edit?id=usr-a41e3d57b6c6" class="link-nav">Edit</a></td>
+                    </tr>
+                                                        <tr>
+                        <td><code>usr-user-003</code></td>
+                        <td class="text-bold">Standard StudentUser</td>
+                        <td>user@cvsu.edu.ph</td>
+                        <td><span class="badge-role">User (4)</span></td>
+                        <td>2026-11-05 23:13:13</td>
+                        <td><a href="/admin/users/edit?id=usr-user-003" class="link-nav">Edit</a></td>
+                    </tr>
+                                                        <tr>
+                        <td><code>usr-superadmin-001</code></td>
+                        <td class="text-bold">System SuperAdmin</td>
+                        <td>superadmin@cvsu.edu.ph</td>
+                        <td><span class="badge-role">User (1)</span></td>
+                        <td>2026-11-05 23:13:13</td>
+                        <td><a href="/admin/users/edit?id=usr-superadmin-001" class="link-nav">Edit</a></td>
+                    </tr>
+                                                        <tr>
+                        <td><code>usr-f65d466f10f6</code></td>
+                        <td class="text-bold">Red Team</td>
+                        <td>redteam.xss.r4@cvsu.edu.ph</td>
+                        <td><span class="badge-role">User (4)</span></td>
+                        <td>2026-11-18 21:55:57</td>
+                        <td><a href="/admin/users/edit?id=usr-f65d466f10f6" class="link-nav">Edit</a></td>
+                    </tr>
+                            </tbody>
+        </table>
+    </div>
+    </section>
+    </main>
+    <footer class="site-footer container">
+        <p>&copy; 2026 EIMS Development Team. All rights reserved.</p>
+    </footer>
+    <script src="/assets/js/app.js"></script>
+</body>
+</html>

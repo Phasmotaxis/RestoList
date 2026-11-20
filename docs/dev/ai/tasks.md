@@ -27,6 +27,8 @@
 | `TASK-012` | Phase 4: Multi-Viewport & WCAG A11y Suite | COMPLETED | [Screenshot A11y Contract](condom/layer-2/001/004/task-006-screenshot-a11y-suite.contract.md) | `screenshot_routes.py`, `accessibility-report.md`, specimens | `just screenshot` (39 specimens) |
 | `TASK-013` | Phase 5: Extended Domain Entities & Syllabus Release | PLANNED | `docs/dev/specifications/contracts/domain.contract.md` | Additional schema migrations and domain entities | Domain integration test suite |
 | `TASK-014` | Phase 5: Core Service Portability | COMPLETED | `docs/SPECIFICATION.md` | Feature flags, reservations, audit, deposit, and stock services | PHP 8.3 lint / fresh SQLite migration suite |
+| `TASK-015` | Phase 5: Tenant Restaurant ERP Operations | COMPLETED | `src/app/Controllers/AdminController.php` | Dining zones, tables, reservation intake, and admin views | PHP 8.3 lint / canonical route suite |
+| `TASK-016` | Phase 5: Customer Restaurant Portal | COMPLETED | `src/app/Controllers/CustomerController.php` | Active restaurant listing, menu detail, and CSRF-protected booking | PHP 8.3 lint / canonical route suite |
 
 ---
 
