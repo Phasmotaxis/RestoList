@@ -10,8 +10,27 @@ use App\Core\Response;
 use App\Core\Session;
 use App\Middleware\RoleMiddleware;
 
+/**
+ * User Dashboard Controller: Personal activity view and data portability export.
+ *
+ * Standard user access to own dashboard (recent audit logs, account info) and
+ * RA 10173 data portability export (CSV download of personal data and activity history).
+ */
 class UserController
 {
+    /**
+     * Render user personal dashboard with account info and recent activity.
+     *
+     * Requires User role. Fetches user profile joined with tenant info and 10 most recent
+     * audit log entries. Displays in user dashboard view.
+     *
+     * @param Request $request HTTP request object.
+     * @param Response $response HTTP response object.
+     *
+     * @return void Requires user dashboard view.
+     *
+     * @throws Exit On role check failure (HTTP 403).
+     */
     public function dashboard(Request $request, Response $response): void
     {
         RoleMiddleware::handle(RoleMiddleware::ROLE_USER);
@@ -25,6 +44,20 @@ class UserController
         require_once __DIR__ . '/../Views/dashboards/user.php';
     }
 
+    /**
+     * Export personal data as CSV (RA 10173 data portability right).
+     *
+     * Requires User role. Generates CSV with user profile and complete audit log history.
+     * CSV header identifies it as RA 10173 Data Privacy Act portability export. Downloads
+     * with filename eims_user_data_export.csv and exits after output.
+     *
+     * @param Request $request HTTP request object.
+     * @param Response $response HTTP response object.
+     *
+     * @return void Outputs CSV and exits.
+     *
+     * @throws Exit Always exits after CSV output (no return to caller).
+     */
     public function exportData(Request $request, Response $response): void
     {
         RoleMiddleware::handle(RoleMiddleware::ROLE_USER);

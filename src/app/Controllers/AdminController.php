@@ -14,6 +14,12 @@ use App\Core\Validator;
 use App\Middleware\RoleMiddleware;
 use PDOException;
 
+/**
+ * Tenant Admin Controller: Organization user management and audit oversight.
+ *
+ * Provides tenant-scoped dashboards, user CRUD operations (create, read, update, delete),
+ * and audit log visibility. Admin role cannot assign SuperAdmin (prevents privilege escalation).
+ */
 class AdminController
 {
     private const SORT_COLUMNS = [
@@ -31,11 +37,28 @@ class AdminController
     /** Roles a tenant admin may assign. SuperAdmin is never assignable here. */
     private const ASSIGNABLE_ROLES = [RoleMiddleware::ROLE_ADMIN, RoleMiddleware::ROLE_USER];
 
+    /**
+     * Helper: Detect JSON request format (Accept header or ?format=json).
+     *
+     * @return bool true if Accept header contains application/json or ?format=json parameter present.
+     */
     private function isJsonRequest(): bool
     {
         return (strpos($_SERVER['HTTP_ACCEPT'] ?? '', 'application/json') !== false) || isset($_GET['format']) && $_GET['format'] === 'json';
     }
 
+    /**
+     * Render tenant admin dashboard: org overview, user count, recent audit logs.
+     *
+     * Requires Admin role. Displays tenant info, user count, and 10 recent audit entries.
+     *
+     * @param Request $request HTTP request object.
+     * @param Response $response HTTP response object.
+     *
+     * @return void Requires admin dashboard view.
+     *
+     * @throws Exit On role check failure (HTTP 403).
+     */
     public function dashboard(Request $request, Response $response): void
     {
         RoleMiddleware::handle(RoleMiddleware::ROLE_ADMIN);
@@ -48,12 +71,36 @@ class AdminController
         require_once __DIR__ . '/../Views/dashboards/admin.php';
     }
 
+    /**
+     * List tenant users with search, sort, role filter (paginated).
+     *
+     * Requires Admin role. Renders user list view with search/sort query params.
+     *
+     * @param Request $request HTTP request (GET params: q, sort, dir, role, page, limit).
+     * @param Response $response HTTP response object.
+     *
+     * @return void Requires users list view.
+     */
     public function users(Request $request, Response $response): void
     {
         RoleMiddleware::handle(RoleMiddleware::ROLE_ADMIN);
         $this->renderUsers($response, [], [], 200);
     }
 
+    /**
+     * Create new tenant user via POST (email, names, password, role).
+     *
+     * Requires Admin role and valid CSRF token. Validates email, names (UTF-8), password strength,
+     * and role (Admin or User only; SuperAdmin cannot be assigned). On validation error, re-renders form with errors.
+     * On success, creates user with bcrypt hashed password and logs audit trail.
+     *
+     * @param Request $request HTTP request with POST body (email, first_name, last_name, password, role_mask).
+     * @param Response $response HTTP response object.
+     *
+     * @return void Redirects on success or re-renders form with errors.
+     *
+     * @throws Exit On CSRF failure or role check failure (HTTP 403).
+     */
     public function createUser(Request $request, Response $response): void
     {
         RoleMiddleware::handle(RoleMiddleware::ROLE_ADMIN);

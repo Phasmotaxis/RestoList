@@ -11,14 +11,35 @@ use App\Core\Response;
 use App\Core\Session;
 use App\Middleware\RoleMiddleware;
 
+/**
+ * Authentication Controller: Login, logout, and session lifecycle management.
+ *
+ * Handles user authentication with rate limiting, constant-time password verification,
+ * session fixation defense, and audit logging. Supports role-based redirect routing
+ * (SuperAdmin, Admin, User to respective dashboards).
+ */
 class AuthController
 {
     /**
-     * Bcrypt hash of a random string nobody knows. Unknown emails verify against it so they pay
-     * the same bcrypt cost as a real account. A constant avoids depending on per-process state.
+     * Bcrypt hash of random unknown string for timing attack defense.
+     *
+     * Unknown emails verify against this dummy hash (same bcrypt cost as real account)
+     * to prevent timing-based email enumeration. Constant avoids per-process state dependency.
      */
     private const DUMMY_HASH = '$2y$10$aWpO3NylBq3SqsmQm1GCruhcUeyROHLVGpi7H6mW9tXfkU5McxBH6';
 
+    /**
+     * Render login form or redirect authenticated user to dashboard.
+     *
+     * If user already authenticated (user_id in session), redirects to role-appropriate dashboard
+     * (SuperAdmin → /superadmin/dashboard, Admin → /admin/dashboard, User → /user/dashboard).
+     * Otherwise renders auth/login.php with CSRF token.
+     *
+     * @param Request $request HTTP request object.
+     * @param Response $response HTTP response object.
+     *
+     * @return void Requires or renders login view.
+     */
     public function showLogin(Request $request, Response $response): void
     {
         Session::start();
@@ -40,6 +61,21 @@ class AuthController
         require_once __DIR__ . '/../Views/auth/login.php';
     }
 
+    /**
+     * Authenticate user via email/password with rate limiting and audit logging.
+     *
+     * Validates CSRF token, enforces per-IP and per-email rate limits (LoginThrottle).
+     * Uses constant-time password_verify() against real hash or DUMMY_HASH (timing attack defense).
+     * On success: regenerates session ID (fixation defense), stores user context, logs audit trail,
+     * redirects to role dashboard. On failure: records failed attempt, renders login form with error.
+     *
+     * @param Request $request HTTP request with email/password POST body.
+     * @param Response $response HTTP response object.
+     *
+     * @return void Redirects on success or renders login form with error message.
+     *
+     * @throws Exit On CSRF validation failure (HTTP 403) or rate limit (HTTP 429).
+     */
     public function login(Request $request, Response $response): void
     {
         Session::start();
@@ -69,7 +105,7 @@ class AuthController
             );
             $user = $stmt->fetch();
 
-            // Verify against a dummy hash when the email is unknown, so both paths take similar time.
+            // Verify against dummy hash if email unknown (constant-time for both paths).
             $hash = $user ? (string) $user['password_hash'] : self::DUMMY_HASH;
             $passwordOk = password_verify($password, $hash);
 
@@ -83,7 +119,7 @@ class AuthController
                 Session::set('last_name', $user['last_name']);
                 Session::set('role_mask', (int) $user['role_mask']);
 
-                // Record audit trail
+                // Record successful login to audit trail.
                 try {
                     Database::executeQuery(
                         'INSERT INTO audit_logs (id, tenant_id, user_id, action, entity, entity_id, details, ip_address) VALUES (:id, :tenant_id, :user_id, :action, :entity, :entity_id, :details, :ip)',
@@ -124,6 +160,19 @@ class AuthController
         require_once __DIR__ . '/../Views/auth/login.php';
     }
 
+    /**
+     * Logout: Destroy session and record audit trail.
+     *
+     * Accepts GET (for links) or POST (for forms with CSRF token). Logs logout action to
+     * audit_logs, destroys session, redirects to login page.
+     *
+     * @param Request $request HTTP request object.
+     * @param Response $response HTTP response object.
+     *
+     * @return void Destroys session and redirects to /login.
+     *
+     * @throws Exit On CSRF validation failure for POST requests (HTTP 403).
+     */
     public function logout(Request $request, Response $response): void
     {
         Session::start();
@@ -149,7 +198,7 @@ class AuthController
                     ]
                 );
             } catch (\Throwable $e) {
-                // Non-fatal audit log failure
+                // Non-fatal audit log failure (still proceed with logout).
             }
         }
 

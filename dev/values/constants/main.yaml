@@ -9,3 +9,13 @@ system:
   description: "Enterprise Information Management System for Multi-Tenant Data Governance"
   banner_image: "/assets/images/banner.png"
   logo_image: "/assets/images/icons/logo.png"
+themes:
+  default:
+    name: "Default Neutral"
+    slug: "default"
+  lyra:
+    name: "Lyra (Piiiiink)"
+    slug: "lyra"
+    wcag_compliance: "AA"
+security:
+  trusted_proxies: "127.0.0.1,10.0.0.1"

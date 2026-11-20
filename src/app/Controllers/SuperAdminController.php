@@ -15,10 +15,11 @@ use App\Middleware\RoleMiddleware;
 use PDOException;
 
 /**
- * SuperAdmin Controller
+ * SuperAdmin Controller: Cross-Tenant System Administration.
  *
- * Provides global cross-tenant visibility and management across all
- * tenant organizations, tenant administrators, users, and audit logs.
+ * Provides global visibility and management across all tenants (restaurants, locations, institutions).
+ * SuperAdmin manages tenant CRUD, assigns admins across tenants, and views system-wide audit logs.
+ * No tenant isolation: all data visible to SuperAdmin.
  */
 class SuperAdminController
 {
@@ -36,11 +37,29 @@ class SuperAdminController
         'user' => RoleMiddleware::ROLE_USER,
     ];
 
+    /**
+     * Helper: Detect JSON request format (Accept header or ?format=json).
+     *
+     * @return bool true if Accept header contains application/json or ?format=json parameter present.
+     */
     private function isJsonRequest(): bool
     {
         return (strpos($_SERVER['HTTP_ACCEPT'] ?? '', 'application/json') !== false) || isset($_GET['format']) && $_GET['format'] === 'json';
     }
 
+    /**
+     * Render SuperAdmin global dashboard: cross-tenant metrics and system overview.
+     *
+     * Requires SuperAdmin role. Displays counts of tenants, admins, users, and audit log entries
+     * across entire system (not tenant-scoped).
+     *
+     * @param Request $request HTTP request object.
+     * @param Response $response HTTP response object.
+     *
+     * @return void Requires superadmin dashboard view.
+     *
+     * @throws Exit On role check failure (HTTP 403).
+     */
     public function dashboard(Request $request, Response $response): void
     {
         RoleMiddleware::handle(RoleMiddleware::ROLE_SUPERADMIN);
