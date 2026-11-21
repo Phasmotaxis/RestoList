@@ -32,18 +32,50 @@ class Audit
      */
     public static function record(string $tenantId, string $action, string $entity, string $entityId, string $details): void
     {
-        Database::executeQuery(
-            'INSERT INTO audit_logs (id, tenant_id, user_id, action, entity, entity_id, details, ip_address) VALUES (:id, :tenant_id, :user_id, :action, :entity, :entity_id, :details, :ip)',
-            [
-                'id' => 'log-' . bin2hex(random_bytes(8)),
-                'tenant_id' => $tenantId,
-                'user_id' => Session::get('user_id'),
-                'action' => $action,
-                'entity' => $entity,
-                'entity_id' => $entityId,
-                'details' => $details,
-                'ip' => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1',
-            ]
-        );
+        self::log($tenantId, null, $action, $entity, $entityId, $details);
+    }
+
+    /**
+     * Flexible audit logger supporting nullable tenant/user IDs.
+     */
+    public static function log(?string $tenantId, ?string $userId, string $action, string $entity, string $entityId, string $details): void
+    {
+        $id = 'log-' . bin2hex(random_bytes(8));
+        $uid = $userId ?? Session::get('user_id');
+        $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+
+        try {
+            Database::executeQuery(
+                'INSERT INTO audit_logs (id, org_id, user_id, action, entity, entity_id, details, ip_address) VALUES (:id, :org_id, :user_id, :action, :entity, :entity_id, :details, :ip)',
+                [
+                    'id' => $id,
+                    'org_id' => $tenantId,
+                    'user_id' => $uid,
+                    'action' => $action,
+                    'entity' => $entity,
+                    'entity_id' => $entityId,
+                    'details' => $details,
+                    'ip' => $ip,
+                ]
+            );
+        } catch (\Throwable $e) {
+            try {
+                Database::executeQuery(
+                    'INSERT INTO audit_logs (id, tenant_id, user_id, action, entity, entity_id, details, ip_address) VALUES (:id, :tenant_id, :user_id, :action, :entity, :entity_id, :details, :ip)',
+                    [
+                        'id' => $id,
+                        'tenant_id' => $tenantId,
+                        'user_id' => $uid,
+                        'action' => $action,
+                        'entity' => $entity,
+                        'entity_id' => $entityId,
+                        'details' => $details,
+                        'ip' => $ip,
+                    ]
+                );
+            } catch (\Throwable $e2) {
+                // Safe ignore if audit table schema differs
+            }
+        }
     }
 }

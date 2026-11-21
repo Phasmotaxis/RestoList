@@ -17,6 +17,16 @@ This software uses [Semantic Versioning v2.0.0](https://semver.org/spec/v2.0.0.h
 
 ### Added
 
+- Added full Customer Portal routes and controllers for Userspace 3 per `docs/SPECIFICATION.md` Section 2.2.C and Section 4 (`DiscoveryController`, `SlotAvailabilityController`, `BookingFlowController`, `MenuSyncController`, `WaitlistPortalController`, `ReviewSubmissionController`, `DepositPortalController`, `LoyaltyPortalController`, `ConciergeController`, and `CustomerController`).
+- Implemented real-time discretized 15-minute slot table availability calculation with abstract capacity counts and privacy-preserving status indicators without leaking floor plan table IDs or coordinates.
+- Implemented real-time booking lifecycle with RFC 5322 email validation, clock drift grace checks, atomic allocation via `TableAllocator`, email confirmation verification, and self-service cancellation with slot cleanup.
+- Implemented kitchen 86-list live menu sync with centavo currency formatting and dietary/allergen tag extraction.
+- Implemented remote waitlist registration with live queue position calculation and cancellation.
+- Implemented review submission with 1-5 rating validation, minimum length check, and anti-spam heuristic hyperlink auto-moderation.
+- Implemented feature-gated deposit and loyalty ledger portals protected by `FeatureFlagService::isEnabled` guards, append-only immutable balance calculations, and overdraft protection.
+- Implemented deterministic Concierge recommendation engine scoring slots by dietary matches, non-peak bonus windows, and rating.
+- Implemented customer portal semantic HTML5 views (`discover.php`, `restaurant.php`, `booking.php`, `booking_confirmation.php`, `waitlist.php`) under strict Content Security Policy.
+- Added comprehensive integration test suite (tests 22-30) in `tests/runner.php` covering all Userspace 3 endpoints and contracts.
 - Added tenant-scoped restaurant ERP operations for dining zones, tables, reservation intake, and reservation administration.
 - Added customer restaurant browsing, menu detail, and CSRF-protected reservation booking routes.
 

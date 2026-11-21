@@ -12,6 +12,16 @@ namespace App\Core;
  */
 class Response
 {
+    private static bool $sendHeadersAndExit = true;
+
+    /**
+     * Enable or disable test mode (prevents exit and header modification when headers already sent).
+     */
+    public static function setTestingMode(bool $testing): void
+    {
+        self::$sendHeadersAndExit = !$testing;
+    }
+
     /**
      * Set HTTP response status code (200, 404, 500, etc.).
      *
@@ -21,7 +31,9 @@ class Response
      */
     public function setStatusCode(int $code): void
     {
-        http_response_code($code);
+        if (!headers_sent()) {
+            http_response_code($code);
+        }
     }
 
     /**
@@ -36,8 +48,12 @@ class Response
      */
     public function redirect(string $url): void
     {
-        header("Location: {$url}");
-        exit;
+        if (!headers_sent()) {
+            header("Location: {$url}");
+        }
+        if (self::$sendHeadersAndExit) {
+            exit;
+        }
     }
 
     /**
@@ -55,8 +71,12 @@ class Response
     public function json(array $data, int $statusCode = 200): void
     {
         $this->setStatusCode($statusCode);
-        header('Content-Type: application/json; charset=UTF-8');
+        if (!headers_sent()) {
+            header('Content-Type: application/json; charset=UTF-8');
+        }
         echo json_encode($data, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
-        exit;
+        if (self::$sendHeadersAndExit) {
+            exit;
+        }
     }
 }

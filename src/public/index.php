@@ -33,6 +33,18 @@ require_once __DIR__ . '/../app/Controllers/AuthController.php';
 require_once __DIR__ . '/../app/Controllers/SuperAdminController.php';
 require_once __DIR__ . '/../app/Controllers/AdminController.php';
 require_once __DIR__ . '/../app/Controllers/UserController.php';
+require_once __DIR__ . '/../app/Services/TableAllocator.php';
+require_once __DIR__ . '/../app/Services/FeatureFlagService.php';
+require_once __DIR__ . '/../app/Controllers/DiscoveryController.php';
+require_once __DIR__ . '/../app/Controllers/SlotAvailabilityController.php';
+require_once __DIR__ . '/../app/Controllers/BookingFlowController.php';
+require_once __DIR__ . '/../app/Controllers/MenuSyncController.php';
+require_once __DIR__ . '/../app/Controllers/WaitlistPortalController.php';
+require_once __DIR__ . '/../app/Controllers/ReviewSubmissionController.php';
+require_once __DIR__ . '/../app/Controllers/DepositPortalController.php';
+require_once __DIR__ . '/../app/Controllers/LoyaltyPortalController.php';
+require_once __DIR__ . '/../app/Controllers/ConciergeController.php';
+require_once __DIR__ . '/../app/Controllers/CustomerController.php';
 
 use App\Core\Config;
 use App\Core\Database;
@@ -44,6 +56,16 @@ use App\Controllers\AuthController;
 use App\Controllers\SuperAdminController;
 use App\Controllers\AdminController;
 use App\Controllers\UserController;
+use App\Controllers\DiscoveryController;
+use App\Controllers\SlotAvailabilityController;
+use App\Controllers\BookingFlowController;
+use App\Controllers\MenuSyncController;
+use App\Controllers\WaitlistPortalController;
+use App\Controllers\ReviewSubmissionController;
+use App\Controllers\DepositPortalController;
+use App\Controllers\LoyaltyPortalController;
+use App\Controllers\ConciergeController;
+use App\Controllers\CustomerController;
 
 // Initialize Live Panel Sabotage Defense Kernel (global error/exception handler).
 ErrorHandler::register();
@@ -90,6 +112,42 @@ $router->post('/admin/users/delete', [AdminController::class, 'deleteUser']);
 // 10-11. Standard User Subsystem & Data Portability (ROLE_USER+)
 $router->get('/user/dashboard', [UserController::class, 'dashboard']);
 $router->get('/user/export', [UserController::class, 'exportData']);
+
+// 12. Customer Portal Subsystem (Userspace 3: Discovery, Booking, Waitlist, Menu, Reviews)
+$router->get('/customer', [CustomerController::class, 'index']);
+$router->get('/customer/dashboard', [CustomerController::class, 'dashboard']);
+$router->get('/discover', [DiscoveryController::class, 'index']);
+$router->get('/discover/search', [DiscoveryController::class, 'search']);
+$router->get('/discover/:id', [DiscoveryController::class, 'show']);
+$router->get('/discover/:id/availability', [SlotAvailabilityController::class, 'getSlots']);
+$router->get('/discover/:id/menu', [MenuSyncController::class, 'getMenu']);
+$router->get('/discover/:id/reviews', [ReviewSubmissionController::class, 'index']);
+$router->post('/discover/:id/reviews', [ReviewSubmissionController::class, 'create']);
+
+$router->get('/menu/:restaurant_id', [MenuSyncController::class, 'getMenu']);
+
+$router->get('/bookings/new', [BookingFlowController::class, 'showForm']);
+$router->post('/bookings', [BookingFlowController::class, 'create']);
+$router->get('/bookings/:token', [BookingFlowController::class, 'showConfirmation']);
+$router->get('/bookings/:token/confirm', [BookingFlowController::class, 'confirmEmail']);
+$router->post('/bookings/:token/cancel', [BookingFlowController::class, 'cancel']);
+
+$router->get('/waitlist/:restaurant_id/join', [WaitlistPortalController::class, 'showForm']);
+$router->post('/waitlist/:restaurant_id/join', [WaitlistPortalController::class, 'join']);
+$router->get('/waitlist/:token/position', [WaitlistPortalController::class, 'trackPosition']);
+$router->post('/waitlist/:token/cancel', [WaitlistPortalController::class, 'cancel']);
+
+$router->get('/reviews', [ReviewSubmissionController::class, 'index']);
+$router->post('/reviews', [ReviewSubmissionController::class, 'create']);
+
+$router->get('/deposits/balance', [DepositPortalController::class, 'getBalance']);
+$router->post('/deposits/hold', [DepositPortalController::class, 'hold']);
+
+$router->get('/loyalty/points', [LoyaltyPortalController::class, 'getPoints']);
+$router->post('/loyalty/redeem', [LoyaltyPortalController::class, 'redeem']);
+$router->post('/loyalty/earn', [LoyaltyPortalController::class, 'earn']);
+
+$router->get('/concierge/recommendations', [ConciergeController::class, 'getRecommendations']);
 
 // 12. Healthcheck Telemetry Probe (Public JSON endpoint for orchestration).
 $router->get('/health', function (Request $req, Response $res): void {

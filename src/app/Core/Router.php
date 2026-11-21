@@ -59,6 +59,25 @@ class Router
         $method = $request->getMethod();
         $callback = $this->routes[$method][$path] ?? false;
 
+        // If no exact match, evaluate dynamic parameter patterns (e.g. /discover/:id)
+        if ($callback === false && isset($this->routes[$method])) {
+            $routes = $this->routes[$method];
+            // Order by segment depth descending so more specific routes match first
+            uksort($routes, fn($a, $b) => substr_count($b, '/') <=> substr_count($a, '/'));
+
+            foreach ($routes as $routePattern => $handler) {
+                if (str_contains($routePattern, ':')) {
+                    $regex = '~^' . preg_replace_callback('/:([a-zA-Z0-9_]+)/', fn($m) => '(?P<' . $m[1] . '>[^/]+)', $routePattern) . '$~';
+                    if (preg_match($regex, $path, $matches)) {
+                        $params = array_filter($matches, 'is_string', ARRAY_FILTER_USE_KEY);
+                        $request->setParams($params);
+                        $callback = $handler;
+                        break;
+                    }
+                }
+            }
+        }
+
         if ($callback === false) {
             $response->setStatusCode(404);
             require_once __DIR__ . '/../Views/errors/404.php';
