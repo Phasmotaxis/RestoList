@@ -106,6 +106,14 @@ The Enterprise Information Management System (EIMS) provides a secure multi-tena
   - Positive: Zero framework dependencies, robust multi-tenant data isolation, race-condition-free reservations, and full compliance with CSP and academic defense criteria.
   - Negative: 15-minute bucketing requires slot generation per booking and explicit cleanup on cancellation.
 
+### ADR-011: Userspace 3 Customer Portal & Privacy-Preserving Slot Architecture
+- **Status**: Accepted
+- **Context**: The restaurant ERP platform requires public self-service diner engagement (Userspace 3) covering discovery, real-time availability, table bookings, live menu sync, remote waitlist, diner reviews, and feature-gated deposits and loyalty programs without leaking internal floor plan coordinates or physical table layouts.
+- **Decision**: Implement modular Customer Portal controllers (`DiscoveryController`, `SlotAvailabilityController`, `BookingFlowController`, `MenuSyncController`, `WaitlistPortalController`, `ReviewSubmissionController`, `DepositPortalController`, `LoyaltyPortalController`, `ConciergeController`, `CustomerController`) adhering to strict native PHP 8.3 and clean-room principles. Extend `Request` and `Router` with parameterized `:param` dynamic matching. Protect table allocation through atomic transactional locking in `TableAllocator` with UNIQUE constraint on `reservation_slots(org_id, table_id, slot_start_utc)` to prevent race-condition double-booking. Enforce feature flag gates via `FeatureFlagService::isEnabled` for deposits and loyalty. Filter reviews through anti-spam heuristic link detection.
+- **Consequences**:
+  - Positive: Complete isolation between internal restaurant operations and public diner userspace; privacy preservation of floor plan geometry; strict concurrency safety against double-booking; zero external dependencies.
+  - Negative: Requires maintaining dual web and JSON response contracts across all public entrypoints.
+
 ## 3. Failure Mode Analysis & Defenses
 
 | Failure Scenario | Root Cause | System Defense |

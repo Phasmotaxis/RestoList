@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS reviews (
     customer_id VARCHAR(36),
     rating INTEGER NOT NULL,
     comment TEXT,
+    approved INTEGER DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     restaurant_response TEXT,
     response_at TIMESTAMP NULL,

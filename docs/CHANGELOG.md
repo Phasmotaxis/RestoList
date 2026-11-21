@@ -26,8 +26,17 @@ This software uses [Semantic Versioning v2.0.0](https://semver.org/spec/v2.0.0.h
   - `AnalyticsController`: KPI metrics including table turnover, peak hour distribution, no-show rates, and integer centavos revenue.
   - `ReviewModerationController`: Customer review moderation queue, spam heuristics, and manager response system.
   - `RestaurantController`: Tenant restaurant provisioning and settings management.
+- Added full Customer Portal routes and controllers for Userspace 3 per `docs/SPECIFICATION.md` Section 2.2.C and Section 4 (`DiscoveryController`, `SlotAvailabilityController`, `BookingFlowController`, `MenuSyncController`, `WaitlistPortalController`, `ReviewSubmissionController`, `DepositPortalController`, `LoyaltyPortalController`, `ConciergeController`, and `CustomerController`).
+- Implemented real-time discretized 15-minute slot table availability calculation with abstract capacity counts and privacy-preserving status indicators without leaking floor plan table IDs or coordinates.
+- Implemented real-time booking lifecycle with RFC 5322 email validation, clock drift grace checks, atomic allocation via `TableAllocator`, email confirmation verification, and self-service cancellation with slot cleanup.
+- Implemented kitchen 86-list live menu sync with centavo currency formatting and dietary/allergen tag extraction.
+- Implemented remote waitlist registration with live queue position calculation and cancellation.
+- Implemented review submission with 1-5 rating validation, minimum length check, and anti-spam heuristic hyperlink auto-moderation.
+- Implemented feature-gated deposit and loyalty ledger portals protected by `FeatureFlagService::isEnabled` guards, append-only immutable balance calculations, and overdraft protection.
+- Implemented deterministic Concierge recommendation engine scoring slots by dietary matches, non-peak bonus windows, and rating.
+- Implemented customer portal semantic HTML5 views (`discover.php`, `restaurant.php`, `booking.php`, `booking_confirmation.php`, `waitlist.php`) under strict Content Security Policy.
 - Added dynamic route parameter parsing (`:param`) and HTTP `PUT`, `PATCH`, `DELETE` methods in native `Router.php` and `Request.php`.
-- Added 8 integration tests to `tests/runner.php` covering all Client ERP subdomains with 100% pass rate.
+- Added comprehensive integration test suite in `tests/runner.php` covering all Client ERP and Customer Portal endpoints with 100% pass rate.
 - Added tenant-scoped restaurant ERP operations for dining zones, tables, reservation intake, and reservation administration.
 - Added customer restaurant browsing, menu detail, and CSRF-protected reservation booking routes.
 
