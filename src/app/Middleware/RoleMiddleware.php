@@ -46,6 +46,26 @@ class RoleMiddleware
     }
 
     /**
+     * Check if user role mask matches ANY of the provided role masks.
+     *
+     * @param int $userMask Bitwise role mask from user record.
+     * @param int[] $allowedRoles Array of allowed role masks.
+     * @return bool
+     */
+    public static function checkAnyPermission(int $userMask, array $allowedRoles): bool
+    {
+        if (($userMask & self::ROLE_SUPERADMIN) === self::ROLE_SUPERADMIN) {
+            return true;
+        }
+        foreach ($allowedRoles as $role) {
+            if (($userMask & $role) === $role) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * Enforce role-based access control: check auth AND required permission.
      *
      * Calls AuthMiddleware to ensure authenticated, then checks user's role_mask against
@@ -63,6 +83,34 @@ class RoleMiddleware
 
         if (!self::checkPermission($userMask, $requiredMask)) {
             http_response_code(403);
+            if (isset($_SERVER['HTTP_ACCEPT']) && str_contains($_SERVER['HTTP_ACCEPT'], 'application/json')) {
+                header('Content-Type: application/json');
+                echo json_encode(['error' => 'Forbidden', 'message' => 'Insufficient permissions']);
+                exit;
+            }
+            require_once __DIR__ . '/../Views/errors/403.php';
+            exit;
+        }
+    }
+
+    /**
+     * Enforce access control allowing ANY of the specified roles (or SuperAdmin).
+     *
+     * @param int[] $allowedRoles Array of role bitmasks.
+     * @return void
+     */
+    public static function hasAnyRole(array $allowedRoles): void
+    {
+        AuthMiddleware::handle();
+        $userMask = (int) (Session::get('role_mask') ?? 0);
+
+        if (!self::checkAnyPermission($userMask, $allowedRoles)) {
+            http_response_code(403);
+            if (isset($_SERVER['HTTP_ACCEPT']) && str_contains($_SERVER['HTTP_ACCEPT'], 'application/json')) {
+                header('Content-Type: application/json');
+                echo json_encode(['error' => 'Forbidden', 'message' => 'Insufficient permissions']);
+                exit;
+            }
             require_once __DIR__ . '/../Views/errors/403.php';
             exit;
         }
