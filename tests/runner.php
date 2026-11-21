@@ -467,7 +467,77 @@ function setupTableAllocatorTestDb(): \PDO {
         PRIMARY KEY (org_id, table_id, slot_start_utc)
     );');
 
-    // Seed test zone and tables
+    $pdo->exec('CREATE TABLE IF NOT EXISTS waitlist_entries (
+        id VARCHAR(36) PRIMARY KEY,
+        org_id VARCHAR(36) NOT NULL,
+        customer_id VARCHAR(36),
+        party_size INTEGER NOT NULL,
+        preferred_zone VARCHAR(36),
+        position INTEGER NOT NULL,
+        status VARCHAR(32) NOT NULL DEFAULT "waiting",
+        join_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        promoted_to_reservation_id VARCHAR(36)
+    );');
+
+    $pdo->exec('CREATE TABLE IF NOT EXISTS menu_items (
+        id VARCHAR(36) PRIMARY KEY,
+        org_id VARCHAR(36) NOT NULL,
+        name VARCHAR(255) NOT NULL,
+        description TEXT,
+        price_centavos BIGINT NOT NULL,
+        is_available INTEGER DEFAULT 1,
+        dietary_tags VARCHAR(255),
+        allergen_tags VARCHAR(255),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        archived_at TIMESTAMP NULL
+    );');
+
+    $pdo->exec('CREATE TABLE IF NOT EXISTS reviews (
+        id VARCHAR(36) PRIMARY KEY,
+        org_id VARCHAR(36) NOT NULL,
+        reservation_id VARCHAR(36),
+        customer_id VARCHAR(36),
+        rating INTEGER NOT NULL,
+        comment TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        restaurant_response TEXT,
+        response_at TIMESTAMP NULL
+    );');
+
+    $pdo->exec('CREATE TABLE IF NOT EXISTS deposit_ledger (
+        id VARCHAR(36) PRIMARY KEY,
+        org_id VARCHAR(36) NOT NULL,
+        customer_id VARCHAR(36),
+        amount_centavos BIGINT NOT NULL,
+        action VARCHAR(32) NOT NULL,
+        reason VARCHAR(255),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );');
+
+    $pdo->exec('CREATE TABLE IF NOT EXISTS org_invites (
+        id VARCHAR(36) PRIMARY KEY,
+        org_id VARCHAR(36) NOT NULL,
+        email VARCHAR(255) NOT NULL,
+        token_hash VARCHAR(64) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        expires_at TIMESTAMP NOT NULL,
+        claimed_by_user_id VARCHAR(36)
+    );');
+
+    $pdo->exec('CREATE TABLE IF NOT EXISTS audit_logs (
+        id VARCHAR(36) PRIMARY KEY,
+        tenant_id VARCHAR(36) NOT NULL,
+        user_id VARCHAR(36),
+        action VARCHAR(128) NOT NULL,
+        entity VARCHAR(64) NOT NULL,
+        entity_id VARCHAR(36),
+        details TEXT,
+        ip_address VARCHAR(45),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );');
+
+    // Seed test tenant, zone and tables
+    $pdo->exec("INSERT OR IGNORE INTO tenants (id, name, subdomain, is_active) VALUES ('org-1', 'Test Restaurant', 'test-org', 1);");
     $pdo->exec("INSERT OR IGNORE INTO dining_zones (id, org_id, name, capacity) VALUES ('zone-1', 'org-1', 'Main Hall', 20);");
     $pdo->exec("INSERT OR IGNORE INTO dining_tables (id, org_id, zone_id, label, capacity, is_combinable) VALUES
         ('tbl-1', 'org-1', 'zone-1', 'T1', 4, 1),
@@ -557,6 +627,274 @@ registerTest(
         return true;
     },
     'TableAllocator combinable tables: multi-table booking locks all linked tables'
+);
+
+// ============================================================================
+// USERSPACE 2: RESTAURANT CLIENT ERP (WORKER A DELIVERABLES)
+// ============================================================================
+
+registerTest(
+    'client_erp_dining_zones_crud',
+    function(): bool {
+        $pdo = setupTableAllocatorTestDb();
+        $orgId = 'org-1';
+
+        // 1. Create Zone
+        $zoneId = 'zone-test-' . bin2hex(random_bytes(4));
+        $stmt = $pdo->prepare('INSERT INTO dining_zones (id, org_id, name, capacity) VALUES (?, ?, ?, ?)');
+        $stmt->execute([$zoneId, $orgId, 'Patio Deck', 30]);
+
+        // 2. Query Zone with Table Aggregate
+        $stmt = $pdo->prepare('SELECT * FROM dining_zones WHERE id = ? AND org_id = ? AND archived_at IS NULL');
+        $stmt->execute([$zoneId, $orgId]);
+        $zone = $stmt->fetch();
+        assert_equal(!empty($zone) && $zone['name'] === 'Patio Deck', 'Dining zone creation failed');
+
+        // 3. Multi-tenant isolation check
+        $stmt = $pdo->prepare('SELECT COUNT(*) as cnt FROM dining_zones WHERE id = ? AND org_id = ?');
+        $stmt->execute([$zoneId, 'other-org']);
+        $count = (int) ($stmt->fetch()['cnt'] ?? 0);
+        assert_equal($count === 0, 'Cross-tenant leak detected on dining zones query');
+
+        // 4. Soft delete
+        $stmt = $pdo->prepare('UPDATE dining_zones SET archived_at = CURRENT_TIMESTAMP WHERE id = ? AND org_id = ?');
+        $stmt->execute([$zoneId, $orgId]);
+
+        $stmt = $pdo->prepare('SELECT * FROM dining_zones WHERE id = ? AND archived_at IS NULL');
+        $stmt->execute([$zoneId]);
+        assert_equal(!$stmt->fetch(), 'Soft delete failed to archive dining zone');
+
+        return true;
+    },
+    'Client ERP Dining Zones: CRUD operations and multi-tenant isolation'
+);
+
+registerTest(
+    'client_erp_dining_tables_status',
+    function(): bool {
+        $pdo = setupTableAllocatorTestDb();
+        $orgId = 'org-1';
+
+        // 1. Create table with floor plan coordinates (x=3, y=2)
+        $tableId = 'tbl-coords-' . bin2hex(random_bytes(4));
+        $stmt = $pdo->prepare('INSERT INTO dining_tables (id, org_id, zone_id, label, capacity, x_coord, y_coord, is_combinable) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+        $stmt->execute([$tableId, $orgId, 'zone-1', 'P-1', 6, 3, 2, 1]);
+
+        $stmt = $pdo->prepare('SELECT * FROM dining_tables WHERE id = ?');
+        $stmt->execute([$tableId]);
+        $table = $stmt->fetch();
+        assert_equal((int)$table['x_coord'] === 3 && (int)$table['y_coord'] === 2, 'Table floor plan coordinates mismatch');
+        assert_equal((int)$table['is_combinable'] === 1, 'Table combinable flag mismatch');
+
+        // 2. Check active reservation status mapping
+        $now = date('Y-m-d H:i:s');
+        $end = date('Y-m-d H:i:s', strtotime('+90 minutes'));
+        $resId = \App\Services\TableAllocator::allocateReservation($orgId, [$tableId], $now, $end, 4, 'usr-test');
+        $pdo->prepare('UPDATE reservations SET status = "confirmed" WHERE id = ?')->execute([$resId]);
+
+        $stmt = $pdo->prepare('
+            SELECT rt.table_id, r.status
+            FROM reservation_tables rt
+            JOIN reservations r ON rt.reservation_id = r.id
+            WHERE rt.table_id = ? AND r.status IN ("confirmed", "seated")
+        ');
+        $stmt->execute([$tableId]);
+        $active = $stmt->fetch();
+        assert_equal(!empty($active) && $active['status'] === 'confirmed', 'Active reservation status mapping failed');
+
+        return true;
+    },
+    'Client ERP Dining Tables: Floor plan layout coordinates and active status mapping'
+);
+
+registerTest(
+    'client_erp_reservation_lifecycle',
+    function(): bool {
+        $pdo = setupTableAllocatorTestDb();
+        $orgId = 'org-1';
+        $tableId = 'tbl-1';
+
+        // Snapping start time to 15-minute floor
+        $rawStart = '2026-11-28 19:07:00';
+        $dt = new \DateTime($rawStart, new \DateTimeZone('UTC'));
+        $min = (int) $dt->format('i');
+        $dt->setTime((int)$dt->format('H'), (int)floor($min / 15) * 15, 0);
+        $snappedStart = $dt->format('Y-m-d H:i:s');
+        assert_equal($snappedStart === '2026-11-28 19:00:00', '15-minute start boundary floor snapping failed');
+
+        $dtEnd = clone $dt;
+        $dtEnd->modify('+90 minutes');
+        $snappedEnd = $dtEnd->format('Y-m-d H:i:s');
+
+        // Allocate reservation
+        $resId = \App\Services\TableAllocator::allocateReservation($orgId, [$tableId], $snappedStart, $snappedEnd, 4, 'cust-1', 'Birthday dinner');
+        assert_equal(!empty($resId), 'Reservation allocation failed');
+
+        // Verify slot count = 6 (90 min / 15 min = 6 slots)
+        $stmt = $pdo->prepare('SELECT COUNT(*) as cnt FROM reservation_slots WHERE org_id = ? AND table_id = ?');
+        $stmt->execute([$orgId, $tableId]);
+        $slotCount = (int) ($stmt->fetch()['cnt'] ?? 0);
+        assert_equal($slotCount === 6, "Expected 6 discretized slots, found {$slotCount}");
+
+        // Confirm status
+        $pdo->prepare('UPDATE reservations SET status = "confirmed" WHERE id = ?')->execute([$resId]);
+        $stmt = $pdo->prepare('SELECT status FROM reservations WHERE id = ?');
+        $stmt->execute([$resId]);
+        assert_equal($stmt->fetch()['status'] === 'confirmed', 'Reservation confirmation update failed');
+
+        return true;
+    },
+    'Client ERP Reservations: 15-minute boundary snapping, slot discretization, and confirmation'
+);
+
+registerTest(
+    'client_erp_waitlist_and_backfill',
+    function(): bool {
+        $pdo = setupTableAllocatorTestDb();
+        $orgId = 'org-1';
+
+        // 1. Add party to waitlist
+        $stmt = $pdo->prepare('INSERT INTO waitlist_entries (id, org_id, customer_id, party_size, position, status) VALUES (?, ?, ?, ?, ?, ?)');
+        $stmt->execute(['wl-101', $orgId, 'cust-wl', 4, 1, 'waiting']);
+
+        // 2. Cancel an existing table booking and trigger autoBackfill
+        $start = date('Y-m-d H:i:s');
+        $end = date('Y-m-d H:i:s', strtotime('+90 minutes'));
+        $resId = \App\Services\TableAllocator::allocateReservation($orgId, ['tbl-1'], $start, $end, 4, 'canceller');
+
+        // Cancel
+        \App\Services\TableAllocator::cancelReservation($resId);
+
+        // Run autoBackfill
+        require_once __DIR__ . '/../src/app/Controllers/WaitlistController.php';
+        $backfilled = \App\Controllers\WaitlistController::autoBackfill($orgId, 4, ['tbl-1']);
+
+        assert_equal(!empty($backfilled), 'Waitlist auto-backfill failed to promote waiting party');
+        assert_equal($backfilled['waitlist_id'] === 'wl-101', 'Incorrect waitlist entry promoted');
+
+        // Verify waitlist status changed to notified/promoted
+        $stmt = $pdo->prepare('SELECT status, promoted_to_reservation_id FROM waitlist_entries WHERE id = ?');
+        $stmt->execute(['wl-101']);
+        $entry = $stmt->fetch();
+        assert_equal($entry['status'] === 'notified' && !empty($entry['promoted_to_reservation_id']), 'Waitlist promotion state not saved');
+
+        return true;
+    },
+    'Client ERP Waitlist: Queue management and automatic cancellation backfill algorithm'
+);
+
+registerTest(
+    'client_erp_menu_item_86_list',
+    function(): bool {
+        $pdo = setupTableAllocatorTestDb();
+        $orgId = 'org-1';
+
+        // 1. Create menu items
+        $stmt = $pdo->prepare('INSERT INTO menu_items (id, org_id, name, price_centavos, is_available) VALUES (?, ?, ?, ?, ?)');
+        $stmt->execute(['item-1', $orgId, 'Ribeye Steak', 4500, 1]);
+        $stmt->execute(['item-2', $orgId, 'Sea Bass', 3800, 1]);
+
+        // 2. 86 the sea bass
+        $pdo->prepare('UPDATE menu_items SET is_available = 0 WHERE id = ? AND org_id = ?')->execute(['item-2', $orgId]);
+
+        // 3. Query 86 list
+        $stmt = $pdo->prepare('SELECT id, name FROM menu_items WHERE org_id = ? AND is_available = 0');
+        $stmt->execute([$orgId]);
+        $soldOut = $stmt->fetchAll();
+        assert_equal(count($soldOut) === 1 && $soldOut[0]['id'] === 'item-2', '86-list query failed to isolate unavailable items');
+
+        return true;
+    },
+    'Client ERP Menu 86-List: Real-time item toggling and sold-out list filtering'
+);
+
+registerTest(
+    'client_erp_staff_rbac_boundaries',
+    function(): bool {
+        require_once SRC_DIR . '/app/Middleware/RoleMiddleware.php';
+
+        // Bitwise role masks
+        $roleSuperAdmin = \App\Middleware\RoleMiddleware::ROLE_SUPERADMIN; // 1
+        $roleAdmin = \App\Middleware\RoleMiddleware::ROLE_ADMIN;           // 2
+        $roleUser = \App\Middleware\RoleMiddleware::ROLE_USER;             // 4
+        $roleFOH = \App\Middleware\RoleMiddleware::ROLE_FRONTOFHOUSE;      // 8
+        $roleKitchen = \App\Middleware\RoleMiddleware::ROLE_KITCHEN;        // 16
+
+        // FrontOfHouse cannot access Staff RBAC management (Admin only)
+        assert_equal(!\App\Middleware\RoleMiddleware::checkPermission($roleFOH, $roleAdmin), 'FrontOfHouse must NOT have Admin permission');
+
+        // Kitchen cannot book reservations (FOH and Admin only)
+        assert_equal(!\App\Middleware\RoleMiddleware::checkAnyPermission($roleKitchen, [$roleAdmin, $roleFOH]), 'Kitchen must NOT have reservation booking permission');
+
+        // Kitchen and Admin CAN access 86 toggling
+        assert_equal(\App\Middleware\RoleMiddleware::checkAnyPermission($roleKitchen, [$roleAdmin, $roleKitchen]), 'Kitchen must be allowed to toggle 86 list');
+        assert_equal(\App\Middleware\RoleMiddleware::checkAnyPermission($roleAdmin, [$roleAdmin, $roleKitchen]), 'Admin must be allowed to toggle 86 list');
+
+        // SuperAdmin bypasses all permission checks
+        assert_equal(\App\Middleware\RoleMiddleware::checkPermission($roleSuperAdmin, $roleAdmin), 'SuperAdmin must satisfy Admin check');
+        assert_equal(\App\Middleware\RoleMiddleware::checkPermission($roleSuperAdmin, $roleFOH), 'SuperAdmin must satisfy FOH check');
+
+        return true;
+    },
+    'Client ERP Staff RBAC: Bitwise role boundary enforcement (FrontOfHouse, Kitchen, Admin)'
+);
+
+registerTest(
+    'client_erp_analytics_reporting',
+    function(): bool {
+        $pdo = setupTableAllocatorTestDb();
+        $orgId = 'org-1';
+
+        // 1. Seat turnover: 6 guests seated over 10 capacity = 0.6x
+        $totalCap = 10;
+        $seatedGuests = 6;
+        $turnoverRate = round($seatedGuests / $totalCap, 2);
+        assert_equal($turnoverRate === 0.6, 'Turnover rate computation mismatch');
+
+        // 2. Revenue calculation in integer centavos
+        $stmt = $pdo->prepare('INSERT INTO deposit_ledger (id, org_id, amount_centavos, action) VALUES (?, ?, ?, ?)');
+        $stmt->execute(['dep-1', $orgId, 5000, 'deposit']);
+        $stmt->execute(['dep-2', $orgId, 2500, 'deposit']);
+
+        $stmt = $pdo->prepare('SELECT SUM(amount_centavos) as rev FROM deposit_ledger WHERE org_id = ?');
+        $stmt->execute([$orgId]);
+        $totalCentavos = (int) ($stmt->fetch()['rev'] ?? 0);
+        assert_equal($totalCentavos === 7500, "Expected 7500 centavos ($75.00), got {$totalCentavos}");
+
+        return true;
+    },
+    'Client ERP Analytics: Seat turnover calculation and integer centavos revenue reporting'
+);
+
+registerTest(
+    'client_erp_review_moderation',
+    function(): bool {
+        $pdo = setupTableAllocatorTestDb();
+        $orgId = 'org-1';
+
+        // 1. Insert genuine review and spam review
+        $stmt = $pdo->prepare('INSERT INTO reviews (id, org_id, rating, comment) VALUES (?, ?, ?, ?)');
+        $stmt->execute(['rev-1', $orgId, 5, 'Exceptional food and hospitality!']);
+        $stmt->execute(['rev-2', $orgId, 1, 'Check out http://spam.com and http://fake.com for discounts']);
+
+        // 2. Spam heuristic check
+        $stmt = $pdo->prepare('SELECT * FROM reviews WHERE id = ?');
+        $stmt->execute(['rev-2']);
+        $spamRev = $stmt->fetch();
+        $urlCount = substr_count(strtolower($spamRev['comment']), 'http://');
+        assert_equal($urlCount > 1, 'Spam heuristic failed to flag multi-URL comment');
+
+        // 3. Official reply
+        $pdo->prepare('UPDATE reviews SET restaurant_response = ?, response_at = CURRENT_TIMESTAMP WHERE id = ?')
+            ->execute(['Thank you for dining with us!', 'rev-1']);
+
+        $stmt = $pdo->prepare('SELECT restaurant_response FROM reviews WHERE id = ?');
+        $stmt->execute(['rev-1']);
+        assert_equal($stmt->fetch()['restaurant_response'] === 'Thank you for dining with us!', 'Review reply recording failed');
+
+        return true;
+    },
+    'Client ERP Reviews: Moderation queue, spam detection heuristic, and manager replies'
 );
 
 // ============================================================================

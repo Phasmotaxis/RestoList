@@ -92,6 +92,20 @@ The Enterprise Information Management System (EIMS) provides a secure multi-tena
   - Positive: Empirically verified sub-millisecond query performance on indexed tables; guaranteed survival and write persistence when MySQL container is killed.
   - Negative: High-volume stress seeding requires several gigabytes of ephemeral disk allocation during bulk runs.
 
+### ADR-010: Userspace 2 Restaurant Client ERP Architecture & Concurrency Control
+- **Status**: Accepted
+- **Context**: Userspace 2 per `docs/SPECIFICATION.md` Section 2.2.B mandates full tenant-scoped restaurant operations: floor plans, 15-minute discretized table allocation, waitlist queue with automated cancellation backfilling, real-time 86-lists, bitwise staff role boundaries, integer-centavo revenue analytics, and review moderation.
+- **Decision**:
+  - **Dynamic URL Routing**: Implemented clean-room regex parameter capture (`:param`) in native `Router.php` populating `$request->getParam()` and route parameters without external routing packages.
+  - **Atomic Table Allocation**: Enforced two-layer concurrency control in `TableAllocator`: deterministic row-level locks and discretized 15-minute slot bucketing with unique constraints on `reservation_slots (org_id, table_id, slot_start_utc)` to mathematically eliminate double-booking. Snapped reservation times to 15-minute floor boundaries.
+  - **Waitlist Cancellation Backfill**: Automated algorithmic promotion of the next waiting party matching freed table capacity upon reservation cancellation.
+  - **Bitwise Role Scoping**: Enforced strict RBAC boundaries where FrontOfHouse (`ROLE_FRONTOFHOUSE = 8`) cannot manage staff, Kitchen (`ROLE_KITCHEN = 16`) cannot book reservations, and only Kitchen/Admin can toggle 86 item availability.
+  - **Financial Integrity**: Maintained integer-only centavos in `deposit_ledger` and `menu_items` to eliminate floating-point rounding errors.
+  - **CSP-Compliant Floor Plans**: Semantic grid tokens (`.floor-plan-grid`, `.gc-1`..`.gc-12`, `.gr-1`..`.gr-8`) with zero inline CSS styles.
+- **Consequences**:
+  - Positive: Zero framework dependencies, robust multi-tenant data isolation, race-condition-free reservations, and full compliance with CSP and academic defense criteria.
+  - Negative: 15-minute bucketing requires slot generation per booking and explicit cleanup on cancellation.
+
 ## 3. Failure Mode Analysis & Defenses
 
 | Failure Scenario | Root Cause | System Defense |

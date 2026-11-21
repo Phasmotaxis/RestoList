@@ -33,6 +33,16 @@ require_once __DIR__ . '/../app/Controllers/AuthController.php';
 require_once __DIR__ . '/../app/Controllers/SuperAdminController.php';
 require_once __DIR__ . '/../app/Controllers/AdminController.php';
 require_once __DIR__ . '/../app/Controllers/UserController.php';
+require_once __DIR__ . '/../app/Services/TableAllocator.php';
+require_once __DIR__ . '/../app/Controllers/DiningZonesController.php';
+require_once __DIR__ . '/../app/Controllers/DiningTablesController.php';
+require_once __DIR__ . '/../app/Controllers/ReservationController.php';
+require_once __DIR__ . '/../app/Controllers/WaitlistController.php';
+require_once __DIR__ . '/../app/Controllers/MenuItemController.php';
+require_once __DIR__ . '/../app/Controllers/StaffRBACController.php';
+require_once __DIR__ . '/../app/Controllers/AnalyticsController.php';
+require_once __DIR__ . '/../app/Controllers/ReviewModerationController.php';
+require_once __DIR__ . '/../app/Controllers/RestaurantController.php';
 
 use App\Core\Config;
 use App\Core\Database;
@@ -44,6 +54,15 @@ use App\Controllers\AuthController;
 use App\Controllers\SuperAdminController;
 use App\Controllers\AdminController;
 use App\Controllers\UserController;
+use App\Controllers\DiningZonesController;
+use App\Controllers\DiningTablesController;
+use App\Controllers\ReservationController;
+use App\Controllers\WaitlistController;
+use App\Controllers\MenuItemController;
+use App\Controllers\StaffRBACController;
+use App\Controllers\AnalyticsController;
+use App\Controllers\ReviewModerationController;
+use App\Controllers\RestaurantController;
 
 // Initialize Live Panel Sabotage Defense Kernel (global error/exception handler).
 ErrorHandler::register();
@@ -90,6 +109,86 @@ $router->post('/admin/users/delete', [AdminController::class, 'deleteUser']);
 // 10-11. Standard User Subsystem & Data Portability (ROLE_USER+)
 $router->get('/user/dashboard', [UserController::class, 'dashboard']);
 $router->get('/user/export', [UserController::class, 'exportData']);
+
+// ========== Userspace 2: Restaurant Client ERP Routes ==========
+
+// Base Restaurant Operations
+$router->get('/admin/restaurants', [RestaurantController::class, 'index']);
+$router->get('/admin/restaurants/create', [RestaurantController::class, 'create']);
+$router->post('/admin/restaurants', [RestaurantController::class, 'store']);
+$router->get('/admin/restaurants/:id', [RestaurantController::class, 'show']);
+$router->get('/admin/restaurants/:id/edit', [RestaurantController::class, 'edit']);
+$router->post('/admin/restaurants/:id/update', [RestaurantController::class, 'update']);
+$router->post('/admin/restaurants/:id/delete', [RestaurantController::class, 'delete']);
+
+// Floor Plan & Dining Zones
+$router->get('/admin/zones', [DiningZonesController::class, 'index']);
+$router->get('/admin/restaurants/:id/zones', [DiningZonesController::class, 'index']);
+$router->get('/admin/restaurants/:id/zones/create', [DiningZonesController::class, 'create']);
+$router->post('/admin/restaurants/:id/zones', [DiningZonesController::class, 'store']);
+$router->get('/admin/restaurants/:id/zones/:zone_id/edit', [DiningZonesController::class, 'edit']);
+$router->post('/admin/restaurants/:id/zones/:zone_id/update', [DiningZonesController::class, 'update']);
+$router->post('/admin/restaurants/:id/zones/:zone_id/delete', [DiningZonesController::class, 'delete']);
+
+// Floor Plan & Dining Tables
+$router->get('/admin/tables', [DiningTablesController::class, 'index']);
+$router->get('/admin/restaurants/:id/tables', [DiningTablesController::class, 'index']);
+$router->get('/admin/restaurants/:id/tables/create', [DiningTablesController::class, 'create']);
+$router->post('/admin/restaurants/:id/tables', [DiningTablesController::class, 'store']);
+$router->get('/admin/restaurants/:id/tables/:table_id/edit', [DiningTablesController::class, 'edit']);
+$router->post('/admin/restaurants/:id/tables/:table_id/update', [DiningTablesController::class, 'update']);
+$router->post('/admin/restaurants/:id/tables/:table_id/delete', [DiningTablesController::class, 'delete']);
+$router->get('/admin/restaurants/:id/tables/:table_id/coordinates', [DiningTablesController::class, 'getCoordinates']);
+$router->post('/admin/restaurants/:id/tables/:table_id/coordinates', [DiningTablesController::class, 'updateCoordinates']);
+
+// Reservations & Booking
+$router->get('/admin/reservations', [ReservationController::class, 'index']);
+$router->get('/admin/restaurants/:id/reservations', [ReservationController::class, 'index']);
+$router->get('/admin/restaurants/:id/reservations/create', [ReservationController::class, 'create']);
+$router->post('/admin/restaurants/:id/reservations', [ReservationController::class, 'store']);
+$router->get('/admin/restaurants/:id/reservations/:res_id/edit', [ReservationController::class, 'edit']);
+$router->post('/admin/restaurants/:id/reservations/:res_id/update', [ReservationController::class, 'update']);
+$router->post('/admin/restaurants/:id/reservations/:res_id/cancel', [ReservationController::class, 'cancel']);
+$router->post('/admin/restaurants/:id/reservations/:res_id/confirm', [ReservationController::class, 'confirm']);
+
+// Waitlist & Walk-ins
+$router->get('/admin/waitlist', [WaitlistController::class, 'index']);
+$router->get('/admin/restaurants/:id/waitlist', [WaitlistController::class, 'index']);
+$router->post('/admin/restaurants/:id/waitlist', [WaitlistController::class, 'add']);
+$router->post('/admin/restaurants/:id/waitlist/:entry_id/position', [WaitlistController::class, 'updatePosition']);
+$router->post('/admin/restaurants/:id/waitlist/:entry_id/notify', [WaitlistController::class, 'notify']);
+$router->post('/admin/restaurants/:id/waitlist/:entry_id/remove', [WaitlistController::class, 'remove']);
+
+// Menu & 86-List
+$router->get('/admin/menu', [MenuItemController::class, 'index']);
+$router->get('/admin/restaurants/:id/menu', [MenuItemController::class, 'index']);
+$router->post('/admin/restaurants/:id/menu', [MenuItemController::class, 'store']);
+$router->get('/admin/restaurants/:id/menu/86', [MenuItemController::class, 'list86']);
+$router->post('/admin/restaurants/:id/menu/:item_id/toggle-86', [MenuItemController::class, 'toggle86']);
+
+// Staff RBAC
+$router->get('/admin/staff', [StaffRBACController::class, 'index']);
+$router->get('/admin/restaurants/:id/staff', [StaffRBACController::class, 'index']);
+$router->get('/admin/restaurants/:id/staff/create', [StaffRBACController::class, 'create']);
+$router->post('/admin/restaurants/:id/staff/invite', [StaffRBACController::class, 'invite']);
+$router->post('/admin/restaurants/:id/staff/:user_id/revoke', [StaffRBACController::class, 'revokeAccess']);
+$router->post('/admin/restaurants/:id/staff/:user_id/role', [StaffRBACController::class, 'updateRole']);
+
+// Analytics & Reporting
+$router->get('/admin/analytics', [AnalyticsController::class, 'dashboard']);
+$router->get('/admin/restaurants/:id/analytics', [AnalyticsController::class, 'dashboard']);
+$router->get('/admin/restaurants/:id/analytics/turnover', [AnalyticsController::class, 'turnover']);
+$router->get('/admin/restaurants/:id/analytics/peak-hours', [AnalyticsController::class, 'peakHours']);
+$router->get('/admin/restaurants/:id/analytics/no-show-rate', [AnalyticsController::class, 'noShowRate']);
+$router->get('/admin/restaurants/:id/analytics/top-items', [AnalyticsController::class, 'topItems']);
+$router->get('/admin/restaurants/:id/analytics/revenue', [AnalyticsController::class, 'revenue']);
+
+// Review Moderation
+$router->get('/admin/reviews', [ReviewModerationController::class, 'pending']);
+$router->get('/admin/restaurants/:id/reviews', [ReviewModerationController::class, 'pending']);
+$router->post('/admin/restaurants/:id/reviews/:review_id/approve', [ReviewModerationController::class, 'approve']);
+$router->post('/admin/restaurants/:id/reviews/:review_id/reject', [ReviewModerationController::class, 'reject']);
+$router->post('/admin/restaurants/:id/reviews/:review_id/reply', [ReviewModerationController::class, 'reply']);
 
 // 12. Healthcheck Telemetry Probe (Public JSON endpoint for orchestration).
 $router->get('/health', function (Request $req, Response $res): void {

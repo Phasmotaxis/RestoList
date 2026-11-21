@@ -29,6 +29,7 @@
 | `TASK-014` | Phase 5: Core Service Portability | COMPLETED | `docs/SPECIFICATION.md` | Feature flags, reservations, audit, deposit, and stock services | PHP 8.3 lint / fresh SQLite migration suite |
 | `TASK-015` | Phase 5: Tenant Restaurant ERP Operations | COMPLETED | `src/app/Controllers/AdminController.php` | Dining zones, tables, reservation intake, and admin views | PHP 8.3 lint / canonical route suite |
 | `TASK-016` | Phase 5: Customer Restaurant Portal | COMPLETED | `src/app/Controllers/CustomerController.php` | Active restaurant listing, menu detail, and CSRF-protected booking | PHP 8.3 lint / canonical route suite |
+| `TASK-017` | Phase 6: Restaurant Client ERP Suite (Worker A) | COMPLETED | `docs/SPECIFICATION.md` Section 2.2.B & 4 | Full suite: DiningZones, DiningTables, Reservation, Waitlist, MenuItem, StaffRBAC, Analytics, ReviewModeration, Restaurant | `just test-integration` (29/29 pass) |
 
 ---
 

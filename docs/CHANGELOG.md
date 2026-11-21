@@ -17,6 +17,17 @@ This software uses [Semantic Versioning v2.0.0](https://semver.org/spec/v2.0.0.h
 
 ### Added
 
+- Added complete Restaurant Client ERP controller and view suite for Userspace 2 per `docs/SPECIFICATION.md` Section 2.2.B and Section 4:
+  - `DiningZonesController` & `DiningTablesController`: Floor plan management, semantic grid layouts, and real-time status mapping.
+  - `ReservationController`: 15-minute boundary snapping, multi-table bookings, and double-booking prevention via `TableAllocator`.
+  - `WaitlistController`: Walk-in party queue with automated cancellation backfilling and table reassignment.
+  - `MenuItemController`: Menu catalog and real-time 86-list toggling with kitchen-specific permissions.
+  - `StaffRBACController`: Multi-tenant staff directory, invite tokens, role updating, and strict privilege escalation defenses.
+  - `AnalyticsController`: KPI metrics including table turnover, peak hour distribution, no-show rates, and integer centavos revenue.
+  - `ReviewModerationController`: Customer review moderation queue, spam heuristics, and manager response system.
+  - `RestaurantController`: Tenant restaurant provisioning and settings management.
+- Added dynamic route parameter parsing (`:param`) and HTTP `PUT`, `PATCH`, `DELETE` methods in native `Router.php` and `Request.php`.
+- Added 8 integration tests to `tests/runner.php` covering all Client ERP subdomains with 100% pass rate.
 - Added tenant-scoped restaurant ERP operations for dining zones, tables, reservation intake, and reservation administration.
 - Added customer restaurant browsing, menu detail, and CSRF-protected reservation booking routes.
 

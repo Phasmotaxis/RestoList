@@ -12,6 +12,43 @@ namespace App\Core;
  */
 class Request
 {
+    private array $routeParams = [];
+
+    /**
+     * Store route parameters matched from dynamic route patterns.
+     *
+     * @param array $params Key-value map of route parameters.
+     * @return void
+     */
+    public function setRouteParams(array $params): void
+    {
+        $this->routeParams = $params;
+    }
+
+    /**
+     * Retrieve all matched route parameters.
+     *
+     * @return array
+     */
+    public function getRouteParams(): array
+    {
+        return $this->routeParams;
+    }
+
+    /**
+     * Retrieve specific route or request parameter by key.
+     *
+     * Checks route parameters first, then $_GET, then $_POST, returning $default if absent.
+     *
+     * @param string $key Parameter name.
+     * @param mixed $default Fallback value if key is not found.
+     * @return mixed
+     */
+    public function getParam(string $key, mixed $default = null): mixed
+    {
+        return $this->routeParams[$key] ?? $_GET[$key] ?? $_POST[$key] ?? $default;
+    }
+
     /**
      * Retrieve HTTP request method (GET, POST, etc.).
      *
@@ -41,27 +78,42 @@ class Request
     }
 
     /**
-     * Retrieve sanitized request body (GET or POST parameters).
+     * Retrieve sanitized request body (GET, POST, or JSON payload).
      *
-     * Collects parameters from $_GET (if GET method) or $_POST (if POST method).
-     * Sanitizes each value via FILTER_SANITIZE_SPECIAL_CHARS to encode HTML entities.
-     * Prevents common XSS vectors in user-controlled form fields.
+     * Collects parameters from $_GET (if GET method) or $_POST/JSON (if POST/PUT/PATCH/DELETE method).
+     * Sanitizes string values via FILTER_SANITIZE_SPECIAL_CHARS to encode HTML entities.
      *
-     * @return array Associative array of sanitized parameters [key => sanitized_value, ...].
+     * @return array Associative array of request parameters.
      */
     public function getBody(): array
     {
         $data = [];
-        if ($this->getMethod() === 'GET') {
+        $method = $this->getMethod();
+
+        if ($method === 'GET') {
             foreach ($_GET as $key => $value) {
                 $data[$key] = filter_input(INPUT_GET, $key, FILTER_SANITIZE_SPECIAL_CHARS);
             }
+            return $data;
         }
-        if ($this->getMethod() === 'POST') {
-            foreach ($_POST as $key => $value) {
-                $data[$key] = filter_input(INPUT_POST, $key, FILTER_SANITIZE_SPECIAL_CHARS);
+
+        $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
+        if (strpos($contentType, 'application/json') !== false) {
+            $raw = file_get_contents('php://input');
+            $decoded = json_decode($raw, true);
+            if (is_array($decoded)) {
+                return $decoded;
             }
         }
+
+        foreach ($_POST as $key => $value) {
+            if (is_string($value)) {
+                $data[$key] = filter_input(INPUT_POST, $key, FILTER_SANITIZE_SPECIAL_CHARS);
+            } else {
+                $data[$key] = $value;
+            }
+        }
+
         return $data;
     }
 }
