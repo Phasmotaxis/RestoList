@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta name="apple-mobile-web-app-title" content="Login - EIMS" />
-    <meta name="twitter:title" content="Login - EIMS" />
-    <meta property="og:site_name" content="Login - EIMS" />
-    <meta property="og:title" content="Login - EIMS" />
-    <title>Login - EIMS</title>
+    <meta name="apple-mobile-web-app-title" content="Tenant Organizations - SuperAdmin" />
+    <meta name="twitter:title" content="Tenant Organizations - SuperAdmin" />
+    <meta property="og:site_name" content="Tenant Organizations - SuperAdmin" />
+    <meta property="og:title" content="Tenant Organizations - SuperAdmin" />
+    <title>Tenant Organizations - SuperAdmin</title>
 
     <meta name="author" content="EIMS Development Team">
 
@@ -56,19 +56,67 @@
         </div>
     </header>
     <main class="container">
-<section class="card card-auth">
-    <h2>Authentication</h2>
-        <form method="POST" action="/login">
-        <input type="hidden" name="_csrf" value="97cb030b4730158db61946ef28b283e511395e0923387abbf3e2d46485318639">        <div class="form-group">
-            <label for="email" class="form-label">Email Address</label>
-            <input type="email" id="email" name="email" class="form-input" required autocomplete="email">
+<section class="card">
+    <div class="header-actions">
+        <div>
+            <h2>Tenant Organizations</h2>
+            <p class="subtitle">Global multi-tenant provisioning and quota management</p>
         </div>
-        <div class="form-group-lg">
-            <label for="password" class="form-label">Password</label>
-            <input type="password" id="password" name="password" class="form-input" required autocomplete="current-password">
+        <a href="/superadmin/dashboard" class="link-nav">&larr; Back to Dashboard</a>
+    </div>
+</section>
+
+<section class="card">
+    <h3>Provision New Tenant Organization</h3>
+    <form method="POST" action="/superadmin/organizations" class="form-grid-org" novalidate>
+        <input type="hidden" name="_csrf" value="81182b14ff7d059577d715f9b7a155d807dafec23ce2c1d7c74f6cf6cef6df45">        <div>
+            <label for="name" class="form-label">Organization Name</label>
+            <input type="text" id="name" name="name" class="form-input" required maxlength="255" value="" placeholder="e.g. CvSU Silang Campus" aria-describedby="name_error">
+                    </div>
+        <div>
+            <label for="subdomain" class="form-label">Subdomain Slug</label>
+            <input type="text" id="subdomain" name="subdomain" class="form-input" required maxlength="64" value="" placeholder="e.g. cvsu-silang" aria-describedby="subdomain_error">
+                    </div>
+        <div>
+            <button type="submit" class="btn-primary">Provision Tenant</button>
         </div>
-        <button type="submit" class="btn-primary">Sign In</button>
     </form>
+</section>
+
+<section class="card">
+    <h3>Existing Tenant Organizations</h3>
+    <div class="table-wrapper">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Tenant ID</th>
+                    <th>Organization Name</th>
+                    <th>Subdomain</th>
+                    <th>Status</th>
+                    <th>Created At</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                                    <tr>
+                        <td><code>tenant-cvsu-educ-002</code></td>
+                        <td class="text-bold">CvSU College of Education</td>
+                        <td><code>cvsu-educ</code></td>
+                        <td><span class="badge-status-active">Active</span></td>
+                        <td>2026-11-21 06:52:00</td>
+                        <td><a href="/superadmin/organizations/edit?id=tenant-cvsu-educ-002" class="link-nav">Edit</a></td>
+                    </tr>
+                                    <tr>
+                        <td><code>tenant-cvsu-main-001</code></td>
+                        <td class="text-bold">Cavite State University Main Campus</td>
+                        <td><code>cvsu-main</code></td>
+                        <td><span class="badge-status-active">Active</span></td>
+                        <td>2026-11-21 06:52:00</td>
+                        <td><a href="/superadmin/organizations/edit?id=tenant-cvsu-main-001" class="link-nav">Edit</a></td>
+                    </tr>
+                            </tbody>
+        </table>
+    </div>
 </section>
     </main>
     <footer class="site-footer container">

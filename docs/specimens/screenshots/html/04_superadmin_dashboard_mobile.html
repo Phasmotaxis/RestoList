@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta name="apple-mobile-web-app-title" content="Login - EIMS" />
-    <meta name="twitter:title" content="Login - EIMS" />
-    <meta property="og:site_name" content="Login - EIMS" />
-    <meta property="og:title" content="Login - EIMS" />
-    <title>Login - EIMS</title>
+    <meta name="apple-mobile-web-app-title" content="SuperAdmin Console - EIMS" />
+    <meta name="twitter:title" content="SuperAdmin Console - EIMS" />
+    <meta property="og:site_name" content="SuperAdmin Console - EIMS" />
+    <meta property="og:title" content="SuperAdmin Console - EIMS" />
+    <title>SuperAdmin Console - EIMS</title>
 
     <meta name="author" content="EIMS Development Team">
 
@@ -56,19 +56,42 @@
         </div>
     </header>
     <main class="container">
-<section class="card card-auth">
-    <h2>Authentication</h2>
-        <form method="POST" action="/login">
-        <input type="hidden" name="_csrf" value="250b0cc707c0af245dc5e1d757ca86535202c9f6500f8f87c64e58e4488fbf2a">        <div class="form-group">
-            <label for="email" class="form-label">Email Address</label>
-            <input type="email" id="email" name="email" class="form-input" required autocomplete="email">
-        </div>
-        <div class="form-group-lg">
-            <label for="password" class="form-label">Password</label>
-            <input type="password" id="password" name="password" class="form-input" required autocomplete="current-password">
-        </div>
-        <button type="submit" class="btn-primary">Sign In</button>
-    </form>
+<section class="card">
+    <h2>Global Deployment Control Plane</h2>
+    <p class="subtitle">Complete visibility across all tenant organizations, organization admins, and active users.</p>
+</section>
+
+<div class="specimen-grid-cards">
+    <div class="card specimen-card-tight">
+        <h3>Tenant Organizations</h3>
+        <p class="specimen-stat-primary">0</p>
+        <p class="subtitle">Active enterprise tenants</p>
+    </div>
+    <div class="card specimen-card-tight">
+        <h3>Organization Admins</h3>
+        <p class="specimen-stat-accent">0</p>
+        <p class="subtitle">Scoped tenant administrators</p>
+    </div>
+    <div class="card specimen-card-tight">
+        <h3>Total Users</h3>
+        <p class="specimen-stat-primary">0</p>
+        <p class="subtitle">Global user accounts across tenants</p>
+    </div>
+    <div class="card specimen-card-tight">
+        <h3>Audit Records</h3>
+        <p class="specimen-stat-muted">0</p>
+        <p class="subtitle">Total captured system actions</p>
+    </div>
+</div>
+
+<section class="card">
+    <h3>SuperAdmin Operations</h3>
+    <ul class="specimen-action-list">
+        <li><a href="/superadmin/organizations" class="specimen-link-primary">Manage Organizations &rarr;</a></li>
+        <li><a href="/superadmin/users" class="specimen-link-primary">All Users Directory &rarr;</a></li>
+        <li><a href="/superadmin/audit-logs" class="specimen-link-primary">Global Security Logs &rarr;</a></li>
+        <li><form method="POST" action="/logout" class="specimen-inline-form"><input type="hidden" name="_csrf" value="81182b14ff7d059577d715f9b7a155d807dafec23ce2c1d7c74f6cf6cef6df45"><button type="submit" class="specimen-button-danger">Logout &rarr;</button></form></li>
+    </ul>
 </section>
     </main>
     <footer class="site-footer container">

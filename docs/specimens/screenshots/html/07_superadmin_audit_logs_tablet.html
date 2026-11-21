@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta name="apple-mobile-web-app-title" content="Login - EIMS" />
-    <meta name="twitter:title" content="Login - EIMS" />
-    <meta property="og:site_name" content="Login - EIMS" />
-    <meta property="og:title" content="Login - EIMS" />
-    <title>Login - EIMS</title>
+    <meta name="apple-mobile-web-app-title" content="Global Audit Logs - SuperAdmin" />
+    <meta name="twitter:title" content="Global Audit Logs - SuperAdmin" />
+    <meta property="og:site_name" content="Global Audit Logs - SuperAdmin" />
+    <meta property="og:title" content="Global Audit Logs - SuperAdmin" />
+    <title>Global Audit Logs - SuperAdmin</title>
 
     <meta name="author" content="EIMS Development Team">
 
@@ -56,19 +56,169 @@
         </div>
     </header>
     <main class="container">
-<section class="card card-auth">
-    <h2>Authentication</h2>
-        <form method="POST" action="/login">
-        <input type="hidden" name="_csrf" value="eae2454f494ab7dcacbc59768a8392b2c9722e15c9329a44eb029fb5a6690503">        <div class="form-group">
-            <label for="email" class="form-label">Email Address</label>
-            <input type="email" id="email" name="email" class="form-input" required autocomplete="email">
+<section class="card">
+    <div class="header-actions">
+        <div>
+            <h2>Global Security Audit Stream</h2>
+            <p class="subtitle">System-wide immutable security and administrative event ledger</p>
         </div>
-        <div class="form-group-lg">
-            <label for="password" class="form-label">Password</label>
-            <input type="password" id="password" name="password" class="form-input" required autocomplete="current-password">
-        </div>
-        <button type="submit" class="btn-primary">Sign In</button>
-    </form>
+        <a href="/superadmin/dashboard" class="link-nav">&larr; Back to Dashboard</a>
+    </div>
+</section>
+
+<section class="card">
+    <div class="table-wrapper">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Event ID</th>
+                    <th>Action</th>
+                    <th>Tenant</th>
+                    <th>Entity</th>
+                    <th>Details</th>
+                    <th>IP Address</th>
+                    <th>Timestamp</th>
+                </tr>
+            </thead>
+            <tbody>
+                                    <tr>
+                        <td><code>log-bd764538d9c40820</code></td>
+                        <td><code class="code-action">AUTH_LOGOUT</code></td>
+                        <td>N/A</td>
+                        <td>users:usr-user-003</td>
+                        <td>User logged out</td>
+                        <td><code>127.0.0.1</code></td>
+                        <td>2026-11-21 06:57:23</td>
+                    </tr>
+                                    <tr>
+                        <td><code>log-1cc496f8b7013ac8</code></td>
+                        <td><code class="code-action">AUTH_LOGIN</code></td>
+                        <td>N/A</td>
+                        <td>users:usr-user-003</td>
+                        <td>User logged in successfully</td>
+                        <td><code>127.0.0.1</code></td>
+                        <td>2026-11-21 06:57:18</td>
+                    </tr>
+                                    <tr>
+                        <td><code>log-6d3e363bf3833658</code></td>
+                        <td><code class="code-action">AUTH_LOGIN</code></td>
+                        <td>N/A</td>
+                        <td>users:usr-admin-002</td>
+                        <td>User logged in successfully</td>
+                        <td><code>127.0.0.1</code></td>
+                        <td>2026-11-21 06:57:18</td>
+                    </tr>
+                                    <tr>
+                        <td><code>log-a0e27589df482a41</code></td>
+                        <td><code class="code-action">AUTH_LOGIN</code></td>
+                        <td>N/A</td>
+                        <td>users:usr-superadmin-001</td>
+                        <td>User logged in successfully</td>
+                        <td><code>127.0.0.1</code></td>
+                        <td>2026-11-21 06:57:18</td>
+                    </tr>
+                                    <tr>
+                        <td><code>log-668c660c57efe651</code></td>
+                        <td><code class="code-action">AUTH_LOGOUT</code></td>
+                        <td>N/A</td>
+                        <td>users:usr-user-003</td>
+                        <td>User logged out</td>
+                        <td><code>127.0.0.1</code></td>
+                        <td>2026-11-21 06:53:18</td>
+                    </tr>
+                                    <tr>
+                        <td><code>log-08a9a5c6a2a6d543</code></td>
+                        <td><code class="code-action">AUTH_LOGIN</code></td>
+                        <td>N/A</td>
+                        <td>users:usr-user-003</td>
+                        <td>User logged in successfully</td>
+                        <td><code>127.0.0.1</code></td>
+                        <td>2026-11-21 06:53:13</td>
+                    </tr>
+                                    <tr>
+                        <td><code>log-2408f217cee6a9f1</code></td>
+                        <td><code class="code-action">AUTH_LOGIN</code></td>
+                        <td>N/A</td>
+                        <td>users:usr-admin-002</td>
+                        <td>User logged in successfully</td>
+                        <td><code>127.0.0.1</code></td>
+                        <td>2026-11-21 06:53:13</td>
+                    </tr>
+                                    <tr>
+                        <td><code>log-fe33a1e2a7305302</code></td>
+                        <td><code class="code-action">AUTH_LOGIN</code></td>
+                        <td>N/A</td>
+                        <td>users:usr-superadmin-001</td>
+                        <td>User logged in successfully</td>
+                        <td><code>127.0.0.1</code></td>
+                        <td>2026-11-21 06:53:13</td>
+                    </tr>
+                                    <tr>
+                        <td><code>log-1f5db5ce68ac4066</code></td>
+                        <td><code class="code-action">AUTH_LOGOUT</code></td>
+                        <td>N/A</td>
+                        <td>users:usr-user-003</td>
+                        <td>User logged out</td>
+                        <td><code>127.0.0.1</code></td>
+                        <td>2026-11-21 06:52:29</td>
+                    </tr>
+                                    <tr>
+                        <td><code>log-62bf997bc00a577b</code></td>
+                        <td><code class="code-action">AUTH_LOGIN</code></td>
+                        <td>N/A</td>
+                        <td>users:usr-user-003</td>
+                        <td>User logged in successfully</td>
+                        <td><code>127.0.0.1</code></td>
+                        <td>2026-11-21 06:52:22</td>
+                    </tr>
+                                    <tr>
+                        <td><code>log-786ba8534b4216bd</code></td>
+                        <td><code class="code-action">AUTH_LOGIN</code></td>
+                        <td>N/A</td>
+                        <td>users:usr-admin-002</td>
+                        <td>User logged in successfully</td>
+                        <td><code>127.0.0.1</code></td>
+                        <td>2026-11-21 06:52:22</td>
+                    </tr>
+                                    <tr>
+                        <td><code>log-c1f21a0722576a30</code></td>
+                        <td><code class="code-action">AUTH_LOGIN</code></td>
+                        <td>N/A</td>
+                        <td>users:usr-superadmin-001</td>
+                        <td>User logged in successfully</td>
+                        <td><code>127.0.0.1</code></td>
+                        <td>2026-11-21 06:52:22</td>
+                    </tr>
+                                    <tr>
+                        <td><code>log-init-001</code></td>
+                        <td><code class="code-action">SYSTEM_INIT</code></td>
+                        <td>N/A</td>
+                        <td>system:root</td>
+                        <td>Initial system genesis provisioning executed</td>
+                        <td><code>127.0.0.1</code></td>
+                        <td>2026-11-21 06:52:00</td>
+                    </tr>
+                                    <tr>
+                        <td><code>log-init-002</code></td>
+                        <td><code class="code-action">TENANT_PROVISION</code></td>
+                        <td>N/A</td>
+                        <td>tenants:tenant-cvsu-main-001</td>
+                        <td>Tenant verified and activated</td>
+                        <td><code>127.0.0.1</code></td>
+                        <td>2026-11-21 06:52:00</td>
+                    </tr>
+                                    <tr>
+                        <td><code>log-init-003</code></td>
+                        <td><code class="code-action">USER_ONBOARD</code></td>
+                        <td>N/A</td>
+                        <td>users:usr-user-003</td>
+                        <td>Standard user initialized</td>
+                        <td><code>127.0.0.1</code></td>
+                        <td>2026-11-21 06:52:00</td>
+                    </tr>
+                            </tbody>
+        </table>
+    </div>
 </section>
     </main>
     <footer class="site-footer container">

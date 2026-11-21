@@ -8,6 +8,8 @@ A high-assurance, multi-tenant restaurant operations management platform enginee
 
 ## 1. Primary Documentation Hub
 
+- **Evaluator Demonstration Runbook**: [Demo Runbook](docs/DEMO-RUNBOOK.md)
+- **Academic Defense LaTeX Data Pack**: [LaTeX Telemetry & Data Pack](docs/LATEX-DATA-PACK.md)
 - **Deployment & Operations**: [Getting Started Runbook](docs/GETTING-STARTED.md)
 - **Architectural Rationale (WHY)**: [Architecture Decision Records](docs/dev/specifications/architecture.md)
 - **Active System Contracts (WHAT IS)**:
@@ -18,6 +20,21 @@ A high-assurance, multi-tenant restaurant operations management platform enginee
 - **Release History (WHEN)**: [Project Changelog](docs/CHANGELOG.md)
 - **Third-Party Attribution**: [Clean-Room Notice](docs/NOTICE.md)
 - **Legal Terms**: [MIT License](docs/LICENSE.md) | [Root LICENSE](LICENSE)
+
+---
+
+## 2. Evaluation Accounts & Realistic Multi-Tenant Seed
+
+Pre-configured evaluation accounts for Cavite State University defense (Password: `Password123!`):
+
+| Role | Email | Tenant / Restaurant | Key Capability |
+| :--- | :--- | :--- | :--- |
+| **SuperAdmin** | `superadmin@cvsu.edu.ph` | CvSU Main Commissary | Cross-tenant governance, org feature flags, audit logs |
+| **Admin** | `manager@hirayabistro.ph` | Hiraya Bistro | Restaurant operations, menu items, table configuration |
+| **Staff** | `user@cvsu.edu.ph` | CvSU Main | Self-service shift view, personal data export |
+| **FrontOfHouse**| `foh@cvsu.edu.ph` | Hiraya Bistro | 12x8 floor plan grid, status management, table reservations |
+| **Kitchen** | `kitchen@cvsu.edu.ph` | Hiraya Bistro | Recipe Bill of Materials (BOM), ingredient stock |
+| **Customer** | `customer@cvsu.edu.ph` | Hiraya Bistro / Portal | Online reservation booking, waitlist, deposit ledger |
 
 ---
 

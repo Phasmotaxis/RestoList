@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta name="apple-mobile-web-app-title" content="Login - EIMS" />
-    <meta name="twitter:title" content="Login - EIMS" />
-    <meta property="og:site_name" content="Login - EIMS" />
-    <meta property="og:title" content="Login - EIMS" />
-    <title>Login - EIMS</title>
+    <meta name="apple-mobile-web-app-title" content="Global User Directory - SuperAdmin" />
+    <meta name="twitter:title" content="Global User Directory - SuperAdmin" />
+    <meta property="og:site_name" content="Global User Directory - SuperAdmin" />
+    <meta property="og:title" content="Global User Directory - SuperAdmin" />
+    <title>Global User Directory - SuperAdmin</title>
 
     <meta name="author" content="EIMS Development Team">
 
@@ -56,19 +56,24 @@
         </div>
     </header>
     <main class="container">
-<section class="card card-auth">
-    <h2>Authentication</h2>
-        <form method="POST" action="/login">
-        <input type="hidden" name="_csrf" value="ac68ada0715f8276933fb36090baa47aee39bf02b188b2cfb02a784225fb0ff7">        <div class="form-group">
-            <label for="email" class="form-label">Email Address</label>
-            <input type="email" id="email" name="email" class="form-input" required autocomplete="email">
+<section class="card">
+    <div class="header-actions">
+        <div>
+            <h2>Global User Directory</h2>
+            <p class="subtitle">Cross-tenant visibility across all organization administrators and users</p>
         </div>
-        <div class="form-group-lg">
-            <label for="password" class="form-label">Password</label>
-            <input type="password" id="password" name="password" class="form-input" required autocomplete="current-password">
-        </div>
-        <button type="submit" class="btn-primary">Sign In</button>
-    </form>
+        <a href="/superadmin/dashboard" class="link-nav">&larr; Back to Dashboard</a>
+    </div>
+</section>
+
+<section class="card">
+    <form method="GET" action="/superadmin/users" class="form-grid-admin" role="search">
+        <div>
+            <label for="q" class="form-label">Search email or name</label>
+            <input type="search" id="q" name="q" class="form-input" maxlength="100" value="<section class="card card-error">
+    <h2 class="error-title">500 Internal Server Error</h2>
+    <p>An unexpected error occurred. Give this request ID to the administrator:</p>
+    <p><code>fcc5d08a0247</code></p>
 </section>
     </main>
     <footer class="site-footer container">
