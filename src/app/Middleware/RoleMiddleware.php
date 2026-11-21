@@ -17,7 +17,10 @@ class RoleMiddleware
 {
     public const ROLE_SUPERADMIN = 1 << 0; // 1
     public const ROLE_ADMIN       = 1 << 1; // 2
-    public const ROLE_USER        = 1 << 2; // 4
+    public const ROLE_USER         = 1 << 2; // 4
+    public const ROLE_FRONTOFHOUSE = 1 << 3; // 8
+    public const ROLE_KITCHEN      = 1 << 4; // 16
+    public const ROLE_CUSTOMER     = 1 << 5; // 32
 
     /**
      * Check if user role mask satisfies required permission.

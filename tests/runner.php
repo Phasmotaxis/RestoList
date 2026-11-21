@@ -405,6 +405,161 @@ registerTest(
 );
 
 // ============================================================================
+// TABLE ALLOCATOR TESTS (Concurrency, Double-Booking, Slot Cleanup, Combinable)
+// ============================================================================
+
+function setupTableAllocatorTestDb(): \PDO {
+    $srcDir = is_dir('/src') ? '/src' : (is_dir(__DIR__ . '/../src') ? realpath(__DIR__ . '/../src') : '/var/www/html');
+    require_once $srcDir . '/app/Core/Database.php';
+    require_once $srcDir . '/app/Services/TableAllocator.php';
+
+    putenv('DB_CONNECTION=sqlite');
+    putenv('DB_SQLITE_PATH=:memory:');
+    \App\Core\Database::resetConnection();
+    $pdo = \App\Core\Database::getConnection();
+
+    $pdo->exec('CREATE TABLE IF NOT EXISTS dining_zones (
+        id VARCHAR(36) PRIMARY KEY,
+        org_id VARCHAR(36) NOT NULL,
+        name VARCHAR(128) NOT NULL,
+        capacity INTEGER NOT NULL DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        archived_at TIMESTAMP NULL
+    );');
+
+    $pdo->exec('CREATE TABLE IF NOT EXISTS dining_tables (
+        id VARCHAR(36) PRIMARY KEY,
+        org_id VARCHAR(36) NOT NULL,
+        zone_id VARCHAR(36),
+        label VARCHAR(64) NOT NULL,
+        capacity INTEGER NOT NULL,
+        x_coord INTEGER NOT NULL DEFAULT 0,
+        y_coord INTEGER NOT NULL DEFAULT 0,
+        is_combinable INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        archived_at TIMESTAMP NULL
+    );');
+
+    $pdo->exec('CREATE TABLE IF NOT EXISTS reservations (
+        id VARCHAR(36) PRIMARY KEY,
+        org_id VARCHAR(36) NOT NULL,
+        customer_id VARCHAR(36),
+        party_size INTEGER NOT NULL,
+        start_at DATETIME NOT NULL,
+        end_at DATETIME NOT NULL,
+        status VARCHAR(32) NOT NULL DEFAULT "pending",
+        notes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );');
+
+    $pdo->exec('CREATE TABLE IF NOT EXISTS reservation_tables (
+        reservation_id VARCHAR(36) NOT NULL,
+        table_id VARCHAR(36) NOT NULL,
+        PRIMARY KEY (reservation_id, table_id)
+    );');
+
+    $pdo->exec('CREATE TABLE IF NOT EXISTS reservation_slots (
+        org_id VARCHAR(36) NOT NULL,
+        table_id VARCHAR(36) NOT NULL,
+        slot_start_utc DATETIME NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (org_id, table_id, slot_start_utc)
+    );');
+
+    // Seed test zone and tables
+    $pdo->exec("INSERT OR IGNORE INTO dining_zones (id, org_id, name, capacity) VALUES ('zone-1', 'org-1', 'Main Hall', 20);");
+    $pdo->exec("INSERT OR IGNORE INTO dining_tables (id, org_id, zone_id, label, capacity, is_combinable) VALUES
+        ('tbl-1', 'org-1', 'zone-1', 'T1', 4, 1),
+        ('tbl-2', 'org-1', 'zone-1', 'T2', 4, 1),
+        ('tbl-3', 'org-1', 'zone-1', 'T3', 2, 0);");
+
+    return $pdo;
+}
+
+registerTest(
+    'table_allocator_double_booking_prevention',
+    function(): bool {
+        setupTableAllocatorTestDb();
+        $orgId = 'org-1';
+        $tableIds = ['tbl-1'];
+        $startAt = '2026-11-25 18:00:00';
+        $endAt = '2026-11-25 19:00:00';
+
+        // First reservation succeeds
+        $resId1 = \App\Services\TableAllocator::allocateReservation($orgId, $tableIds, $startAt, $endAt, 4, 'usr-1');
+        assert_equal(!empty($resId1), 'First reservation allocation failed');
+
+        // Second overlapping reservation for same table MUST fail
+        $conflictDetected = false;
+        try {
+            \App\Services\TableAllocator::allocateReservation($orgId, $tableIds, '2026-11-25 18:30:00', '2026-11-25 19:30:00', 4, 'usr-2');
+        } catch (\Throwable $e) {
+            $conflictDetected = true;
+        }
+
+        assert_equal($conflictDetected, 'Double-booking was not prevented on conflicting time window');
+        return true;
+    },
+    'TableAllocator double-booking prevention: overlapping reservation rejected'
+);
+
+registerTest(
+    'table_allocator_slot_cleanup_on_cancel',
+    function(): bool {
+        $pdo = setupTableAllocatorTestDb();
+        $orgId = 'org-1';
+        $tableIds = ['tbl-3'];
+        $startAt = '2026-11-25 20:00:00';
+        $endAt = '2026-11-25 21:00:00';
+
+        $resId = \App\Services\TableAllocator::allocateReservation($orgId, $tableIds, $startAt, $endAt, 2, 'usr-3');
+
+        // Verify slots were created
+        $stmt = $pdo->prepare('SELECT COUNT(*) as cnt FROM reservation_slots WHERE org_id = ? AND table_id = ?');
+        $stmt->execute([$orgId, 'tbl-3']);
+        $slotsBefore = (int) ($stmt->fetch()['cnt'] ?? 0);
+        assert_equal($slotsBefore === 4, "Expected 4 15-min slots for 1hr window, found {$slotsBefore}");
+
+        // Cancel reservation
+        \App\Services\TableAllocator::cancelReservation($resId);
+
+        // Verify slots were atomically released
+        $stmt->execute([$orgId, 'tbl-3']);
+        $slotsAfter = (int) ($stmt->fetch()['cnt'] ?? 0);
+        assert_equal($slotsAfter === 0, "Slots were not cleaned up on cancellation: {$slotsAfter} remaining");
+
+        // Verify slot is now bookable again
+        $newResId = \App\Services\TableAllocator::allocateReservation($orgId, $tableIds, $startAt, $endAt, 2, 'usr-4');
+        assert_equal(!empty($newResId), 'Slot could not be re-booked after cancellation');
+        return true;
+    },
+    'TableAllocator slot cleanup: cancelled reservation releases slots for rebooking'
+);
+
+registerTest(
+    'table_allocator_combinable_tables',
+    function(): bool {
+        $pdo = setupTableAllocatorTestDb();
+        $orgId = 'org-1';
+        $tableIds = ['tbl-1', 'tbl-2']; // Combining two 4-top tables for party of 8
+        $startAt = '2026-11-26 12:00:00';
+        $endAt = '2026-11-26 13:00:00';
+
+        $resId = \App\Services\TableAllocator::allocateReservation($orgId, $tableIds, $startAt, $endAt, 8, 'usr-5');
+        assert_equal(!empty($resId), 'Combinable multi-table allocation failed');
+
+        // Verify both tables have slots recorded
+        $stmt = $pdo->prepare('SELECT COUNT(*) as cnt FROM reservation_slots WHERE org_id = ? AND slot_start_utc = ?');
+        $stmt->execute([$orgId, '2026-11-26 12:00:00']);
+        $count = (int) ($stmt->fetch()['cnt'] ?? 0);
+        assert_equal($count === 2, 'Both combinable tables must have slots booked');
+        return true;
+    },
+    'TableAllocator combinable tables: multi-table booking locks all linked tables'
+);
+
+// ============================================================================
 // RUN ALL TESTS & REPORT COVERAGE
 // ============================================================================
 

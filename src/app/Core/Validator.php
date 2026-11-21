@@ -126,7 +126,7 @@ class Validator
      *
      * @return bool true if UNIQUE constraint violation; false for other integrity errors.
      *
-     * @example if (Validator::isUniqueViolation($e)) { /* email already exists */ }
+     * @example if (Validator::isUniqueViolation($e)) { // email already exists }
      */
     public static function isUniqueViolation(PDOException $e): bool
     {

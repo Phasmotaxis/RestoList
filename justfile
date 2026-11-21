@@ -42,9 +42,9 @@ test-sabotage:
 test-hardening:
     docker run --rm -v "$PWD/src":/app -v "$PWD/dev":/dev-scripts:ro -e DB_CONNECTION=sqlite -e DB_SQLITE_PATH=/tmp/hardening.sqlite -w /app php:8.3-cli php /dev-scripts/scripts/php/test-hardening.php
 
-# Execute consolidated integration test suite (RBAC, logout, rate-limit, XSS, CSP, debug suppression)
+# Execute consolidated integration test suite (RBAC, logout, rate-limit, XSS, CSP, debug suppression, TableAllocator)
 test-integration:
-    docker run --rm -v "$PWD/tests":/tests:ro -w /tests php:8.3-cli php runner.php
+    docker run --rm -v "$PWD/tests":/tests:ro -v "$PWD/src":/src:ro -e DB_CONNECTION=sqlite -e DB_SQLITE_PATH=/tmp/test.sqlite -w /tests php:8.3-cli php runner.php
 
 # Execute database failover chaos engineering test
 test-chaos:
