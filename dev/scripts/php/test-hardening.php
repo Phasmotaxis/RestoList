@@ -13,13 +13,16 @@ declare(strict_types=1);
  * wire, logout cookie invalidation, per-route authorization) are not in this file and are not run by `just test`.
  */
 
-require_once '/app/app/Core/Config.php';
-require_once '/app/app/Core/Database.php';
-require_once '/app/app/Core/Validator.php';
-require_once '/app/app/Core/ListQuery.php';
-require_once '/app/app/Core/LoginThrottle.php';
-require_once '/app/app/Core/ErrorHandler.php';
-require_once '/app/app/Core/Session.php';
+$appDir = is_dir('/app/app') ? '/app' : (is_dir('/var/www/html/app') ? '/var/www/html' : dirname(__DIR__, 3) . '/src');
+$devDir = is_dir('/dev-scripts') ? '/dev-scripts' : (is_dir('/var/www/dev') ? '/var/www/dev' : dirname(__DIR__, 3) . '/dev');
+
+require_once $appDir . '/app/Core/Config.php';
+require_once $appDir . '/app/Core/Database.php';
+require_once $appDir . '/app/Core/Validator.php';
+require_once $appDir . '/app/Core/ListQuery.php';
+require_once $appDir . '/app/Core/LoginThrottle.php';
+require_once $appDir . '/app/Core/ErrorHandler.php';
+require_once $appDir . '/app/Core/Session.php';
 
 use App\Core\Database;
 use App\Core\ErrorHandler;
@@ -74,8 +77,9 @@ check('unknown role filter ignored', $list['roleMask'] === null);
 
 // SQL payloads through bound parameters leave the table intact.
 putenv('DB_CONNECTION=sqlite');
-putenv('DB_SQLITE_PATH=/tmp/hardening.sqlite');
-@unlink('/tmp/hardening.sqlite');
+$testSqlitePath = is_dir('/dev/shm') ? '/dev/shm/hardening.sqlite' : sys_get_temp_dir() . '/hardening.sqlite';
+putenv('DB_SQLITE_PATH=' . $testSqlitePath);
+@unlink($testSqlitePath);
 $pdo = Database::getConnection();
 Database::executeQuery("INSERT INTO tenants (id, name, subdomain, is_active) VALUES ('t1', 'T', 't1', 1)");
 Database::executeQuery(
@@ -196,20 +200,20 @@ check('detector flags eval()', preg_match($forbidden['eval'], '$x = eval($y);') 
 check('detector ignores PDO ->exec()', preg_match($forbidden['exec'], '$pdo->exec("PRAGMA foreign_keys = ON;");') === 0);
 check('detector flags include from $_GET', preg_match($forbidden['include-from-request'], 'include $_GET["page"];') === 1);
 
-$hits = scanForbidden($forbidden, ['/app/app', '/app/public']);
+$hits = scanForbidden($forbidden, [$appDir . '/app', $appDir . '/public']);
 check('src has no forbidden calls (eval, assert, exec, system, unserialize, variable include)', $hits === []);
 foreach ($hits as $hit) {
     echo "      hit: {$hit}\n";
 }
 
 // --- Export path traversal: the CSV export takes no path input, so no request value reaches a file path. ---
-$exportSrc = (string) file_get_contents('/app/app/Controllers/UserController.php');
+$exportSrc = (string) file_get_contents($appDir . '/app/Controllers/UserController.php');
 $exportBody = substr($exportSrc, (int) strpos($exportSrc, 'function exportData'));
 check('export reads no request input', !str_contains($exportBody, '$_GET') && !str_contains($exportBody, '$_POST') && !str_contains($exportBody, '$request->'));
 check('export opens php://output only, no file path', str_contains($exportBody, "php://output") && !preg_match('/fopen\(\s*\$/', $exportBody));
 
 // --- Mass assignment: createUser and updateUser write only whitelisted columns ---
-$adminSrc = (string) file_get_contents('/app/app/Controllers/AdminController.php');
+$adminSrc = (string) file_get_contents($appDir . '/app/Controllers/AdminController.php');
 check('createUser ignores is_active from POST', !str_contains($adminSrc, "\$_POST['is_active']") && !str_contains($adminSrc, "'is_active'"));
 check('updateUser never reads role_mask from a hidden field alone for SuperAdmin', str_contains($adminSrc, 'ASSIGNABLE_ROLES'));
 
@@ -217,16 +221,16 @@ check('updateUser never reads role_mask from a hidden field alone for SuperAdmin
 check('updateUser applies Validator::password to a new password', str_contains($adminSrc, "Validator::password(\$password)"));
 
 // --- Session and route guards (source-level only; no HTTP requests in this file) ---
-$authSrc = (string) file_get_contents('/app/app/Controllers/AuthController.php');
+$authSrc = (string) file_get_contents($appDir . '/app/Controllers/AuthController.php');
 $regen = strpos($authSrc, 'Session::regenerate()');
 $setUser = strpos($authSrc, "Session::set('user_id'");
 check('login regenerates the session before storing user_id', $regen !== false && $setUser !== false && $regen < $setUser);
-$indexSrc = (string) file_get_contents('/app/public/index.php');
+$indexSrc = (string) file_get_contents($appDir . '/public/index.php');
 check('GET /logout is not routed', !str_contains($indexSrc, "\$router->get('/logout'"));
 check('POST /logout is routed', str_contains($indexSrc, "\$router->post('/logout'"));
 
 // --- Brute force: a spoofed X-Forwarded-For is trusted only from a trusted proxy ---
-\App\Core\Config::load('/dev-scripts/values/constants/main.yaml');
+\App\Core\Config::load($devDir . '/values/constants/main.yaml');
 check('untrusted remote ignores X-Forwarded-For', LoginThrottle::resolveClientIp('203.0.113.50', '10.9.9.1') === '203.0.113.50');
 check('trusted proxy uses first X-Forwarded-For entry', LoginThrottle::resolveClientIp('10.0.0.1', '198.51.100.7, 10.0.0.1') === '198.51.100.7');
 check('trusted proxy with invalid forwarded value keeps remote', LoginThrottle::resolveClientIp('10.0.0.1', 'not-an-ip') === '10.0.0.1');
@@ -240,12 +244,12 @@ check('6th attempt is blocked (429 path)', LoginThrottle::isBlocked('203.0.113.7
 LoginThrottle::reset('sixth@x.test');
 
 // --- Debug flag: the 500 view never shows paths or SQL when debug is off ---
-$handlerSrc = (string) file_get_contents('/app/app/Core/ErrorHandler.php');
+$handlerSrc = (string) file_get_contents($appDir . '/app/Core/ErrorHandler.php');
 $debugBranch = strpos($handlerSrc, 'if (!self::isDebug())');
 $viewBranch = strpos($handlerSrc, 'errors/500.php');
 check('ErrorHandler renders the 500 view before any trace output when debug is off', $debugBranch !== false && $viewBranch !== false && $viewBranch > $debugBranch);
 // Only lines that print output count. The require lines name the layout file but never reach the browser.
-$errView = (string) file_get_contents('/app/app/Views/errors/500.php');
+$errView = (string) file_get_contents($appDir . '/app/Views/errors/500.php');
 $printed = implode("\n", array_filter(explode("\n", $errView), static fn (string $l): bool => !str_contains($l, 'require')));
 check('500 view prints no file, line, trace or SQL markers', !preg_match('/Stack trace|\.php|line \d|SQLSTATE|getTrace|\$e->/i', $printed));
 
@@ -278,8 +282,8 @@ check('edit view $v() escapes script tag', !str_contains($vProbe('first_name'), 
 check('edit view $v() escapes attribute breaker', !str_contains($vProbe('last_name'), '">') && str_contains($vProbe('last_name'), '&quot;&gt;'));
 
 // --- Authorization Matrix: SuperAdmin, Admin tenant A, Admin tenant B, User ---
-require_once '/app/app/Middleware/RoleMiddleware.php';
-require_once '/app/app/Controllers/AdminController.php';
+require_once $appDir . '/app/Middleware/RoleMiddleware.php';
+require_once $appDir . '/app/Controllers/AdminController.php';
 use App\Middleware\RoleMiddleware;
 use App\Controllers\AdminController;
 
@@ -353,14 +357,15 @@ $_SERVER['SERVER_PORT'] = '80';
 check('Session::isHttps returns false for plain HTTP', !\App\Core\Session::isHttps());
 
 // --- Schema & Migrations apply cleanly to fresh SQLite ---
-$freshSqlite = '/tmp/fresh-migration-test.sqlite';
+$freshSqlite = is_dir('/dev/shm') ? '/dev/shm/fresh-migration-test.sqlite' : sys_get_temp_dir() . '/fresh-migration-test.sqlite';
 @unlink($freshSqlite);
 $freshPdo = new PDO("sqlite:{$freshSqlite}", null, null, [
     PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
 ]);
 $freshPdo->exec('PRAGMA foreign_keys = ON;');
 // Run all migrations in order
-$migrationFiles = glob('/app/database/migrations/*.sql');
+$migrationDir = is_dir($appDir . '/database/migrations') ? $appDir . '/database/migrations' : dirname($appDir) . '/database/migrations';
+$migrationFiles = glob($migrationDir . '/*.sql');
 sort($migrationFiles);
 check('at least 4 migration files exist', count($migrationFiles) >= 4);
 

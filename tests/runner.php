@@ -18,8 +18,8 @@ error_reporting(E_ALL);
 ini_set('display_errors', '1');
 
 define('TESTS_DIR', __DIR__);
-define('ROOT_DIR', is_dir(dirname(__DIR__) . '/src') ? dirname(__DIR__) : (is_dir('/app/src') ? '/app' : dirname(dirname(__DIR__))));
-define('SRC_DIR', is_dir(ROOT_DIR . '/src') ? ROOT_DIR . '/src' : (is_dir('/app/src') ? '/app/src' : '/var/www/html/src'));
+define('SRC_DIR', is_dir('/var/www/html/app') ? '/var/www/html' : (is_dir(dirname(__DIR__) . '/src') ? dirname(__DIR__) . '/src' : (is_dir('/src/app') ? '/src' : (is_dir('/app/src') ? '/app/src' : '/var/www/html'))));
+define('ROOT_DIR', dirname(SRC_DIR));
 
 $testCount = 0;
 $passCount = 0;
@@ -766,7 +766,7 @@ registerTest(
         \App\Services\TableAllocator::cancelReservation($resId);
 
         // Run autoBackfill
-        require_once __DIR__ . '/../src/app/Controllers/WaitlistController.php';
+        require_once SRC_DIR . '/app/Controllers/WaitlistController.php';
         $backfilled = \App\Controllers\WaitlistController::autoBackfill($orgId, 4, ['tbl-1']);
 
         assert_equal(!empty($backfilled), 'Waitlist auto-backfill failed to promote waiting party');

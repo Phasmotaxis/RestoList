@@ -7,14 +7,13 @@ set -euo pipefail
 echo "[INFO] === Starting EIMS Panel Sabotage Verification ==="
 
 # 1. Verify strict syntax of all project PHP files inside container
-echo "[TEST 1/4] Checking PHP syntax integrity (php -l)..."
-docker run --rm -v "$(pwd)/src:/var/www/html:ro" eims_app:latest \
-    find /var/www/html -name "*.php" -exec php -l {} + > /dev/null
+echo "[TEST 1/5] Checking PHP syntax integrity (php -l)..."
+docker compose exec -T app find /var/www/html -name "*.php" -exec php -l {} + > /dev/null
 echo "[PASS] All PHP files pass strict syntax validation."
 
 # 2. Verify Warning/Notice elevation to ErrorException
-echo "[TEST 2/4] Testing runtime warning elevation to ErrorException..."
-ELEVATION_TEST=$(docker run --rm -v "$(pwd)/src:/var/www/html:ro" -v "$(pwd)/dev:/var/www/dev:ro" eims_app:latest php -r '
+echo "[TEST 2/5] Testing runtime warning elevation to ErrorException..."
+ELEVATION_TEST=$(docker compose exec -T app php -r '
     require "/var/www/html/app/Core/ErrorHandler.php";
     \App\Core\ErrorHandler::register();
     try {
@@ -32,8 +31,8 @@ else
 fi
 
 # 3. Verify Visual Diagnostic Rendering on Uncaught Exception (requires APP_DEBUG=true)
-echo "[TEST 3/4] Testing Visual Diagnostic Screen rendering on uncaught Throwable..."
-DIAGNOSTIC_OUTPUT=$(docker run --rm -e APP_DEBUG=true -v "$(pwd)/src:/var/www/html:ro" -v "$(pwd)/dev:/var/www/dev:ro" eims_app:latest php -r '
+echo "[TEST 3/5] Testing Visual Diagnostic Screen rendering on uncaught Throwable..."
+DIAGNOSTIC_OUTPUT=$(docker compose exec -T -e APP_DEBUG=true app php -r '
     require "/var/www/html/app/Core/ErrorHandler.php";
     \App\Core\ErrorHandler::register();
     throw new \RuntimeException("Panel examiners deleted critical controller logic!");
@@ -47,8 +46,8 @@ else
 fi
 
 # 4. Verify YAML Dynamic Header Parsing
-echo "[TEST 4/4] Testing dynamic YAML header parsing in partials/header.php..."
-HEADER_TEST=$(docker run --rm -v "$(pwd)/src:/var/www/html:ro" -v "$(pwd)/dev:/var/www/dev:ro" eims_app:latest php -r '
+echo "[TEST 4/5] Testing dynamic YAML header parsing in partials/header.php..."
+HEADER_TEST=$(docker compose exec -T app php -r '
     ob_start();
     require "/var/www/html/app/Views/partials/header.php";
     $output = ob_get_clean();
@@ -68,7 +67,7 @@ fi
 
 # 5. Verify APP_DEBUG=false hides stack traces in HTTP response (production hardening)
 echo "[TEST 5/5] Verifying APP_DEBUG=false suppresses HTTP response trace details..."
-TRACE_HIDDEN=$(docker run --rm -e APP_DEBUG=false -v "$(pwd)/src:/var/www/html:ro" -v "$(pwd)/dev:/var/www/dev:ro" eims_app:latest php -r '
+TRACE_HIDDEN=$(docker compose exec -T -e APP_DEBUG=false app php -r '
     require "/var/www/html/app/Core/ErrorHandler.php";
     \App\Core\ErrorHandler::register();
     ob_start();

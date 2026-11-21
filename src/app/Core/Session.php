@@ -34,6 +34,10 @@ class Session
     public static function start(): void
     {
         if (session_status() === PHP_SESSION_NONE && !headers_sent()) {
+            $savePath = is_dir('/var/www/html/storage/sessions') ? '/var/www/html/storage/sessions' : (is_dir('/dev/shm') ? '/dev/shm' : sys_get_temp_dir());
+            if (is_dir($savePath) && is_writable($savePath)) {
+                @session_save_path($savePath);
+            }
             @session_start([
                 'cookie_httponly' => true,
                 'cookie_samesite' => 'Strict',
