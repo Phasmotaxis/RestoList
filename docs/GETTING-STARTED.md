@@ -31,21 +31,25 @@ For complete step-by-step procedures, refer to the [Getting Started Handbook Ind
 ## 2. Fast-Path Quickstart (POSIX / Linux / WSL2)
 
 ```bash
-# 1. Clone repository and initialize environment
-cp .env.example .env
+# 0. Pre-flight audit: verify Docker, Ports, PHP runtime, and LaTeX toolchains
+just doctor
 
-# 2. Build and boot containerized stack
+# 1. Initialize environment configuration and storage directories
 just setup
+
+# 2. Build and boot containerized stack (includes Docker pre-flight & port collision check)
 just build
 just up
 
-# 3. Apply schema migrations and initial seed records
+# 3. Apply schema migrations and initial seed records (with SQLite fallback detection)
 just migrate
 just seed
 
-# 4. Verify system health and route inventory
+# 4. Verify system health and route inventory (adaptive container or host fallback)
 just test
 ```
+
+If Docker is not running, `just up` provides clear recovery steps and `just fix-docker` attempts auto-escalation. EIMS fully supports offline development and testing: running `just test` automatically falls back to the native host PHP runner and local SQLite fallback database (ADR-002) when Docker is inactive.
 
 Application endpoints:
 - Web Application Gateway: `http://localhost:8080`

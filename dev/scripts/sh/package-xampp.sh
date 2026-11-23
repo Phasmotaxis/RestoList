@@ -33,6 +33,9 @@ mkdir -p "${STAGE_DIR}/app" "${STAGE_DIR}/public" "${STAGE_DIR}/storage" "${STAG
 
 cp -R "${REPO_ROOT}/src/app/"* "${STAGE_DIR}/app/"
 cp -R "${REPO_ROOT}/src/public/"* "${STAGE_DIR}/public/"
+cp "${REPO_ROOT}/src/public/.htaccess" "${STAGE_DIR}/public/.htaccess"
+cp "${REPO_ROOT}/.htaccess" "${STAGE_DIR}/.htaccess"
+cp "${REPO_ROOT}/README.md" "${STAGE_DIR}/README.md"
 cp "${SQL_SOURCE}" "${STAGE_DIR}/database/dict24_resto_erp.sql"
 
 # 4. Generate XAMPP-ready .env configuration
@@ -84,11 +87,12 @@ INSTALLATION INSTRUCTIONS:
    - http://localhost/dict24-resto-erp/public/
 
 DEFAULT DEMO CREDENTIALS:
-- SuperAdmin: superadmin@cvsu.edu.ph / Password123!
-- Admin:      admin@cvsu.edu.ph      / Password123!
-- Staff:      user@cvsu.edu.ph       / Password123!
-- FrontOfHouse: foh@cvsu.edu.ph      / Password123!
-- Kitchen:    kitchen@cvsu.edu.ph    / Password123!
+- SuperAdmin:   superadmin@cvsu.edu.ph / Password123!
+- Admin:        manager@hirayabistro.ph / Password123!
+- Staff:        user@cvsu.edu.ph       / Password123!
+- FrontOfHouse: foh@cvsu.edu.ph        / Password123!
+- Kitchen:      kitchen@cvsu.edu.ph    / Password123!
+- Customer:     customer@cvsu.edu.ph   / Password123!
 ================================================================================
 EOF
 

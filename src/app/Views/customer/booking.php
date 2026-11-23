@@ -8,7 +8,7 @@ require_once __DIR__ . '/../layouts/header.php';
         <p class="subtitle">Real-time table reservation with instant atomic confirmation.</p>
     </div>
 
-    <form method="POST" action="/bookings" class="booking-form">
+    <form method="POST" action="<?= htmlspecialchars(\App\Core\Request::url('/bookings'), ENT_QUOTES, 'UTF-8') ?>" class="booking-form">
         <input type="hidden" name="restaurant_id" value="<?= htmlspecialchars($_GET['restaurant_id'] ?? $restaurant['id'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
 
         <div class="grid-form">
@@ -41,7 +41,7 @@ require_once __DIR__ . '/../layouts/header.php';
 
         <div class="action-group">
             <button type="submit" class="btn-primary">Confirm Reservation</button>
-            <a href="/discover" class="btn-secondary">Cancel</a>
+            <a href="<?= htmlspecialchars(\App\Core\Request::url('/discover'), ENT_QUOTES, 'UTF-8') ?>" class="btn-secondary">Cancel</a>
         </div>
     </form>
 </section>

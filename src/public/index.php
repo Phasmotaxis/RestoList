@@ -22,6 +22,15 @@ require_once __DIR__ . '/../app/Core/Database.php';
 require_once __DIR__ . '/../app/Core/Session.php';
 require_once __DIR__ . '/../app/Core/Request.php';
 require_once __DIR__ . '/../app/Core/Response.php';
+
+if (!function_exists('url')) {
+    /**
+     * Global URL helper for subfolder and alias resilience.
+     */
+    function url(string $path = '/'): string {
+        return \App\Core\Request::url($path);
+    }
+}
 require_once __DIR__ . '/../app/Core/Router.php';
 require_once __DIR__ . '/../app/Core/Audit.php';
 require_once __DIR__ . '/../app/Core/ListQuery.php';
@@ -49,6 +58,7 @@ require_once __DIR__ . '/../app/Controllers/RestaurantController.php';
 
 // Userspace 3: Customer Portal Controllers
 require_once __DIR__ . '/../app/Controllers/DiscoveryController.php';
+require_once __DIR__ . '/../app/Controllers/RestaurantDiscoveryController.php';
 require_once __DIR__ . '/../app/Controllers/SlotAvailabilityController.php';
 require_once __DIR__ . '/../app/Controllers/BookingFlowController.php';
 require_once __DIR__ . '/../app/Controllers/MenuSyncController.php';
@@ -148,6 +158,9 @@ $router->post('/admin/restaurants/:id/delete', [RestaurantController::class, 'de
 
 // Floor Plan & Dining Zones
 $router->get('/admin/zones', [DiningZonesController::class, 'index']);
+$router->post('/admin/zones', [DiningZonesController::class, 'store']);
+$router->post('/admin/zones/:zone_id/update', [DiningZonesController::class, 'update']);
+$router->post('/admin/zones/:zone_id/delete', [DiningZonesController::class, 'delete']);
 $router->get('/admin/restaurants/:id/zones', [DiningZonesController::class, 'index']);
 $router->get('/admin/restaurants/:id/zones/create', [DiningZonesController::class, 'create']);
 $router->post('/admin/restaurants/:id/zones', [DiningZonesController::class, 'store']);
@@ -157,6 +170,9 @@ $router->post('/admin/restaurants/:id/zones/:zone_id/delete', [DiningZonesContro
 
 // Floor Plan & Dining Tables
 $router->get('/admin/tables', [DiningTablesController::class, 'index']);
+$router->post('/admin/tables', [DiningTablesController::class, 'store']);
+$router->post('/admin/tables/:table_id/update', [DiningTablesController::class, 'update']);
+$router->post('/admin/tables/:table_id/delete', [DiningTablesController::class, 'delete']);
 $router->get('/admin/restaurants/:id/tables', [DiningTablesController::class, 'index']);
 $router->get('/admin/restaurants/:id/tables/create', [DiningTablesController::class, 'create']);
 $router->post('/admin/restaurants/:id/tables', [DiningTablesController::class, 'store']);
@@ -168,6 +184,7 @@ $router->post('/admin/restaurants/:id/tables/:table_id/coordinates', [DiningTabl
 
 // Reservations & Booking
 $router->get('/admin/reservations', [ReservationController::class, 'index']);
+$router->post('/admin/reservations', [ReservationController::class, 'store']);
 $router->get('/admin/restaurants/:id/reservations', [ReservationController::class, 'index']);
 $router->get('/admin/restaurants/:id/reservations/create', [ReservationController::class, 'create']);
 $router->post('/admin/restaurants/:id/reservations', [ReservationController::class, 'store']);
@@ -175,9 +192,19 @@ $router->get('/admin/restaurants/:id/reservations/:res_id/edit', [ReservationCon
 $router->post('/admin/restaurants/:id/reservations/:res_id/update', [ReservationController::class, 'update']);
 $router->post('/admin/restaurants/:id/reservations/:res_id/cancel', [ReservationController::class, 'cancel']);
 $router->post('/admin/restaurants/:id/reservations/:res_id/confirm', [ReservationController::class, 'confirm']);
+$router->post('/admin/restaurants/:id/reservations/:res_id/checkout', [ReservationController::class, 'checkout']);
+$router->post('/admin/restaurants/:id/reservations/:res_id/no-show', [ReservationController::class, 'noShow']);
+$router->post('/admin/reservations/:res_id/cancel', [ReservationController::class, 'cancel']);
+$router->post('/admin/reservations/:res_id/confirm', [ReservationController::class, 'confirm']);
+$router->post('/admin/reservations/:res_id/checkout', [ReservationController::class, 'checkout']);
+$router->post('/admin/reservations/:res_id/no-show', [ReservationController::class, 'noShow']);
 
 // Waitlist & Walk-ins
 $router->get('/admin/waitlist', [WaitlistController::class, 'index']);
+$router->post('/admin/waitlist', [WaitlistController::class, 'add']);
+$router->post('/admin/waitlist/:entry_id/notify', [WaitlistController::class, 'notify']);
+$router->post('/admin/waitlist/:entry_id/remove', [WaitlistController::class, 'remove']);
+$router->post('/admin/waitlist/:entry_id/position', [WaitlistController::class, 'updatePosition']);
 $router->get('/admin/restaurants/:id/waitlist', [WaitlistController::class, 'index']);
 $router->post('/admin/restaurants/:id/waitlist', [WaitlistController::class, 'add']);
 $router->post('/admin/restaurants/:id/waitlist/:entry_id/position', [WaitlistController::class, 'updatePosition']);
@@ -186,10 +213,15 @@ $router->post('/admin/restaurants/:id/waitlist/:entry_id/remove', [WaitlistContr
 
 // Menu & 86-List
 $router->get('/admin/menu', [MenuItemController::class, 'index']);
+$router->post('/admin/menu', [MenuItemController::class, 'store']);
+$router->get('/admin/menu/86', [MenuItemController::class, 'list86']);
+$router->post('/admin/menu/:item_id/toggle-86', [MenuItemController::class, 'toggle86']);
+$router->post('/admin/menu/:item_id/delete', [MenuItemController::class, 'delete']);
 $router->get('/admin/restaurants/:id/menu', [MenuItemController::class, 'index']);
 $router->post('/admin/restaurants/:id/menu', [MenuItemController::class, 'store']);
 $router->get('/admin/restaurants/:id/menu/86', [MenuItemController::class, 'list86']);
 $router->post('/admin/restaurants/:id/menu/:item_id/toggle-86', [MenuItemController::class, 'toggle86']);
+$router->post('/admin/restaurants/:id/menu/:item_id/delete', [MenuItemController::class, 'delete']);
 
 // Staff RBAC
 $router->get('/admin/staff', [StaffRBACController::class, 'index']);
@@ -234,6 +266,7 @@ $router->post('/bookings', [BookingFlowController::class, 'create']);
 $router->get('/bookings/:token', [BookingFlowController::class, 'showConfirmation']);
 $router->get('/bookings/:token/confirm', [BookingFlowController::class, 'confirmEmail']);
 $router->post('/bookings/:token/cancel', [BookingFlowController::class, 'cancel']);
+$router->post('/bookings/:token/checkout', [BookingFlowController::class, 'checkout']);
 
 $router->get('/waitlist/:restaurant_id/join', [WaitlistPortalController::class, 'showForm']);
 $router->post('/waitlist/:restaurant_id/join', [WaitlistPortalController::class, 'join']);

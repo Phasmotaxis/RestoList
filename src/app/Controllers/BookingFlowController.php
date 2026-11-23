@@ -10,6 +10,9 @@ use App\Core\Request;
 use App\Core\Response;
 use App\Core\Session;
 use App\Core\Validator;
+use App\Services\DepositLedgerService;
+use App\Services\FeatureFlagService;
+use App\Services\LoyaltyLedgerService;
 use App\Services\TableAllocator;
 
 /**
@@ -397,6 +400,99 @@ class BookingFlowController
             'message' => 'Reservation cancelled successfully',
             'id' => $token,
             'status' => 'cancelled',
+        ], 200);
+    }
+
+    /**
+     * Diner checkout: settle deposit, accrue loyalty points, and complete reservation.
+     *
+     * Route: POST /bookings/:token/checkout
+     *
+     * @param Request $request HTTP request.
+     * @param Response $response HTTP response.
+     *
+     * @return void
+     */
+    public function checkout(Request $request, Response $response): void
+    {
+        $token = $request->getParam('token') ?? $request->getParam('id');
+        if (!$token) {
+            $response->json(['error' => 'Booking token is required'], 400);
+            return;
+        }
+
+        $body = $request->getBody();
+        $pdo = Database::getConnection();
+        $stmt = $pdo->prepare('SELECT id, org_id, customer_id, party_size, status FROM reservations WHERE id = :id');
+        $stmt->execute([':id' => $token]);
+        $booking = $stmt->fetch();
+
+        if (!$booking) {
+            $response->json(['error' => 'Reservation not found'], 404);
+            return;
+        }
+
+        if (in_array($booking['status'], ['completed', 'cancelled'], true)) {
+            $response->json(['error' => "Reservation already {$booking['status']}"], 422);
+            return;
+        }
+
+        $orgId = (string) $booking['org_id'];
+        $customerId = $booking['customer_id'] ? (string) $booking['customer_id'] : null;
+        $partySize = (int) ($booking['party_size'] ?? 1);
+        $billCentavos = (int) ($body['bill_centavos'] ?? ($partySize * 2500));
+
+        try {
+            TableAllocator::completeReservation($token);
+        } catch (\Throwable $e) {
+            $response->json(['error' => 'Failed to complete reservation', 'details' => $e->getMessage()], 500);
+            return;
+        }
+
+        $depositApplied = 0;
+        if (FeatureFlagService::isEnabled($orgId, 'deposits') || FeatureFlagService::isEnabled($orgId, 'enable_deposits')) {
+            if ($customerId) {
+                $depositBalance = DepositLedgerService::getBalance($orgId, $customerId);
+                if ($depositBalance > 0) {
+                    $depositApplied = min($depositBalance, $billCentavos);
+                    DepositLedgerService::applyDeposit(
+                        $orgId,
+                        $customerId,
+                        $depositApplied,
+                        "Applied deposit to reservation {$token} checkout"
+                    );
+                }
+            }
+        }
+
+        $pointsAwarded = 0;
+        if (FeatureFlagService::isEnabled($orgId, 'loyalty') || FeatureFlagService::isEnabled($orgId, 'enable_loyalty')) {
+            if ($customerId) {
+                $pointsAwarded = max(50, (int) round($billCentavos / 100));
+                LoyaltyLedgerService::earnPoints(
+                    $orgId,
+                    $customerId,
+                    $pointsAwarded,
+                    "Reservation {$token} checkout loyalty reward"
+                );
+            }
+        }
+
+        Audit::log(
+            $orgId,
+            $customerId,
+            'CHECKOUT',
+            'reservation',
+            $token,
+            "Reservation {$token} checked out and completed"
+        );
+
+        $response->json([
+            'id' => $token,
+            'status' => 'completed',
+            'bill_centavos' => $billCentavos,
+            'deposit_applied_centavos' => $depositApplied,
+            'loyalty_points_awarded' => $pointsAwarded,
         ], 200);
     }
 

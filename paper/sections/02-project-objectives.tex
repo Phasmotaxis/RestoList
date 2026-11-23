@@ -1,0 +1,79 @@
+\chapter{Project Objectives}
+\label{chap:project_objectives}
+
+\section{General Objective}
+\label{sec:obj_general}
+The overarching objective of this capstone research and engineering project is to architect, formally specify, implement, and empirically verify the \textbf{Enterprise Information Management System (EIMS)}---a clean-room, multi-tenant restaurant Enterprise Resource Planning (ERP) and high-concurrency table reservation platform engineered natively in PHP 8.3 with dual-driver relational persistence, provably correct concurrency control, and defensive runtime fault interception.
+
+The project demonstrates that a mission-critical, enterprise-grade information management system can achieve complete self-sufficiency, sub-millisecond query performance, and robust security without relying on external third-party backend frameworks, remote package ecosystems, or external content delivery networks, thereby establishing an authoritative academic reference architecture for the Cavite State University (CvSU) Department of Information Technology.
+
+\section{Specific Technical Objectives}
+\label{sec:obj_technical}
+To systematically fulfill the general objective, the project established eight concrete technical and architectural milestones:
+
+\begin{enumerate}[label=\textbf{TO\arabic*.}]
+    \item \textbf{Clean-Room Framework-Independent Architectural Pipeline:} Engineer an end-to-end Model-View-Controller (MVC) core and middleware request processing pipeline using exclusively the native PHP 8.3 standard library, strictly enforcing:
+    \begin{itemize}
+        \item Zero external backend frameworks (e.g., no Laravel, Symfony, or CodeIgniter).
+        \item Zero third-party Composer runtime dependencies.
+        \item Zero client-side JavaScript meta-frameworks (e.g., no React, Vue, or Angular).
+        \item Zero remote Content Delivery Network (CDN) script or stylesheet imports.
+        \item Zero inline \texttt{style="..."} attributes across all server-rendered view templates.
+    \end{itemize}
+    \item \textbf{Mathematical Concurrency Control Engine (\texttt{TableAllocator}):} Formulate and implement a two-layer reservation concurrency engine combining 15-minute discrete time-slot boundary discretization with driver-aware transactional locking:
+    \begin{itemize}
+        \item Lexicographical table identifier sorting to eliminate circular wait conditions (Dijkstra deadlock prevention).
+        \item Pessimistic row locking (\texttt{SELECT ... FOR UPDATE} in MySQL, immediate serialized transactions in SQLite3).
+        \item Database-level composite unique constraint enforcement (\texttt{UNIQUE(org\_id, table\_id, slot\_start\_utc)}) preventing concurrent double-booking collisions with mathematical certainty.
+        \item Atomic multi-table allocation enabling seamless grouping of physically combinable dining tables for large dining parties.
+    \end{itemize}
+    \item \textbf{Normalized Multi-Tenant Relational Data Model:} Design, specify, and normalize an exhaustive 18-table relational database schema spanning five core operational domains in strict compliance with Third Normal Form (3NF) and Boyce-Codd Normal Form (BCNF), utilizing organizational discriminator columns (\texttt{org\_id}) and subdomain routing to enforce logical data isolation.
+    \item \textbf{Dual-Driver Relational Failover Resilience:} Implement an autonomous database abstraction layer within \texttt{App\textbackslash Core\textbackslash Database} that seamlessly interfaces with primary MySQL 8.0 instances and provides automatic, sub-second failover to an air-gapped, zero-configuration local SQLite3 persistence engine upon container termination or network disruption, sustaining uninterrupted HTTP 200 availability.
+    \item \textbf{Relational Active-State Mutation Guards:} Implement and mathematically specify relational mutation guards that intercept administrative dining table modifications, blocking table soft-deletions or seating capacity downsizing whenever active, confirmed future reservations remain linked to the target resource, returning HTTP 422 Unprocessable Content.
+    \item \textbf{Signed Integer Centavo Financial Accounting:} Implement immutable, append-only ledger accounting for customer deposit holds, forfeitures, refunds, and loyalty points using signed 64-bit integers (\texttt{BIGINT}) denominated in Philippine centavos ($\frac{1}{100}$ PHP), completely eliminating IEEE-754 floating-point rounding inaccuracies.
+    \item \textbf{Defense-in-Depth Security Kernel:} Implement an integrated security architecture incorporating:
+    \begin{itemize}
+        \item Mathematical bitmask Role-Based Access Control (RBAC) evaluating 5 distinct roles in $\mathcal{O}(1)$ CPU instruction cycles.
+        \item Timing-safe user authentication with precomputed constant dummy bcrypt hashes and dual-threshold sliding-window rate limiting (\texttt{LoginThrottle}) to prevent account enumeration and brute-force attacks.
+        \item Cryptographic per-session CSRF token generation and timing-safe verification on all state-mutating HTTP methods.
+        \item Strict Content Security Policy (CSP) headers without \texttt{'unsafe-inline'} and mandatory query parameter allowlists for sorting and pagination.
+    \end{itemize}
+    \item \textbf{Empirical Cartesian Zero-Trust Verification:} Subject the complete system to an exhaustive empirical verification suite comprising 41 automated integration tests, 82 security hardening tests, and 15 independent adversarial Red Team penetration probes, achieving a 100\% pass rate under rigorous continuous testing.
+\end{enumerate}
+
+\section{Specific Business and Operational Objectives}
+\label{sec:obj_business}
+In addition to its technical and architectural requirements, EIMS addresses vital business and operational objectives for commercial hospitality management:
+
+\begin{enumerate}[label=\textbf{BO\arabic*.}]
+    \item \textbf{Elimination of Reservation Double-Booking and Revenue Loss:} Ensure 100\% elimination of simultaneous table bookings during peak service hours, protecting restaurant reputation, optimizing table turnover, and eliminating the financial liabilities of turned-away patrons.
+    \item \textbf{Real-Time Floor Plan and Seating Utilization Management:} Provide restaurant hosts and floor managers with an interactive 12x8 coordinate grid floor plan visualization displaying real-time table statuses (Available, Reserved, Seated, Blocked) to optimize seating distribution and party placement.
+    \item \textbf{Synchronized Kitchen Inventory and 86-List Management:} Enable kitchen staff to dynamically toggle dish availability (86-list) and track ingredient stock depletions linked to recipe Bill of Materials (BOM), preventing front-of-house servers from accepting orders for depleted menu items.
+    \item \textbf{Automated Waitlist Queue Promotion and Cancellation Backfill:} Maintain a digital First-In, First-Out (FIFO) customer waitlist queue that automatically promotes waiting patrons or alerts staff when confirmed reservation slots become vacant due to cancellations.
+    \item \textbf{Turnkey Multi-Platform Deployment Portability:} Ensure that the system can be deployed effortlessly across diverse operational environments, including modern containerized Docker clusters, bare-metal enterprise servers, and local, offline development suites (such as XAMPP or WAMPP for Windows and Linux).
+\end{enumerate}
+
+\section{Objectives Traceability Matrix}
+\label{sec:obj_traceability}
+Table~\ref{tab:objectives_traceability} formalizes the architectural traceability mapping each technical objective to its implementing software modules and verifying test harnesses.
+
+\begin{table}[htbp]
+\centering
+\caption{System Objectives Architectural Traceability Matrix}
+\label{tab:objectives_traceability}
+\small
+\begin{tabularx}{\textwidth}{llp{4.2cm}X}
+\toprule
+\textbf{Objective} & \textbf{Target Domain} & \textbf{Implementing Subsystems} & \textbf{Empirical Verification Harness} \\
+\midrule
+\textbf{TO1} & Clean-Room Architecture & \texttt{App\textbackslash Core}, Native MVC, CSS Tokens & AST Smell Tests (82 tests), Linting \\
+\textbf{TO2} & Concurrency Engine & \texttt{TableAllocator}, \texttt{reservation\_slots} & Integration Tests 19--21, Concurrency Benchmarks \\
+\textbf{TO3} & Multi-Tenancy & \texttt{tenants}, Subdomain Router, \texttt{org\_id} & Hardening Tests 29--36 (Tenant Isolation) \\
+\textbf{TO4} & Dual-Driver Persistence & \texttt{App\textbackslash Core\textbackslash Database}, SQLite Fallback & Chaos Container Script (\texttt{PROBE-15}) \\
+\textbf{TO5} & Mutation Guards & \texttt{DiningTablesController}, Guard SQL & Integration Test 39, Red Team Probes 1--6 \\
+\textbf{TO6} & Financial Accounting & \texttt{deposit\_ledger}, \texttt{loyalty\_ledger} & Integration Test 41, Deposit/Loyalty Suites \\
+\textbf{TO7} & Defensive Security & RBAC, \texttt{LoginThrottle}, CSP, CSRF & Integration Tests 01--18, Hardening Matrix \\
+\textbf{TO8} & Cartesian Zero-Trust & \texttt{tests/runner.php}, \texttt{test-hardening.php} & Complete 138-Assertion Automated Matrix \\
+\bottomrule
+\end{tabularx}
+\end{table}

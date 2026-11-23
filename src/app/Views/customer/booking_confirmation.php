@@ -34,10 +34,10 @@ require_once __DIR__ . '/../layouts/header.php';
     <?php endif; ?>
 
     <div class="action-group">
-        <form method="POST" action="/bookings/<?= urlencode($responseData['id']) ?>/cancel" onsubmit="return confirm('Are you sure you want to cancel this reservation?');">
+        <form method="POST" action="<?= htmlspecialchars(\App\Core\Request::url('/bookings/' . urlencode($responseData['id']) . '/cancel'), ENT_QUOTES, 'UTF-8') ?>" onsubmit="return confirm('Are you sure you want to cancel this reservation?');">
             <button type="submit" class="btn-secondary link-danger">Cancel Reservation</button>
         </form>
-        <a href="/discover" class="btn-primary">Return to Discovery</a>
+        <a href="<?= htmlspecialchars(\App\Core\Request::url('/discover'), ENT_QUOTES, 'UTF-8') ?>" class="btn-primary">Return to Discovery</a>
     </div>
 </section>
 <?php

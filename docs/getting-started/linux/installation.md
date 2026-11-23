@@ -41,18 +41,24 @@ DB_PASS=eims_password
 
 ---
 
-## 2. Directory Initialization & Permissions
+## 2. Directory Initialization & Pre-Flight Diagnostics
 
 Initialize runtime storage, temporary scratchpads, and specimen directories:
 ```bash
 just setup
 ```
 
+Run host system environment audit to verify Docker daemon, port availability, and PHP extensions:
+```bash
+just doctor
+```
+If the Docker daemon is inactive or `/var/run/docker.sock` has restricted permissions, run `just fix-docker` or `sudo systemctl start docker`.
+
 ---
 
 ## 3. Container Build & Orchestration
 
-Build the custom PHP 8.3 container and launch services:
+Build the custom PHP 8.3 container and launch services (automatically executes Docker pre-flight and port 8080/3306 collision audits):
 ```bash
 just build
 just up

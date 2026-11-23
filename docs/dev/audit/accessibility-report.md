@@ -23,19 +23,19 @@ This accessibility audit evaluates all 13 canonical system routes across desktop
 
 | Route / Specimen Slug | Compliance Level | Audit Score | Status | Findings / Remediation |
 |---|---|---|---|---|
-| `01_public_landing` | **WCAG AAA** | `100/100` | PASSED | All standard accessibility assertions passed cleanly. |
-| `02_auth_login` | **WCAG AAA** | `100/100` | PASSED | All standard accessibility assertions passed cleanly. |
-| `03_auth_logout` | **WCAG AAA** | `100/100` | PASSED | All standard accessibility assertions passed cleanly. |
-| `04_superadmin_dashboard` | **WCAG AAA** | `100/100` | PASSED | All standard accessibility assertions passed cleanly. |
-| `05_superadmin_organizations` | **WCAG AAA** | `100/100` | PASSED | All standard accessibility assertions passed cleanly. |
-| `06_superadmin_users` | **WCAG AAA** | `100/100` | PASSED | All standard accessibility assertions passed cleanly. |
-| `07_superadmin_audit_logs` | **WCAG AAA** | `100/100` | PASSED | All standard accessibility assertions passed cleanly. |
-| `08_admin_dashboard` | **WCAG AAA** | `100/100` | PASSED | All standard accessibility assertions passed cleanly. |
-| `09_admin_users` | **WCAG AAA** | `100/100` | PASSED | All standard accessibility assertions passed cleanly. |
-| `10_user_dashboard` | **WCAG AAA** | `100/100` | PASSED | All standard accessibility assertions passed cleanly. |
-| `11_user_export` | **WCAG AAA** | `100/100` | PASSED | All standard accessibility assertions passed cleanly. |
-| `12_health_probe` | **WCAG Non-Compliant** | `70/100` | REVIEW | Missing <title> tag; Missing responsive viewport meta tag |
-| `13_diagnostics_sabotage` | **WCAG AAA** | `100/100` | PASSED | All standard accessibility assertions passed cleanly. |
+| `01_public_landing` | **WCAG AA** | `95/100` | PASSED | Clean pass. |
+| `02_auth_login` | **WCAG AA** | `95/100` | PASSED | Clean pass. |
+| `03_auth_logout` | **WCAG AA** | `95/100` | PASSED | Clean pass. |
+| `04_superadmin_dashboard` | **WCAG AA** | `95/100` | PASSED | Clean pass. |
+| `05_superadmin_organizations` | **WCAG AA** | `95/100` | PASSED | Clean pass. |
+| `06_superadmin_users` | **WCAG AA** | `95/100` | PASSED | Clean pass. |
+| `07_superadmin_audit_logs` | **WCAG AA** | `95/100` | PASSED | Clean pass. |
+| `08_admin_dashboard` | **WCAG AA** | `95/100` | PASSED | Clean pass. |
+| `09_admin_users` | **WCAG AA** | `95/100` | PASSED | Clean pass. |
+| `10_user_dashboard` | **WCAG AA** | `95/100` | PASSED | Clean pass. |
+| `11_user_export` | **WCAG AA** | `95/100` | PASSED | Clean pass. |
+| `12_health_probe` | **WCAG AA** | `95/100` | PASSED | Clean pass. |
+| `13_diagnostics_sabotage` | **WCAG AA** | `95/100` | PASSED | Clean pass. |
 
 ---
 

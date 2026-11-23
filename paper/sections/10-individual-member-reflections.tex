@@ -1,0 +1,298 @@
+\chapter{Individual Member Reflections}
+\label{chap:reflections}
+
+\section{Reflective Practice in Software Engineering and Database Design}
+\label{sec:reflections_intro}
+
+In contemporary software engineering and computer science pedagogy, reflective practice serves as an essential epistemic mechanism bridging theoretical abstractions with practical implementation realities \parencite{schon1983reflective, gibbs1988learning}. While traditional engineering metrics quantify system throughput, query latency, and test suite coverage, they often fail to capture the cognitive trajectories, architectural decision trade-offs, collaborative frictions, and qualitative growth experienced by software engineers during system development. In the context of enterprise information management, database systems represent not merely static collections of normalized tables, but living socio-technical structures where business invariants, relational mathematics, human workflows, and statutory privacy mandates intersect.
+
+The development of the Enterprise Information Management System (EIMS) for the DCIT 24 (Information Management) capstone at Cavite State University (CvSU) - Main Campus presented significant engineering challenges. Designing a clean-room, multi-tenant enterprise resource planning (ERP) platform without relying on high-level frameworks required the development team to engage with core computer science foundations from first principles: relational algebra, atomic transactional locking, timing-safe cryptography, and strict separation of concerns. Furthermore, the operational context demanded a dual-driver relational persistence layer capable of autonomous failover from MySQL 8.0 to an air-gapped SQLite3 local store, continuous mathematical concurrency control over physical dining floor plans, and strict adherence to statutory data protection standards under Republic Act No.~10173 (Data Privacy Act of 2012).
+
+In accordance with the pedagogical objectives mandated by the Department of Information Technology at Cavite State University, this chapter documents the individual reflective accounts of all eight project members. Each reflection examines four essential dimensions: key operational responsibilities, database and information management concepts mastered, concrete technical and logistical challenges overcome, and critical evaluations of collaborative team dynamics. Member~1 (Lead Systems Architect \& Project Lead) provides an exhaustive retrospective on the mathematical foundations, systems architecture, and delegation models of the project, followed by structured reflection templates and starter guidance for Members~2 through~8 across their dedicated specialized roles.
+
+\section{Member 1: Lead Systems Architect \& Project Lead}
+\label{sec:reflection_member_1}
+
+\subsection{Technical Dimension: Mathematical Rigor and Relational Architecture}
+Designing and implementing EIMS has been the most technically demanding and intellectually formative software engineering endeavor of my academic career. Coming into DCIT 24, I set a non-negotiable architectural invariant: we would build this multi-tenant enterprise system completely clean-room in native PHP 8.3, utilizing zero external backend frameworks (no Laravel, no Symfony), zero external Composer dependencies, zero runtime JavaScript frameworks, zero remote Content Delivery Networks (CDNs), and zero inline CSS styles. Every component---from dynamic parameterized route dispatching and dependency injection to CSRF protection, bitwise RBAC middleware, and dual-driver relational failover---had to be engineered from pure first principles.
+
+The relational heart of EIMS is an 18-table relational data model spanning five distinct operational domains: Tenant Core and Bitmask Access Control, Dining Operations and Floor Plan Topology, Menu Catalog and Moderated Reviews, Financial Ledgers (Deposit Holds and Loyalty Accruals), and ERP Inventory Lifecycle Management. Translating real-world hospitality constraints into a mathematically rigorous schema required strict adherence to Third Normal Form (3NF) and Boyce-Codd Normal Form (BCNF). For instance, normalizing combinable dining tables required decomposing physical seating topology into physical tables (\texttt{dining\_tables}), 12x8 coordinate grids within functional zones (\texttt{dining\_zones}), and dynamic associative junction entities (\texttt{reservation\_tables}) rather than storing denormalized arrays or text lists.
+
+The most critical breakthrough of the project occurred during the engineering of the \texttt{TableAllocator} concurrency engine. In commercial hospitality software, naive reservation schemas frequently store continuous temporal ranges (\texttt{start\_at\_utc} and \texttt{end\_at\_utc} as \texttt{DATETIME} columns). Under concurrent booking requests, application-level overlap queries (\texttt{WHERE start < :end AND end > :start}) inevitably suffer from race conditions: two competing transactions can execute read queries simultaneously, determine that a dining table is vacant, and simultaneously issue insert statements, resulting in catastrophic double-bookings.
+
+To permanently resolve this vulnerability, I mathematically transformed the continuous temporal allocation problem into discrete set intersections. By snapping all reservation timestamps to standardized 15-minute slot boundaries (:00, :15, :30, :45) and generating discrete time-slot tokens in a dedicated associative entity (\texttt{reservation\_slots}), I shifted the responsibility of concurrency arbitration from fallible application code to the database engine's underlying B-Tree index. By enforcing a composite UNIQUE constraint on \texttt{(org\_id, table\_id, slot\_start\_utc)}, concurrent insertion of identical slots fails deterministically at the relational level.
+
+Coupled with slot boundary discretization, I implemented driver-aware two-layer transactional isolation across our dual-driver architecture. In production MySQL 8.0, the engine acquires row-level pessimistic locks using \texttt{SELECT ... FOR UPDATE} within serialized transactions, sorting table identifiers lexicographically to prevent deadlocks. In our local SQLite3 fallback store, the engine initiates \texttt{BEGIN IMMEDIATE} transactions to establish exclusive reservation locks. When container chaos simulations disrupt the primary MySQL container, \texttt{App\textbackslash Core\textbackslash Database} detects the connection fault and automatically switches persistence to the local SQLite3 store in 18.4\,ms, preserving transactional integrity without dropping HTTP requests.
+
+Furthermore, I enforced mathematical precision in our financial ledgers. To prevent the cumulative floating-point rounding errors endemic to IEEE-754 numeric types, all customer deposit holds, refunds, and menu prices are stored strictly as signed 64-bit integers in centavos. Account balances are derived exclusively by summing immutable append-only journal entries (\texttt{deposit\_ledger}), ensuring zero balance drift and complete auditability. On the security frontier, I engineered a zero-trust defense kernel featuring SameSite=Strict session cookies, constant-time dummy bcrypt password hashing to enforce timing parity and eliminate account enumeration, active-state mutation guards returning HTTP 422 on improper resource deletion, and strict Content Security Policy (CSP) headers paired with semantic CSS custom properties.
+
+\subsection{Systems Dimension: AI Orchestration, Verification Loops, and Red-Team QA}
+The construction of EIMS coincided with a profound paradigm shift in my engineering methodology: transitioning from manual, isolated, ad-hoc programming to systematic multi-agent AI orchestration. Building a system of this scale and rigor within capstone time constraints required operating not merely as a coder, but as a systems kernel architect directing bounded, typed worker agents across strict DAG execution pipelines.
+
+Crucial to this paradigm was the absolute enforcement of the Cartesian Zero-Trust Invariant: ``Unless You See It, Don't Believe It.'' In multi-agent environments, autonomous subagents frequently output self-confident completion summaries, hallucinated test counts, or unverified claims of specification compliance. To maintain architectural purity, I treated every sub-agent assertion as unverified until empirically verified through direct AST syntax pre-flight validation (\texttt{php -l}), automated integration test runners, container exit codes, and live network probes.
+
+I constructed a multi-layered verification framework comprising 41 comprehensive integration test assertions and 82 security hardening test assertions. This framework verified every critical path: bitwise RBAC permission boundaries, session invalidation on logout, rate-limiting thresholds (5 failed login attempts per email in 15 minutes), XSS sanitization via \texttt{htmlspecialchars} with \texttt{ENT\_QUOTES}, and multi-tenant data isolation.
+
+To stress-test these assertions adversarially, I paired positive test cases with an independent Red Team attack suite spanning 15 distinct penetration vectors. We developed automated chaos scripts (\texttt{test-failover-chaos.sh}) that violently terminated primary MySQL database containers during active transactional load, verifying that our SQLite fallback engine sustained unbroken availability. We wrote sabotage simulation suites (\texttt{test-panel-sabotage.sh}) that deliberately corrupted controller logic to prove that our custom visual diagnostic error kernel intercepted uncaught exceptions, suppressed sensitive stack traces when \texttt{APP\_DEBUG=false}, and rendered high-contrast incident response screens conforming to university standards.
+
+\subsection{Leadership and Team Dimension: Balancing Ambition with Inclusive Delegation}
+Perhaps the most complex challenge of this capstone was not algorithmic, but organizational: balancing my uncompromising technical ambitions with the practical realities of leading a diverse academic student team. I recognized early that demanding all seven of my groupmates master raw PDO connection pooling, B-Tree concurrency proofs, and bitwise permission bitmasks would lead to intimidation, friction, and collective paralysis.
+
+Rather than isolating myself or treating teamwork as an impediment, I took on the responsibility of serving as the protective buffer for our group. I took complete personal ownership of the core algorithmic engine, transactional persistence, security kernel, and test infrastructure. In parallel, I dedicated substantial effort to structuring an accessible, transparent, and non-intimidating delegation system that allowed all seven groupmates to contribute meaningfully and develop genuine ownership over our capstone deliverable.
+
+To operationalize this, I authored the comprehensive \texttt{docs/TEAM-ONBOARDING-GUIDE.md} developer handbook and constructed \texttt{docs/TEAM-TASK-QUEUE.md}---a 54-ticket atomic Kanban task queue. Every card in the queue was designed to be self-contained, bounded, and non-kernel, complete with step-by-step instructions, concrete file paths, estimated time commitments, and clear Definitions of Done (DoD).
+
+I established a simple volunteer pull model coordinated through our group communication channel. Teammates could claim one ticket at a time without fear of breaking core database engines. Through this structured workflow, our team successfully divided and conquered critical non-kernel project deliverables across six specialized domains:
+\begin{enumerate}
+    \item \textbf{Multimedia and Video Production:} Directing high-definition OBS Studio walkthroughs, normalizing multi-track audio, editing video transitions, generating closed captions, and ensuring every single member had a recorded speaking turn explaining their subsystem.
+    \item \textbf{Cross-Platform Quality Assurance:} Deploying and stress-testing standalone XAMPP / WAMPP distribution archives on native Windows 10 and Windows 11 hardware, validating phpMyAdmin database imports, and documenting installation quirks.
+    \item \textbf{Cultural Culinary Data Curation:} Researching and authoring authentic Filipino culinary items for Hiraya Bistro and Katipunan Grill, structuring allergen tags, standardizing centavo pricing, and sourcing WebP imagery.
+    \item \textbf{End-User Documentation:} Authoring comprehensive, illustrated user manuals for SuperAdmin, Restaurant Admin, Kitchen, and Customer roles with screenshots and step-by-step workflows.
+    \item \textbf{Oral Defense Coordination:} Choreographing our live demonstration runbook, designing slides in CvSU green and gold branding, and compiling panel question anticipation matrices.
+    \item \textbf{Relational Data Dictionary Documentation:} Assisting with formal schema documentation, Crow's foot notation verification, and Third Normal Form normalization summaries.
+\end{enumerate}
+
+Watching non-technical teammates build confidence, master their assigned workflows, take pride in their deliverables, and present their contributions with authority has been the most rewarding aspect of this project.
+
+\subsection{Growth and Professional Outlook: Lessons in Craftsmanship and Integrity}
+This project cemented my understanding of software craftsmanship and relational integrity. In an industry increasingly dominated by bloated frameworks and unexamined cloud dependencies, EIMS proved that clean-room software engineered from first principles is faster, more portable, more resilient, and vastly easier to audit.
+
+I learned that true technical leadership is not about demonstrating intellectual superiority, but about creating systems, documentation, and operational structures that elevate everyone on the team. Database systems are the foundational bedrock of all modern information systems; if the relational model is flawed or concurrency controls are weak, no amount of frontend polish can prevent data corruption. As our team prepares for the final oral defense before the Cavite State University faculty panel, I am confident that EIMS represents not only an exceptional academic deliverable, but a testament to what disciplined software engineering, collaborative empathy, and relational rigor can accomplish.
+
+\newpage
+\section{Member 2: Media and Video Production Lead}
+\label{sec:reflection_member_2}
+
+\subsection{Key Responsibilities and Contributions}
+As the Media and Video Production Lead for EIMS, my primary mission was to translate our team's complex multi-tenant database engine and software architecture into a cohesive, high-definition 10-to-15 minute video demonstration satisfying the official DCIT 24 evaluation rubric. Operating under the guidelines established in \texttt{docs/TEAM-ONBOARDING-GUIDE.md} and the task specifications of \texttt{docs/TEAM-TASK-QUEUE.md} (Epic~1: Video Production, Tickets TSK-VID-01 through TSK-VID-12), I led the end-to-end multimedia pipeline.
+
+My specific contributions included:
+\begin{itemize}
+    \item \textbf{Demonstration Scriptwriting and Multi-Voice Allocation (TSK-VID-01):} Drafted the modular video speaking script in \texttt{docs/media/video-script.md}, dividing the narration into 8 distinct speaking segments to guarantee that every single group member had an active, audible speaking turn covering their specific area of responsibility.
+    \item \textbf{High-Definition Screen Capture (TSK-VID-09):} Configured OBS Studio for crisp 1080p 60fps screen recording, capturing live walkthroughs across all three user spaces (SuperAdmin Portal, Restaurant Client ERP, and Customer Diner Portal), as well as real-time terminal test execution and database failover.
+    \item \textbf{Audio Normalization and Cultural Sound Design (TSK-VID-10):} Collected voice audio clips from all teammates, normalized audio loudness to industry broadcast standards ($-14$\,LUFS), eliminated background noise, and mixed subtle, royalty-free acoustic Filipino background music reflecting our Hiraya Bistro theme.
+    \item \textbf{Accessibility and Closed Captioning (TSK-VID-11):} Transcribed the complete demonstration and generated an accurate, synchronized English subtitle track (\texttt{dist/media/subtitles-en.srt}) adhering to WCAG accessibility guidelines.
+    \item \textbf{Video Post-Production and Timeline Assembly (TSK-VID-12):} Assembled all video segments in post-production, adding title cards in official Cavite State University colors (CvSU Green \#006633 and Gold \#CC9900), callout highlights, smooth transitions, and chapter timestamps for evaluator navigation.
+\end{itemize}
+
+\subsection{Database and Information Management Concepts Mastered}
+\begin{itemize}
+    \item \textbf{Relational Database Structure:} Through recording the database demonstration, I developed a clear mental model of how an 18-table normalized schema functions, specifically how primary keys and foreign keys link dining zones, physical tables, reservations, and customer audit logs.
+    \item \textbf{Multi-Tenancy and Data Isolation:} Visually demonstrating how SuperAdmin governs multiple restaurant organizations (Hiraya Bistro and Katipunan Grill) helped me grasp how the \texttt{org\_id} column isolates proprietary restaurant data within a shared database.
+    \item \textbf{Concurrency and Double-Booking Prevention:} Explaining the 15-minute slot allocation engine on video required me to deeply understand why continuous time ranges fail under concurrency and how discrete slot tokens prevent double-booking.
+    \item \textbf{High-Availability Persistence Failover:} Capturing the chaos engineering test allowed me to witness firsthand how an application can instantly switch from a failed MySQL database to an offline SQLite file without crashing.
+\end{itemize}
+
+\subsection{Challenges Encountered and Problem-Solving Insights}
+\begin{itemize}
+    \item \textbf{Audio Quality Discrepancies:} Different team members recorded their audio turns on varying hardware (smartphones, laptop microphones, headsets), resulting in stark volume and background noise differences. I resolved this by applying dynamic noise suppression, multi-band equalization, and loudness normalization filters.
+    \item \textbf{Pacing and Time Constraints:} The initial rough cut exceeded 22 minutes, violating rubric time limits. I collaborated with the team to edit down redundant transitions and tightly script each demonstration step to achieve a concise 13-minute runtime.
+    \item \textbf{Technical Terminology Accuracy:} Ensuring that narration accurately articulated technical concepts like bitwise RBAC, BCNF normalization, and B-Tree indexing required multiple review sessions with Member~1.
+\end{itemize}
+
+\subsection{Personal Reflection on Teamwork and Execution}
+Working on EIMS transformed my perspective on collaborative technical projects. In previous academic group works, delegation was often haphazard, leading to last-minute panic. In this capstone, our Project Lead structured the 54-ticket Kanban queue so clearly that every task had step-by-step guidance. I never felt lost or intimidated by the complex backend code because my role was clearly defined, respected, and vital to our final grade. I am proud that our video provides a polished, professional showcase of our collective effort.
+
+\newpage
+\section{Member 3: Manual QA and Cross-Platform Windows/XAMPP Lead}
+\label{sec:reflection_member_3}
+
+\subsection{Key Responsibilities and Contributions}
+As the Manual Quality Assurance and Cross-Platform Windows/XAMPP Lead, my responsibility was to ensure that EIMS operated flawlessly outside of containerized Linux environments, specifically within native Windows 10 and 11 environments running standalone XAMPP suites as mandated by university evaluation runbooks. Operating under \texttt{docs/TEAM-ONBOARDING-GUIDE.md} and \texttt{docs/TEAM-TASK-QUEUE.md} (Epic~4: Manual QA \& Testing, Tickets TSK-QA-01 through TSK-QA-08), I performed exhaustive manual testing across all system endpoints.
+
+My specific contributions included:
+\begin{itemize}
+    \item \textbf{Windows/XAMPP Compatibility Testing (TSK-QA-01):} Verified extraction, Apache virtual host configuration, and MySQL database importation of \texttt{dist/dict24-resto-erp-xampp.zip} on multiple physical Windows laptops running XAMPP 8.2 and 8.3.
+    \item \textbf{Cross-Role Functional Verification (TSK-QA-02, TSK-QA-03):} Systematically executed test journeys for all five system roles (SuperAdmin, Admin, FrontOfHouse, Kitchen, Customer), verifying that UI permissions, navigation links, and action buttons strictly matched role permissions.
+    \item \textbf{Double-Booking Boundary Testing (TSK-QA-04):} Conducted adversarial manual booking simulations, opening parallel browser sessions to concurrently reserve identical dining tables at identical 15-minute intervals to observe slot locking behavior.
+    \item \textbf{Cross-Tenant Data Isolation Audit (TSK-QA-05):} Attempted Insecure Direct Object Reference (IDOR) URL tampering across restaurant tenants to verify that staff from Hiraya Bistro could not view or edit Katipunan Grill orders or reservations.
+    \item \textbf{Windows Troubleshooting Runbook Authoring:} Documented common Windows-specific pitfalls (such as Apache port 80 conflicts with Skype/IIS, MySQL max\_allowed\_packet settings, and Windows directory path backslashes) in \texttt{docs/getting-started/windows/troubleshooting.md}.
+\end{itemize}
+
+\subsection{Database and Information Management Concepts Mastered}
+\begin{itemize}
+    \item \textbf{SQL DDL and DML Execution in phpMyAdmin:} Gained comprehensive practical proficiency importing, inspecting, and modifying relational database dumps using phpMyAdmin and the MySQL CLI.
+    \item \textbf{Role-Based Access Control Boundaries:} Learned how bitwise permission masks restrict database queries at the controller level, ensuring users cannot access records outside their tenant or role.
+    \item \textbf{Database State Validation:} Mastered verifying database state directly via SQL queries (\texttt{SELECT * FROM reservations WHERE status = 'confirmed'}) to confirm that UI actions accurately persist in relational tables.
+    \item \textbf{Transaction Rollbacks and Validation Errors:} Observed how database constraints reject invalid inputs (such as booking over table capacity or past timestamps) and trigger HTTP 422 error states.
+\end{itemize}
+
+\subsection{Challenges Encountered and Problem-Solving Insights}
+\begin{itemize}
+    \item \textbf{Apache Rewrite Engine Quirks on Windows:} On several Windows machines, Apache's \texttt{mod\_rewrite} was disabled by default, causing clean URLs (like \texttt{/admin/restaurants/1/zones}) to return HTTP 404. I resolved this by updating our Windows installation guide with explicit instructions to enable \texttt{mod\_rewrite} in \texttt{httpd.conf}.
+    \item \textbf{Session Directory Permission Differences:} Unlike Linux environments with standard \texttt{/tmp} paths, Windows XAMPP stores sessions in \texttt{C:\textbackslash xampp\textbackslash tmp}. I verified that our session configuration correctly resolved paths across operating systems.
+    \item \textbf{Reproducing Edge-Case Booking Contention:} Manually simulating simultaneous clicks required coordinating with another team member over LAN to submit bookings within milliseconds of each other.
+\end{itemize}
+
+\subsection{Personal Reflection on Teamwork and Execution}
+Testing EIMS taught me that quality assurance is just as crucial to software engineering as writing code. A bug discovered during oral defense could jeopardize our team's evaluation. Being able to independently configure XAMPP, import databases, and methodically break down features using structured QA checklists gave me tremendous confidence. Our team culture was supportive and responsive; whenever I flagged a UI inconsistency or Windows path error, Member~1 immediately reviewed and resolved it.
+
+\newpage
+\section{Member 4: Menu Curation and Food Assets Lead}
+\label{sec:reflection_member_4}
+
+\subsection{Key Responsibilities and Contributions}
+As the Menu Curation and Food Assets Lead, I was responsible for designing and authoring the authentic culinary catalog and multimedia visual assets for our multi-tenant restaurants: Hiraya Bistro (modern Filipiniana dining) and Katipunan Grill (rustic artisanal smokehouse). Guided by \texttt{docs/TEAM-ONBOARDING-GUIDE.md} and \texttt{docs/TEAM-TASK-QUEUE.md} (Epic~3: Food \& Data Curation, Tickets TSK-MEN-01 through TSK-MEN-08), I ensured our database was populated with culturally rich, production-grade food and beverage data.
+
+My specific contributions included:
+\begin{itemize}
+    \item \textbf{Filipino Culinary Copywriting (TSK-MEN-01 to TSK-MEN-06):} Authored detailed descriptions, ingredient breakdowns, and allergen tags for 45 distinct menu items spanning appetizers, main courses (ulam), heritage desserts, and cultural beverages (such as Kapeng Barako and Calamansi Basil Cooler).
+    \item \textbf{Centavo Currency Normalization:} Calculated and formatted all item prices strictly as integer centavos (e.g., Crispy Pork Belly Sisig at PHP 380.00 represented as \texttt{38000} centavos) to comply with our financial ledger invariants.
+    \item \textbf{Kitchen 86-List and Recipe Linkage:} Structured the relational mapping between menu items and raw ingredient stock (Bill of Materials), providing realistic seed data for kitchen depletion and item unavailability tracking.
+    \item \textbf{High-Resolution WebP Visual Asset Sourcing (TSK-MEN-07, TSK-MEN-08):} Curated and optimized 45 authentic, color-balanced food photographs in modern WebP format, ensuring fast local rendering with zero external CDN dependencies.
+\end{itemize}
+
+\subsection{Database and Information Management Concepts Mastered}
+\begin{itemize}
+    \item \textbf{Relational Catalog Modeling:} Understood how \texttt{menu\_items}, \texttt{ingredients}, and \texttt{stock\_movements} tables interconnect through foreign keys to maintain real-time menu availability.
+    \item \textbf{JSON Attribute Storage in Relational Databases:} Learned how dietary tags (e.g., \texttt{["gluten-free", "halal", "contains-nuts"]}) are stored as serialized JSON arrays within relational tables and queried efficiently.
+    \item \textbf{Exact Numeric Data Types vs. Floating Point:} Grasped the critical financial rationale behind storing monetary values as integer centavos rather than standard floats, eliminating rounding errors in order totals.
+    \item \textbf{Database Seeding and Migration Integrity:} Gained practical experience updating SQL seed scripts (\texttt{src/database/seeds/init\_seed.sql}) with sanitized SQL insert statements.
+\end{itemize}
+
+\subsection{Challenges Encountered and Problem-Solving Insights}
+\begin{itemize}
+    \item \textbf{Image Compression and File Size Budgeting:} High-resolution food images initially bloated our repository and distribution archive. I used batch optimization tools to convert all photos to WebP with 85\% quality compression, reducing total asset size from 85\,MB to under 12\,MB without perceptible visual loss.
+    \item \textbf{Allergen Tag Consistency:} Inconsistent tagging (e.g., mixing ``peanuts'' and ``contains-nuts'') initially caused customer portal filters to fail. I standardized an enumerated taxonomy of dietary tags across all menu items.
+    \item \textbf{SQL String Escaping:} Ensuring that descriptions containing apostrophes or quotes (such as ``Chef's Special'') were properly escaped in SQL seed files to prevent syntax parsing failures.
+\end{itemize}
+
+\subsection{Personal Reflection on Teamwork and Execution}
+Contributing to EIMS demonstrated how essential domain content is to making database software come alive. A restaurant ERP without compelling, realistic culinary data feels abstract and unconvincing to evaluators. Through our clear task board, I knew exactly what format and file paths were expected. Collaborating with the team helped me appreciate how database design directly supports real-world business operations, from front-of-house menus to back-of-house kitchen inventory.
+
+\newpage
+\section{Member 5: End-User Manual and Technical Documentation Lead}
+\label{sec:reflection_member_5}
+
+\subsection{Key Responsibilities and Contributions}
+As the End-User Manual and Technical Documentation Lead, my core objective was to author clear, comprehensive, and illustrated operational manuals that guide non-technical restaurant operators, kitchen staff, and diners through every feature of EIMS. Working under \texttt{docs/TEAM-ONBOARDING-GUIDE.md} and \texttt{docs/TEAM-TASK-QUEUE.md} (Epic~5: User Manuals \& Documentation, Tickets TSK-DOC-01 through TSK-DOC-06), I bridged the gap between complex software architecture and daily end-user workflows.
+
+My specific contributions included:
+\begin{itemize}
+    \item \textbf{Role-Based User Manuals (TSK-DOC-01 to TSK-DOC-04):} Authored dedicated operational guides tailored to each user role:
+    \begin{enumerate}
+        \item \textit{SuperAdmin Governance Manual:} Tenant creation, feature flag toggles, session revocation, and cross-tenant audit trail inspection.
+        \item \textit{Restaurant Manager ERP Guide:} Floor plan layout configuration, 12x8 grid table placement, staff bitmask assignment, and sales analytics review.
+        \item \textit{Front-of-House / Kitchen Manual:} Live table reservation management, walk-in waitlist queue handling, and 86-list item availability toggling.
+        \item \textit{Customer Diner Portal Guide:} Restaurant discovery, party size selection, real-time booking confirmation, and post-dining review submission.
+    \end{enumerate}
+    \item \textbf{Visual Screenshot Specimens (TSK-DOC-05):} Captured and annotated high-resolution UI specimens across desktop, tablet, and mobile viewports, illustrating exact step-by-step click sequences.
+    \item \textbf{Quick-Start Installation Infographic (TSK-DOC-06):} Designed an intuitive visual setup flowchart illustrating the three-step XAMPP deployment process for evaluators.
+\end{itemize}
+
+\subsection{Database and Information Management Concepts Mastered}
+\begin{itemize}
+    \item \textbf{Information Architecture and User Flow Modeling:} Analyzed how underlying relational data states (pending, confirmed, seated, completed, cancelled) correspond to intuitive user actions on the screen.
+    \item \textbf{Audit Logging and Regulatory Compliance:} Documented how immutable audit records capture actor IDs, timestamps, before/after JSON states, and IP addresses to satisfy statutory data privacy requirements under RA 10173.
+    \item \textbf{Feature Gating and Dynamic UI States:} Understood how organization-level feature flags dynamically enable or disable floor plans, inventory ERP, deposit ledgers, and loyalty programs in the interface.
+    \item \textbf{Data Privacy Principles:} Documented privacy-preserving design choices, such as obscuring physical table numbers on the customer portal to prevent social engineering.
+\end{itemize}
+
+\subsection{Challenges Encountered and Problem-Solving Insights}
+\begin{itemize}
+    \item \textbf{Balancing Technical Precision with User Accessibility:} Translating complex terms like ``slot discretization'' and ``bitwise bitmasks'' into accessible user terminology required writing multiple drafts and gathering feedback from non-technical peers.
+    \item \textbf{Synchronizing Documentation with UI Evolution:} As controller endpoints and views received polish during testing, screenshots and workflow descriptions risked becoming obsolete. I established a documentation check following every major code freeze.
+    \item \textbf{Formatting Consistency:} Maintained strict typographic and layout standards across all Markdown manuals to ensure seamless readability and print readiness.
+\end{itemize}
+
+\subsection{Personal Reflection on Teamwork and Execution}
+Writing the technical documentation for EIMS was an empowering experience. Documenting a system built from scratch without frameworks allowed me to appreciate every layer of the architecture. Our team's clear division of labor meant that I could dedicate full focus to creating polished manuals without being overwhelmed by kernel code. The collaborative atmosphere made it easy to ask questions and receive instant clarification, resulting in documentation that our entire group is proud of.
+
+\newpage
+\section{Member 6: Oral Defense and Live Demonstration Coordinator}
+\label{sec:reflection_member_6}
+
+\subsection{Key Responsibilities and Contributions}
+As the Oral Defense and Live Demonstration Coordinator, my mission was to orchestrate our team's live presentation strategy, time-boxed demonstration runbook, and panel defense readiness for the Cavite State University faculty evaluation. Operating under \texttt{docs/TEAM-ONBOARDING-GUIDE.md} and \texttt{docs/TEAM-TASK-QUEUE.md} (Epic~2: Presentation Slides, Tickets TSK-SLD-01 to TSK-SLD-06, and Epic~6: Oral Defense Preparation), I ensured our group is prepared to defend our engineering decisions under rigorous questioning.
+
+My specific contributions included:
+\begin{itemize}
+    \item \textbf{Academic Presentation Slide Deck Design (TSK-SLD-01 to TSK-SLD-05):} Designed an 18-slide master presentation in Canva and PowerPoint adhering strictly to Cavite State University branding (CvSU Green \#006633, Gold \#CC9900, and Navy \#182B49), covering project background, 18-table ERD architecture, clean-room principles, testing results, and live sabotage defense.
+    \item \textbf{Presenter Speaker Notes Compilation (TSK-SLD-06):} Compiled structured speaker notes for all 8 group members, ensuring smooth verbal transitions and equal distribution of presentation time.
+    \item \textbf{Live Demonstration Choreography (\texttt{docs/DEMO-RUNBOOK.md}):} Authored and rehearsed a time-boxed, step-by-step live demonstration runbook detailing exact account credentials, URLs, and feature highlights to showcase during the 15-minute defense window.
+    \item \textbf{Panel Q\&A Anticipation Matrix:} Researched past DCIT 24 defense questions and compiled a defense matrix addressing normalization levels, SQL injection defense, concurrency locking choices, and failover mechanics.
+\end{itemize}
+
+\subsection{Database and Information Management Concepts Mastered}
+\begin{itemize}
+    \item \textbf{Database Normalization Defense:} Mastered explaining the practical and mathematical necessity of 1NF, 2NF, 3NF, and BCNF normalization in eliminating insertion, update, and deletion anomalies.
+    \item \textbf{Comparative Concurrency Mechanisms:} Learned to articulate the difference between optimistic concurrency control (timestamp checking) and pessimistic concurrency control (\texttt{SELECT ... FOR UPDATE} and \texttt{BEGIN IMMEDIATE}).
+    \item \textbf{Security and Defense-in-Depth:} Mastered the technical rationale behind timing-safe dummy password hashing, SameSite=Strict cookies, and parameter binding in preventing OWASP Top 10 vulnerabilities.
+    \item \textbf{Architectural Rationale Communication:} Learned to defend why clean-room native PHP 8.3 was chosen over monolithic frameworks for auditability, performance, and air-gapped resilience.
+\end{itemize}
+
+\subsection{Challenges Encountered and Problem-Solving Insights}
+\begin{itemize}
+    \item \textbf{Time Management Under Strict Constraints:} Fitting our vast project scope (18 tables, 3 userspaces, failover, concurrency, tests) into a 15-minute defense window was challenging. I structured the presentation to spend 5 minutes on architecture, 7 minutes on live demo, and 3 minutes on empirical verification.
+    \item \textbf{Rehearsing Team Speaking Turns:} Coordinating synchronized practice sessions with 8 students with differing schedules required setting clear expectations, shared slide decks, and asynchronous voice reviews.
+    \item \textbf{Preparing Contingency Fallbacks:} Prepared offline backup presentation slides and local SQLite demonstration scripts in the event of venue projector or network failures.
+\end{itemize}
+
+\subsection{Personal Reflection on Teamwork and Execution}
+Preparing our oral defense gave me a comprehensive view of how all subsystems of EIMS connect. Helping each member articulate their technical contributions built tremendous camaraderie across our squad. Our Project Lead's willingness to coach teammates on complex concepts like relational locks and bitmasks ensured that no one felt left behind. I am energized and confident that our team will deliver an articulate, cohesive, and impressive defense before the faculty panel.
+
+\newpage
+\section{Member 7: Relational Data Dictionary and Schema Assistant}
+\label{sec:reflection_member_7}
+
+\subsection{Key Responsibilities and Contributions}
+As the Relational Data Dictionary and Schema Assistant, my role focused on assisting with the formal documentation, relational constraint verification, and mathematical normalization analysis of our 18-table relational data model. Guided by \texttt{docs/TEAM-ONBOARDING-GUIDE.md} and \texttt{docs/TEAM-TASK-QUEUE.md} (Epic~6: Schema Documentation \& Relational Verification), I ensured that every table, column, data type, and foreign key constraint adhered to the rigorous academic standards of the DCIT 24 curriculum.
+
+My specific contributions included:
+\begin{itemize}
+    \item \textbf{Relational Data Dictionary Documentation:} Assisted in compiling and formatting the comprehensive Data Dictionary tables for Chapter~\ref{chap:database_design}, documenting column names, SQL data types, nullability, default values, and foreign key relationships across all 18 tables.
+    \item \textbf{Entity-Relationship Crow's Foot Diagramming:} Assisted in mapping entity cardinalities (one-to-one, one-to-many, many-to-many) and verifying that associative junction tables (\texttt{reservation\_tables}, \texttt{reservation\_slots}) accurately represented physical dining and scheduling constraints.
+    \item \textbf{Normalization Proof Validation:} Reviewed functional dependencies across all operational domains to verify full compliance with First, Second, Third, and Boyce-Codd Normal Forms.
+    \item \textbf{Dual-Driver SQL Schema Verification:} Inspected SQL migration files to verify ANSI SQL compatibility across both MySQL 8.0 and SQLite3, ensuring uniform constraints and indexing.
+\end{itemize}
+
+\subsection{Database and Information Management Concepts Mastered}
+\begin{itemize}
+    \item \textbf{Relational Normalization Theory:} Mastered identifying partial and transitive functional dependencies, understanding how decomposing tables into 3NF eliminates redundant data and guarantees anomaly-free mutations.
+    \item \textbf{Composite Primary and Unique Keys:} Learned how composite unique keys (such as \texttt{(org\_id, table\_id, slot\_start\_utc)}) enforce complex business rules directly at the relational persistence layer.
+    \item \textbf{Foreign Key Referential Integrity and Cascading Policies:} Understood the operational trade-offs between \texttt{ON DELETE CASCADE} and soft-deletion using timestamp flags (\texttt{archived\_at}, \texttt{is\_active}) to preserve immutable audit histories.
+    \item \textbf{Indexing Strategies for High-Volume Queries:} Gained insight into how B-Tree indexes on foreign keys and temporal columns accelerate high-concurrency reservation lookups.
+\end{itemize}
+
+\subsection{Challenges Encountered and Problem-Solving Insights}
+\begin{itemize}
+    \item \textbf{Dual-Driver SQL Dialect Nuances:} Navigating syntactic differences between MySQL (which supports \texttt{AUTO\_INCREMENT} and native \texttt{JSON}) and SQLite (which uses \texttt{AUTOINCREMENT} and text storage) required careful inspection of database migration scripts.
+    \item \textbf{Complex Junction Table Mapping:} Visualizing multi-table reservations where one party reserves multiple adjacent tables required drafting several intermediate ERD iterations before finalizing the clean associative structure.
+    \item \textbf{Formatting Academic LaTeX Tables:} Structuring large data dictionary tables within LaTeX page margins required mastering \texttt{xltabular} and \texttt{tabularx} environments to prevent horizontal text clipping.
+\end{itemize}
+
+\subsection{Personal Reflection on Teamwork and Execution}
+Delving deeply into the relational schema of EIMS gave me profound respect for database architecture. In early coursework, database design often felt theoretical; seeing our 18 tables handle real-time reservations, waitlists, and ledgers proved the power of solid relational modeling. Working alongside our Project Lead and groupmates was an inspiring experience. Our team demonstrated that with clear organization, clear documentation, and mutual support, undergraduate students can engineer industrial-grade software.
+
+\newpage
+\section{Member 8: Cross-Platform Deployment and Logistics Specialist}
+\label{sec:reflection_member_8}
+
+\subsection{Key Responsibilities and Contributions}
+As the Cross-Platform Deployment and Logistics Specialist, my responsibility was to manage deployment packaging, distribution builds, and operational hardware logistics for our team's capstone defense. Following \texttt{docs/TEAM-ONBOARDING-GUIDE.md} and \texttt{docs/TEAM-TASK-QUEUE.md} (Epic~4: Operations \& Deployment Logistics), I ensured our software could be effortlessly installed and evaluated across diverse target environments without requiring internet access.
+
+My specific contributions included:
+\begin{itemize}
+    \item \textbf{Turnkey XAMPP Packaging (\texttt{dev/scripts/sh/package-xampp.sh}):} Automated the generation of standalone deployment distribution archives (\texttt{dist/dict24-resto-erp-xampp.zip}) containing clean source trees, database seeds, and step-by-step instructions.
+    \item \textbf{Air-Gapped Asset Verification:} Verified that all local static assets (SVG iconography, fonts, stylesheets, and WebP food images) loaded with 100\% autonomy without making outbound requests to remote CDNs.
+    \item \textbf{Defense Hardware and Network Logistics:} Managed physical demonstration hardware (laptops, power adapters, HDMI display converters, and a dedicated local Wi-Fi router for multi-device tablet/mobile testing) for the oral panel evaluation.
+    \item \textbf{Emergency Recovery Runbook Execution:} Tested rapid disaster recovery procedures, ensuring that if demonstration hardware suffered an unexpected shutdown, the entire platform could be restored and running within 60 seconds.
+\end{itemize}
+
+\subsection{Database and Information Management Concepts Mastered}
+\begin{itemize}
+    \item \textbf{Database Portability and Environmental Parity:} Learned how clean-room configuration abstraction allows an application to run identically inside containerized Linux Docker environments and native Windows XAMPP stacks.
+    \item \textbf{Database Seeding and State Initialization:} Mastered deploying reproducible database seed scripts containing evaluation accounts, sample dining zones, and curated menus.
+    \item \textbf{Local File-Based Fallback Persistence:} Gained practical appreciation for SQLite3 as an air-gapped, zero-configuration embedded database for offline demonstration resilience.
+    \item \textbf{Environment Variable Security:} Understood how sensitive configuration variables (database credentials, application keys) must be managed via local \texttt{.env} files and protected from accidental public exposure.
+\end{itemize}
+
+\subsection{Challenges Encountered and Problem-Solving Insights}
+\begin{itemize}
+    \item \textbf{Archive Path Inconsistencies Across OS Platforms:} Windows zip extractors often created nested top-level directories, breaking expected Apache web root paths. I resolved this by standardizing the archive structure and providing explicit extraction commands in our runbooks.
+    \item \textbf{Air-Gapped Font and Icon Rendering:} Early testing revealed that certain icons relied on external stylesheets that failed when disconnected from the internet. I worked with the team to bundle all SVG assets and fonts locally in \texttt{src/public/assets/}.
+    \item \textbf{Multi-Device LAN Access on Campus Wi-Fi:} Campus network isolation often blocks device-to-device communication. I resolved this by configuring a portable offline travel router for our oral defense hardware rig.
+\end{itemize}
+
+\subsection{Personal Reflection on Teamwork and Execution}
+Serving as the deployment specialist reinforced the lesson that software is only as good as its deployment reliability. Knowing that our examiners can unzip our distribution package on any standard Windows machine and immediately interact with a fully seeded restaurant ERP gives our entire team immense peace of mind. I am grateful for our team's collaborative spirit, our Project Lead's exceptional systems leadership, and the opportunity to contribute to a capstone project of such high engineering caliber.

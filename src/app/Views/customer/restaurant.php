@@ -24,9 +24,9 @@ require_once __DIR__ . '/../layouts/header.php';
         </div>
     </div>
     <div class="action-group">
-        <a href="/bookings/new?restaurant_id=<?= urlencode($restaurantData['id']) ?>" class="btn-primary">Book a Table &rarr;</a>
-        <a href="/waitlist/<?= urlencode($restaurantData['id']) ?>/join" class="btn-secondary">Join Live Waitlist</a>
-        <a href="/discover" class="btn-secondary">&larr; Back to Discovery</a>
+        <a href="<?= htmlspecialchars(\App\Core\Request::url('/bookings/new?restaurant_id=' . urlencode($restaurantData['id'])), ENT_QUOTES, 'UTF-8') ?>" class="btn-primary">Book a Table &rarr;</a>
+        <a href="<?= htmlspecialchars(\App\Core\Request::url('/waitlist/' . urlencode($restaurantData['id']) . '/join'), ENT_QUOTES, 'UTF-8') ?>" class="btn-secondary">Join Live Waitlist</a>
+        <a href="<?= htmlspecialchars(\App\Core\Request::url('/discover'), ENT_QUOTES, 'UTF-8') ?>" class="btn-secondary">&larr; Back to Discovery</a>
     </div>
 </section>
 
@@ -105,7 +105,7 @@ require_once __DIR__ . '/../layouts/header.php';
     <hr>
 
     <h4>Leave a Review</h4>
-    <form method="POST" action="/reviews" class="review-form">
+    <form method="POST" action="<?= htmlspecialchars(\App\Core\Request::url('/reviews'), ENT_QUOTES, 'UTF-8') ?>" class="review-form">
         <input type="hidden" name="org_id" value="<?= htmlspecialchars($restaurantData['id'], ENT_QUOTES, 'UTF-8') ?>">
         <div class="grid-form">
             <div class="form-group">

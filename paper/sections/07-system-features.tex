@@ -1,0 +1,244 @@
+\chapter{System Features}
+\label{chap:system_features}
+
+\section{Multi-Tenant Isolation and Subdomain Routing}
+\label{sec:feat_multitenancy}
+The Enterprise Information Management System (EIMS) provides native multi-tenancy engineered according to the Shared Database, Shared Schema architectural pattern \parencite{chong2006multi, bezemer2010multitenant}. Multiple commercial restaurant organizations operate within a single deployment instance while maintaining absolute logical data isolation.
+
+\subsection{Subdomain Dispatch Architecture}
+Tenant identification is executed deterministically during early request bootstrapping within the Front Controller (\texttt{src/public/index.php}):
+\begin{enumerate}
+    \item The incoming HTTP \texttt{Host} header (e.g., \texttt{hiraya-bistro.domain.local}) is inspected, and the leading subdomain slug is extracted.
+    \item The system queries the \texttt{tenants} table:
+    \begin{lstlisting}[language=SQLANSI]
+    SELECT id, name, is_active FROM tenants WHERE subdomain = :subdomain LIMIT 1;
+    \end{lstlisting}
+    \item If the tenant is active (\texttt{is\_active = 1}), its UUID is stored in the request context and session as the active \texttt{org\_id}.
+    \item If the subdomain does not match any registered tenant or the tenant is marked as suspended, the request pipeline halts immediately, emitting an HTTP 404 Not Found or HTTP 403 Forbidden error response before executing any controller logic.
+    \item In local offline testing or XAMPP environments where local DNS wildcards are unavailable, tenant switching is supported via session parameters, enabling seamless multi-tenant evaluation on localhost.
+\end{enumerate}
+
+\subsection{Mandatory Tenant Scoping}
+To eliminate Insecure Direct Object Reference (IDOR) vulnerabilities, every database query and state mutation executed by application controllers enforces mandatory tenant-scoping predicates:
+\begin{lstlisting}[language=SQLANSI]
+SELECT * FROM dining_tables WHERE org_id = :org_id AND archived_at IS NULL;
+\end{lstlisting}
+Even if a malicious user attempts to forge a primary key belonging to another organization (e.g., requesting \texttt{/api/tables/delete?id=TABLE\_BETA} while authenticated under Tenant Alpha), the composite query evaluates zero matching rows, safely returning HTTP 404 without leaking cross-tenant records.
+
+\section{Mathematical Bitmask Role-Based Access Control}
+\label{sec:feat_rbac}
+EIMS implements an efficient, mathematically formalized Role-Based Access Control (RBAC) engine that eliminates the overhead of repetitive database permission lookups on every HTTP request \parencite{sandhu1996role, sandhu2000nist}.
+
+\subsection{Bitwise Permission Formalization}
+System privileges are defined as discrete binary powers of two:
+\begin{align}
+    P_{\text{TENANT\_MANAGE}}      &= 2^0 = 1  \quad (\text{000001}_2) \\
+    P_{\text{USER\_MANAGE}}        &= 2^1 = 2  \quad (\text{000010}_2) \\
+    P_{\text{DATA\_READ}}          &= 2^2 = 4  \quad (\text{000100}_2) \\
+    P_{\text{DATA\_WRITE}}         &= 2^3 = 8  \quad (\text{001000}_2) \\
+    P_{\text{RESERVATION\_MANAGE}} &= 2^4 = 16 \quad (\text{010000}_2) \\
+    P_{\text{RECIPE\_VIEW}}        &= 2^5 = 32 \quad (\text{100000}_2)
+\end{align}
+
+User roles represent bitwise unions (logical OR) of these atomic privileges:
+\begin{align}
+    M_{\text{Customer}}     &= P_{\text{DATA\_READ}} = 4 \\
+    M_{\text{Admin}}        &= P_{\text{USER\_MANAGE}} \lor P_{\text{DATA\_READ}} \lor P_{\text{DATA\_WRITE}} = 2 \lor 4 \lor 8 = 14 \\
+    M_{\text{FrontOfHouse}} &= P_{\text{DATA\_READ}} \lor P_{\text{DATA\_WRITE}} \lor P_{\text{RESERVATION\_MANAGE}} = 4 \lor 8 \lor 16 = 28 \\
+    M_{\text{Kitchen}}      &= P_{\text{DATA\_READ}} \lor P_{\text{RECIPE\_VIEW}} = 4 \lor 32 = 36 \\
+    M_{\text{SuperAdmin}}   &= P_{\text{TENANT\_MANAGE}} \lor P_{\text{USER\_MANAGE}} \lor P_{\text{DATA\_READ}} \\
+                            &\quad \lor P_{\text{DATA\_WRITE}} \lor P_{\text{RESERVATION\_MANAGE}} \lor P_{\text{RECIPE\_VIEW}} = 63
+\end{align}
+
+\subsection{\texorpdfstring{$\mathcal{O}(1)$}{O(1)} Middleware Authorization Evaluation}
+Upon user authentication, the composite bitmask is stored in the secure PHP session. When an incoming request targets a protected route, \texttt{RoleMiddleware} validates access in $\mathcal{O}(1)$ CPU instruction cycles via the bitwise conjunction operator:
+\begin{lstlisting}[language=PHPStrict, caption={Bitwise access evaluation in \texttt{src/app/Middleware/RoleMiddleware.php}}, label={lst:rbac_eval}]
+public function handle(Request $request, int $requiredMask): bool
+{
+    $userMask = (int)($_SESSION['user']['role_mask'] ?? 0);
+    if (($userMask & $requiredMask) === $requiredMask) {
+        return true;
+    }
+    Response::json(['error' => 'Unauthorized action'], 403)->send();
+    return false;
+}
+\end{lstlisting}
+If the bitwise condition fails, the request terminates immediately with HTTP 403 Forbidden without incurring secondary database I/O.
+
+\section{Dining Table Floor Plan (12x8 Coordinate Grid)}
+\label{sec:feat_floorplan}
+Restaurant dining room layouts are modeled as an interactive 12x8 two-dimensional coordinate grid system, providing front-of-house staff and managers with a real-time spatial visualization of dining operations.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[scale=0.85]
+    % Draw Grid Lines
+    \draw[step=1.0cm, border, very thin] (0,0) grid (12,8);
+    \node[above, font=\small\bfseries\color{primaryNavy}] at (6,8.2) {Floor Plan Layout (12 Columns $\times$ 8 Rows)};
+
+    % Coordinates labels
+    \foreach \x in {0,...,11}
+        \node[below, font=\tiny\color{slateGray}] at (\x+0.5, 0) {\x};
+    \foreach \y in {0,...,7}
+        \node[left, font=\tiny\color{slateGray}] at (0, \y+0.5) {\y};
+
+    % Draw Dining Zones
+    \draw[fill=cvsuGreen, opacity=0.1, rounded corners] (0.2,4.2) rectangle (5.8,7.8);
+    \node[above right, font=\scriptsize\bfseries\color{cvsuGreen}] at (0.3,7.3) {Zone: Main Hall};
+
+    \draw[fill=accentBlue, opacity=0.1, rounded corners] (6.2,4.2) rectangle (11.8,7.8);
+    \node[above right, font=\scriptsize\bfseries\color{accentBlue}] at (6.3,7.3) {Zone: Al Fresco Patio};
+
+    \draw[fill=keywordPurple, opacity=0.1, rounded corners] (0.2,0.2) rectangle (11.8,3.8);
+    \node[above right, font=\scriptsize\bfseries\color{keywordPurple}] at (0.3,3.3) {Zone: Private Function Rooms};
+
+    % Draw Sample Tables with States
+    % Table 1: Available (Green)
+    \draw[fill=stringGreen!20, draw=stringGreen, thick, rounded corners] (1.2,5.2) rectangle (2.8,6.8);
+    \node[font=\scriptsize\bfseries] at (2,6.2) {T-01};
+    \node[font=\tiny] at (2,5.6) {Cap: 4 (Avail)};
+
+    % Table 2: Seated (Blue)
+    \draw[fill=accentBlue!20, draw=accentBlue, thick, rounded corners] (3.2,5.2) rectangle (4.8,6.8);
+    \node[font=\scriptsize\bfseries] at (4,6.2) {T-02};
+    \node[font=\tiny] at (4,5.6) {Cap: 4 (Seated)};
+
+    % Table 3: Reserved (Gold/Yellow)
+    \draw[fill=cvsuGold!20, draw=cvsuGold, thick, rounded corners] (7.2,5.2) rectangle (8.8,6.8);
+    \node[font=\scriptsize\bfseries] at (8,6.2) {T-03};
+    \node[font=\tiny] at (8,5.6) {Cap: 2 (Resvd)};
+
+    % Table 4: Combinable Table Group (Red Outline)
+    \draw[fill=codebg, draw=primaryNavy, thick, dashed, rounded corners] (2.2,1.2) rectangle (5.8,2.8);
+    \node[font=\scriptsize\bfseries] at (4,2.3) {T-04 + T-05 (Combined)};
+    \node[font=\tiny] at (4,1.7) {Party of 10 Seated};
+\end{tikzpicture}
+\caption{Visual Floor Plan Grid Model across Multiple Dining Zones}
+\label{fig:floor_plan_grid}
+\end{figure}
+
+Key floor plan capabilities include:
+\begin{itemize}
+    \item \textbf{Exact Coordinate Mapping:} Each physical dining table records discrete coordinates (\texttt{x\_coord} $\in [0, 11]$, \texttt{y\_coord} $\in [0, 7]$) within \texttt{dining\_tables}, rendered natively via CSS Grid \texttt{grid-column} and \texttt{grid-row} properties without external diagramming libraries.
+    \item \textbf{Color-Coded Dynamic Seating Status:} Real-time queries dynamically assign visual status indicators: \textbf{Available} (Vacant, ready for walk-in or booking), \textbf{Reserved} (Future booking confirmed within upcoming window), \textbf{Seated} (Guests currently dining), and \textbf{Blocked} (Archived or under maintenance).
+    \item \textbf{Combinable Table Linking:} Physical tables can declare combinability flags (\texttt{is\_combinable = 1}) and neighbor relationships, enabling front-of-house staff to merge adjacent tables into atomic seating configurations for large groups.
+\end{itemize}
+
+\section{\texorpdfstring{\texttt{TableAllocator}}{TableAllocator} Concurrency Engine}
+\label{sec:feat_table_allocator}
+At the core of EIMS is the \texttt{TableAllocator} domain service, which resolves concurrent booking contention through a two-layer transactional locking mechanism:
+
+\begin{enumerate}
+    \item \textbf{Layer 1: Deterministic Lexicographical Row Locking:} To eliminate deadlocks during concurrent multi-table allocation, all candidate table identifiers are ordered lexicographically:
+    \begin{equation}
+        T_{\text{sorted}} = \text{sort}(T_{\text{requested}})
+    \end{equation}
+    The engine acquires exclusive row locks in identical sequential order across all transactions:
+    \begin{lstlisting}[language=SQLANSI]
+    SELECT id FROM dining_tables WHERE org_id = ? AND id IN (?, ?) ORDER BY id ASC FOR UPDATE;
+    \end{lstlisting}
+    This strictly satisfies Dijkstra's deadlock prevention criteria, eliminating circular wait conditions \parencite{bernstein1987concurrency}.
+    \item \textbf{Layer 2: 15-Minute Discretized Slot Allocation:} The continuous reservation duration $[s_r, e_r)$ is partitioned into discrete 15-minute slot buckets:
+    \begin{lstlisting}[language=PHPStrict, caption={15-minute slot discretization algorithm in \texttt{src/app/Services/TableAllocator.php}}, label={lst:slot_discretization}]
+    private static function getSlotBuckets(\DateTime $start, \DateTime $end): array
+    {
+        $slots = [];
+        $current = clone $start;
+        $interval = new \DateInterval('PT15M');
+        while ($current < $end) {
+            $slots[] = $current->format('Y-m-d H:i:s');
+            $current->add($interval);
+        }
+        return $slots;
+    }
+    \end{lstlisting}
+    The service iterates across every table in $T_{\text{sorted}}$ and every slot in the discretized set, inserting allocation rows into \texttt{reservation\_slots}:
+    \begin{lstlisting}[language=SQLANSI]
+    INSERT INTO reservation_slots (org_id, table_id, slot_start_utc) VALUES (?, ?, ?);
+    \end{lstlisting}
+    If another transaction has already acquired any slot in the requested window, the database engine raises a composite unique constraint violation (SQLState 23000 / error code 1062). \texttt{TableAllocator} catches the exception, immediately triggers an atomic transactional rollback (\texttt{\$pdo->rollBack()}), and throws a concurrency collision error.
+\end{enumerate}
+
+\section{Real-Time Reservation Booking and Lifecycle Management}
+\label{sec:feat_reservation_lifecycle}
+EIMS manages reservation lifecycles through a deterministic Finite State Machine (FSM).
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    node distance=1.5cm and 1.8cm,
+    state/.style={rectangle, draw=primaryNavy, fill=codebg, rounded corners, minimum width=2.4cm, minimum height=0.8cm, text centered, font=\small\bfseries},
+    termstate/.style={rectangle, draw=slateGray, fill=codebg, rounded corners, minimum width=2.4cm, minimum height=0.8cm, text centered, font=\small},
+    arrow/.style={-{Latex[length=2.5mm]}, thick, color=primaryNavy}
+]
+    \node (pending) [state] {\texttt{pending}};
+    \node (confirmed) [state, right=of pending] {\texttt{confirmed}};
+    \node (seated) [state, right=of confirmed] {\texttt{seated}};
+    \node (completed) [termstate, right=of seated] {\texttt{completed}};
+
+    \node (cancelled) [termstate, below=of confirmed] {\texttt{cancelled}};
+    \node (noshow) [termstate, below=of seated] {\texttt{no\_show}};
+
+    \draw [arrow] (pending) -- node[above, font=\scriptsize] {Deposit Hold} (confirmed);
+    \draw [arrow] (confirmed) -- node[above, font=\scriptsize] {Guest Check-in} (seated);
+    \draw [arrow] (seated) -- node[above, font=\scriptsize] {Table Checkout} (completed);
+
+    \draw [arrow] (pending) -- node[left, font=\scriptsize] {Expire / Reject} (cancelled);
+    \draw [arrow] (confirmed) -- node[right, font=\scriptsize] {Customer Cancel} (cancelled);
+    \draw [arrow] (confirmed) -- node[right, font=\scriptsize] {Grace Timeout} (noshow);
+\end{tikzpicture}
+\caption{Reservation State Machine Transitions and Operational Triggers}
+\label{fig:reservation_fsm}
+\end{figure}
+
+The booking workflow operates as follows:
+\begin{enumerate}
+    \item \textbf{Patron Slot Selection:} Diners specify party size, date, and preferred dining time. Availability queries snap continuous time to 15-minute slot buckets, querying for unreserved tables whose capacity satisfies party size.
+    \item \textbf{Deposit Hold Acquisition:} If booking deposits are enabled, a temporary hold is placed on customer funds in \texttt{deposit\_ledger}, and the reservation is persisted with status \texttt{'confirmed'}.
+    \item \textbf{FOH Reception and Check-In:} When guests arrive, front-of-house staff mark the reservation as \texttt{'seated'}, transitioning the table's visual color on the 12x8 floor plan.
+    \item \textbf{Checkout and Slot Release:} Upon dining completion, the reservation transitions to \texttt{'completed'}, releasing slot locks in \texttt{reservation\_slots}, settling the deposit capture, and accruing customer loyalty reward points.
+\end{enumerate}
+
+\section{Waitlist Queue Management and Auto-Promotion}
+\label{sec:feat_waitlist}
+When all physical dining tables are fully committed, prospective patrons can register on the digital FIFO waitlist queue (\texttt{waitlist\_entries}):
+\begin{itemize}
+    \item Each queue entry captures party size, preferred dining zone, customer contact details, and a sequential queue position.
+    \item \textbf{Cancellation Backfill Heuristic:} When a confirmed booking is cancelled, \texttt{ReservationController} triggers a backfill scan. The engine queries \texttt{waitlist\_entries} for the highest-ranking waiting party whose party size matches the newly vacant table's capacity ($\text{TableCapacity} \ge \text{PartySize} \ge \text{TableMinCapacity}$).
+    \item The eligible patron's entry transitions to \texttt{'notified'} or \texttt{'promoted'}, and an internal reservation draft is reserved for a 10-minute claim window, preventing table idle time.
+\end{itemize}
+
+\section{Menu Catalog and Kitchen 86-List Synchronization}
+\label{sec:feat_kitchen_86}
+Maintaining real-time synchronization between the culinary kitchen line and front-of-house customer menus is vital:
+\begin{itemize}
+    \item \textbf{Dynamic 86-List Toggling:} Kitchen staff with the \texttt{Kitchen} role can access the dedicated kitchen view and toggle dish availability (\texttt{is\_available} in \texttt{menu\_items}) with a single action. Sold-out dishes immediately reflect as unavailable on public customer menus, preventing servers from taking invalid orders.
+    \item \textbf{Bill of Materials (BOM) Recipe Integration:} Menu items are linked to raw inventory ingredients via \texttt{menu\_item\_recipes}. When orders are processed, inventory stock levels in \texttt{ingredients} are decremented automatically. When an ingredient's \texttt{on\_hand} quantity drops below its \texttt{reorder\_level}, the system generates replenishment alerts in \texttt{purchase\_orders}.
+\end{itemize}
+
+\section{Dual-Ledger Accounting: Signed Centavos and Loyalty Points}
+\label{sec:feat_dual_ledger}
+EIMS implements an immutable, double-entry financial ledger architecture that eliminates numeric inaccuracies:
+
+\subsection{Signed 64-Bit Integer Centavo Ledgers}
+Standard floating-point types (\texttt{FLOAT}, \texttt{DOUBLE}) introduce cumulative rounding errors under IEEE-754 arithmetic. EIMS stores all monetary figures in \texttt{deposit\_ledger} and \texttt{menu\_items} as signed 64-bit integers (\texttt{BIGINT}) denominated in Philippine centavos ($\frac{1}{100}$ PHP):
+\begin{equation}
+    \text{Value in PHP} = \frac{\text{amount\_centavos}}{100}
+\end{equation}
+Ledger records are strictly append-only. To refund or adjust a deposit, a new compensatory row with a signed negative centavo amount is appended. A customer's current balance is derived via relational aggregation:
+\begin{lstlisting}[language=SQLANSI]
+SELECT COALESCE(SUM(amount_centavos), 0) AS balance_centavos
+FROM deposit_ledger
+WHERE org_id = :org_id AND customer_id = :customer_id;
+\end{lstlisting}
+
+\subsection{Customer Loyalty Rewards Ledger}
+In parallel, customer loyalty points are governed by \texttt{loyalty\_ledger}, which records signed point deltas (\texttt{points\_delta}) earned through completed reservations or redeemed for dining discounts. Running point totals are computed dynamically through aggregate summation ($\sum \texttt{points\_delta}$), ensuring complete auditability and consistency.
+
+\section{Deterministic SQL Concierge and Sabotage Diagnostic Kernel}
+\label{sec:feat_defense_kernel}
+To guarantee uninterrupted service resilience and transparent failure recovery:
+\begin{itemize}
+    \item \textbf{Centralized Defense Kernel (\texttt{App\textbackslash Core\textbackslash ErrorHandler}):} Intercepts all native PHP runtime disruptions, converting E\_NOTICE, E\_WARNING, and E\_DEPRECATED into catchable \texttt{ErrorException} instances. In production mode (\texttt{APP\_DEBUG = false}), raw stack traces are suppressed, logging diagnostic details securely to disk while emitting standardized HTTP 500 error pages to protect against system reconnaissance.
+    \item \textbf{Dual-Driver Relational Failover Engine:} In \texttt{App\textbackslash Core\textbackslash Database}, if the primary MySQL 8.0 connection fails (due to container termination, network partition, or socket timeout), the driver catches the PDOException, initiates autonomous dialect adaptation, and transparently routes queries to \texttt{storage/fallback.sqlite} in under 20\,ms, maintaining unbroken HTTP 200 availability for ongoing operations.
+\end{itemize}

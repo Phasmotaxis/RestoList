@@ -79,7 +79,7 @@ The Enterprise Information Management System (EIMS) provides a secure multi-tena
 ### ADR-008: Accessible Modular Design System (Zero Inline CSS & Lyra Theme)
 - **Status**: Accepted
 - **Context**: Mixing inline `style="..."` attributes within PHP views causes CSS specificity leakage, impedes system-wide theme toggling, and fails WCAG AA contrast standards.
-- **Decision**: Refactor 100% of inline styles to modular CSS token architecture (`base.css`, `themes/default.css`, `themes/lyra.css`). Extract high-contrast tokens from `whinee/piiiiink.json` with >= 4.5:1 text contrast and accessible focus rings. Implement zero-dep vanilla theme engine persisting selections across page reloads.
+- **Decision**: Refactor 100% of inline styles to modular CSS token architecture (`base.css`, `themes/default.css`, `themes/lyra.css`). Extract high-contrast tokens from `design-tokens/piiiiink.json` with >= 4.5:1 text contrast and accessible focus rings. Implement zero-dep vanilla theme engine persisting selections across page reloads.
 - **Consequences**:
   - Positive: Strict WCAG AA compliance, zero visual regressions, instant theme extensibility in under 5 minutes.
   - Negative: Requires strict adherence to semantic CSS utility classes across all new view partials.
@@ -113,6 +113,14 @@ The Enterprise Information Management System (EIMS) provides a secure multi-tena
 - **Consequences**:
   - Positive: Complete isolation between internal restaurant operations and public diner userspace; privacy preservation of floor plan geometry; strict concurrency safety against double-booking; zero external dependencies.
   - Negative: Requires maintaining dual web and JSON response contracts across all public entrypoints.
+
+### ADR-012: Multi-Tenant Visual Identity, Dynamic Theming Engine, and Heritage Contrast Compliance
+- **Status**: Accepted
+- **Context**: Multi-tenant restaurant operations demand distinct brand identities for disparate tenant restaurants (`tenant-hiraya-001` Hiraya Bistro and `tenant-katipunan-002` Katipunan Grill) and platform control planes (`lyra`) without leaking styles or violating the Zero Inline Styles and Air-Gapped CSP invariants.
+- **Decision**: Architect a 100% vanilla CSS custom property token system partitioned into modular stylesheets (`base.css`, `app.css`, `themes/lyra.css`, `themes/hiraya.css`, `themes/katipunan.css`, `themes/default.css`). Implement dynamic theme resolution in `layouts/header.php` evaluating user cookie override, authenticated session tenant ID, request URI patterns, and platform defaults. Embed an accessible vanilla JS theme switcher in the global navigation persisting in `localStorage` and `theme` cookie with live in-DOM mutation. Enforce WCAG AAA contrast standards (up to 18.2:1 on Lyra, 15.6:1 on Hiraya, and 16.5:1 on Katipunan).
+- **Consequences**:
+  - Positive: Authentic heritage brand representation, zero visual regressions, instantaneous client-side theme switching, 100% WCAG AAA/AA accessibility, and zero external frontend dependencies.
+  - Negative: View templates must strictly consume semantic CSS classes and variables rather than hardcoded colors.
 
 ## 3. Failure Mode Analysis & Defenses
 

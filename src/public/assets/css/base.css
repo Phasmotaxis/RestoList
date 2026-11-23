@@ -14,7 +14,7 @@ html {
 body {
     background-color: var(--bg-primary);
     color: var(--text-primary);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    font-family: var(--font-family, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif);
     line-height: 1.5;
     min-height: 100vh;
     display: flex;
@@ -423,4 +423,290 @@ code {
     font-size: 0.875rem;
     cursor: pointer;
     min-height: 36px;
+    font-family: inherit;
 }
+
+/* Small Buttons & Action Buttons */
+.btn-sm {
+    background-color: var(--accent-primary);
+    color: #ffffff;
+    border: none;
+    padding: 0.35rem 0.75rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    transition: background-color 0.15s ease;
+}
+
+.btn-sm:hover,
+.btn-sm:focus-visible {
+    background-color: var(--accent-primary-hover);
+    color: #ffffff;
+}
+
+.btn-danger-sm {
+    background-color: transparent;
+    border: 1px solid var(--status-error);
+    color: var(--status-error);
+    padding: 0.35rem 0.75rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.btn-danger-sm:hover,
+.btn-danger-sm:focus-visible {
+    background-color: var(--status-error);
+    color: #ffffff;
+}
+
+/* Card Hierarchy & Specialized Containers */
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.25rem;
+    margin-top: 1rem;
+}
+
+.card-restaurant {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.card-restaurant:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.card-review {
+    margin-bottom: 1rem;
+    border-left: 3px solid var(--accent-primary);
+}
+
+.metric-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.metric-title {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.metric-value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--accent-primary);
+}
+
+.metric-desc {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+/* Accessible Badges */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.2rem 0.55rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1.2;
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-primary);
+}
+
+.badge-info {
+    background-color: rgba(117, 190, 255, 0.15);
+    border-color: var(--accent-tertiary);
+    color: var(--accent-tertiary);
+}
+
+.badge-success {
+    background-color: rgba(35, 209, 139, 0.15);
+    border-color: var(--status-success);
+    color: var(--status-success);
+}
+
+.badge-danger {
+    background-color: rgba(244, 135, 113, 0.15);
+    border-color: var(--status-error);
+    color: var(--status-error);
+}
+
+.badge-accent {
+    background-color: rgba(174, 137, 255, 0.15);
+    border-color: var(--accent-secondary);
+    color: var(--accent-secondary);
+}
+
+/* Table Containers */
+.table-container {
+    width: 100%;
+    overflow-x: auto;
+    margin-top: 0.75rem;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+}
+
+.table th {
+    padding: 0.75rem 1rem;
+    background-color: var(--bg-surface);
+    color: var(--text-primary);
+    font-weight: 600;
+    border-bottom: 2px solid var(--border-subtle);
+    white-space: nowrap;
+}
+
+.table td {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--border-subtle);
+    color: var(--text-primary);
+}
+
+.table tr:hover td {
+    background-color: var(--bg-surface);
+}
+
+/* Form Controls & Grids */
+.form-control {
+    width: 100%;
+    min-height: 44px;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    background-color: var(--bg-surface);
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 0.95rem;
+}
+
+.form-control:focus {
+    border-color: var(--border-strong);
+    outline: none;
+    box-shadow: var(--focus-ring);
+}
+
+.form-input-sm {
+    min-height: 36px;
+    padding: 0.35rem 0.6rem;
+    font-size: 0.85rem;
+}
+
+.form-full {
+    width: 100%;
+}
+
+.grid-form {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+}
+
+.inline-form {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* Accessible Pagination */
+.pagination-nav {
+    margin-top: 1.5rem;
+    display: flex;
+    justify-content: center;
+}
+
+.pagination {
+    display: flex;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    gap: 0.25rem;
+}
+
+.page-item {
+    display: inline-flex;
+}
+
+.page-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    height: 36px;
+    padding: 0 0.5rem;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    text-decoration: none;
+    font-size: 0.875rem;
+    background-color: var(--bg-secondary);
+}
+
+.page-link:hover {
+    background-color: var(--bg-surface);
+    color: var(--accent-primary);
+}
+
+.page-item.active .page-link {
+    background-color: var(--accent-primary);
+    color: #ffffff;
+    border-color: var(--accent-primary);
+}
+
+/* Utility Classes */
+.empty-state {
+    text-align: center;
+    padding: 3rem 1.5rem;
+    color: var(--text-muted);
+}
+
+.tags-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin: 0.5rem 0;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.text-muted {
+    color: var(--text-muted);
+}
+

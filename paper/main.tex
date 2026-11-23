@@ -1,0 +1,97 @@
+\documentclass[11pt,a4paper,oneside]{report}
+
+\input{preamble}
+
+\begin{document}
+
+% -----------------------------------------------------------------------------
+% Rubric Section 1: Title Page
+% -----------------------------------------------------------------------------
+\begin{titlepage}
+    \centering
+    \vspace*{1.0cm}
+
+    {\Large\textbf{Republic of the Philippines}\par}
+    \vspace{0.3cm}
+    {\LARGE\bfseries\color{cvsuGreen} CAVITE STATE UNIVERSITY\par}
+    {\large Don Severino delas Alas Campus (Main Campus)\par}
+    {\large Indang, Cavite, Philippines\par}
+    \vspace{0.8cm}
+    {\large College of Engineering and Information Technology (CEIT)\par}
+    {\large Department of Information Technology (DIT)\par}
+
+    \vspace{1.5cm}
+    \rule{0.8\textwidth}{1.5pt}
+    \vspace{0.8cm}
+
+    {\huge\bfseries\color{primaryNavy} Enterprise Information Management System\par}
+    \vspace{0.4cm}
+    {\Large\bfseries Multi-Tenant Restaurant ERP and Reservation Platform\par}
+    \vspace{0.4cm}
+    {\normalsize\itshape Clean-Room Multi-Tenant Architecture, Dual-Driver Relational Resilience, and Formal Concurrency Control Engine\par}
+
+    \vspace{0.8cm}
+    \rule{0.8\textwidth}{1.5pt}
+    \vspace{1.5cm}
+
+    {\large A Final Project Documentation Deliverable Submitted to the\\
+    Department of Information Technology (DIT)\\
+    in Partial Fulfillment of the Requirements for the Course\par}
+
+    \vspace{0.8cm}
+    {\Large\bfseries\color{primaryNavy} DCIT 24: Information Management\par}
+    {\normalsize 1st Semester, Academic Year 2026--2027\par}
+
+    \vspace{1.5cm}
+    {\large\textbf{EIMS Development Team}\par}
+
+    \vfill
+    {\small\color{slateGray} Submission Date: December 18, 2026\par}
+\end{titlepage}
+
+% -----------------------------------------------------------------------------
+% Frontmatter
+% -----------------------------------------------------------------------------
+\pagenumbering{roman}
+\setcounter{page}{1}
+
+\begin{abstract}
+\noindent This academic monograph and comprehensive project documentation presents the system architecture, theoretical foundations, mathematical formalization, relational database design, and empirical verification of the \textbf{Enterprise Information Management System (EIMS)}. Developed as the capstone deliverable for DCIT 24 (Information Management) at Cavite State University (CvSU) - Main Campus, EIMS provides a multi-tenant restaurant Enterprise Resource Planning (ERP) and high-concurrency table reservation scheduling engine engineered under strict clean-room invariants: native PHP 8.3 standard library with zero external backend frameworks, zero external composer packages, zero runtime JavaScript frameworks, zero remote CDN dependencies, and zero inline CSS styles.
+
+The monograph formalizes an 18-table relational data model spanning five operational domains: Tenant Core and Bitmask Access Control, Dining Operations and Floor Plan Topology, Menu Catalog and Moderated Reviews, Financial Ledgers (Deposit Holds and Loyalty Accruals), and ERP Inventory Lifecycle Management. Central to the system is the \texttt{TableAllocator} concurrency engine, which couples 15-minute discrete time-slot boundary discretization with driver-aware two-layer transactional isolation (\texttt{SELECT ... FOR UPDATE} under primary MySQL 8.0, and serialized transaction states under fallback SQLite3). We provide a formal mathematical proof establishing that this dual-layer construct prevents double-booking race conditions while enabling atomic combinable table allocations. Furthermore, we formalize the active-state mutation guard preventing dangling reservation anomalies (yielding HTTP 422 Unprocessable Content), signed integer centavo ledger arithmetic eliminating floating-point rounding errors, and a live panel sabotage diagnostic defense kernel intercepting runtime disruptions.
+
+Empirical evaluation demonstrates sub-millisecond query resolution across primary routes, 4.2\,ms P99 slot contention acquisition under 10,000 synthetic slots, and 18.4\,ms transparent database failover from disrupted MySQL containers to an air-gapped SQLite3 fallback store while sustaining continuous HTTP 200 availability. The architecture is validated through 41 automated integration test assertions, 82 security hardening test assertions, and 15 independent adversarial Red Team attack probe scenarios, achieving a 100\% empirical pass rate.
+\end{abstract}
+
+\vspace{1cm}
+\tableofcontents
+\newpage
+\listoffigures
+\newpage
+\listoftables
+\newpage
+
+% -----------------------------------------------------------------------------
+% Mainmatter: The 9 Mandatory Rubric Content Sections
+% -----------------------------------------------------------------------------
+\pagenumbering{arabic}
+\setcounter{page}{1}
+
+\input{sections/01-introduction}
+\input{sections/02-project-objectives}
+\input{sections/03-scope-and-limitations}
+\input{sections/04-system-requirements}
+\input{sections/05-entity-relationship-diagram}
+\input{sections/06-database-design}
+\input{sections/07-system-features}
+\input{sections/08-testing-and-results}
+\input{sections/09-conclusion}
+\input{sections/10-individual-member-reflections}
+
+% -----------------------------------------------------------------------------
+% Backmatter
+% -----------------------------------------------------------------------------
+\newpage
+\printbibliography[heading=bibintoc, title={References}]
+
+\end{document}

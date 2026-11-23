@@ -17,6 +17,13 @@ use App\Core\Response;
  */
 class DiscoveryController
 {
+    public const SORT_ALLOWLIST = [
+        'name' => 't.name',
+        'cuisine_type' => 'cuisine_type',
+        'city' => 'city',
+        'created_at' => 't.created_at',
+    ];
+
     /**
      * Helper: Detect JSON request format (Accept header or ?format=json).
      *
@@ -67,7 +74,13 @@ class DiscoveryController
         $total = (int) ($countStmt->fetch()['total'] ?? 0);
         $totalPages = (int) ceil($total / $perPage);
 
-        $query = "SELECT t.id, t.name, t.subdomain, t.created_at FROM tenants t WHERE {$whereSql} ORDER BY t.name ASC LIMIT :limit OFFSET :offset";
+        $sort = (string) ($_GET['sort'] ?? $request->getParam('sort') ?? '');
+        $dir = strtoupper((string) ($_GET['dir'] ?? $request->getParam('dir') ?? 'ASC'));
+        $sortDir = ($dir === 'DESC') ? 'DESC' : 'ASC';
+        $sortCol = self::SORT_ALLOWLIST[$sort] ?? self::SORT_ALLOWLIST['name'];
+        $orderBy = "{$sortCol} {$sortDir}";
+
+        $query = "SELECT t.id, t.name, t.subdomain, t.created_at, '' as cuisine_type, '' as city FROM tenants t WHERE {$whereSql} ORDER BY {$orderBy} LIMIT :limit OFFSET :offset";
         $stmt = $pdo->prepare($query);
         foreach ($params as $k => $v) {
             $stmt->bindValue($k, $v);
@@ -104,12 +117,14 @@ class DiscoveryController
                 }
             }
 
-            // Derive cuisine tag from subdomain or tags
-            $cuisineName = 'Contemporary';
-            if (str_contains($rest['name'], 'Pizza') || str_contains($rest['name'], 'Italian')) {
-                $cuisineName = 'Italian';
-            } elseif (str_contains($rest['name'], 'Bistro') || str_contains($rest['name'], 'Cafe')) {
-                $cuisineName = 'Cafe';
+            // Derive cuisine tag dynamically with intelligent fallback
+            $cuisineName = !empty($rest['cuisine']) ? (string)$rest['cuisine'] : (!empty($rest['cuisine_type']) ? (string)$rest['cuisine_type'] : 'Contemporary');
+            if ($cuisineName === 'Contemporary') {
+                if (str_contains($rest['name'], 'Pizza') || str_contains($rest['name'], 'Italian')) {
+                    $cuisineName = 'Italian';
+                } elseif (str_contains($rest['name'], 'Bistro') || str_contains($rest['name'], 'Cafe')) {
+                    $cuisineName = 'Cafe';
+                }
             }
 
             // Availability check if date and party_size specified
@@ -127,10 +142,10 @@ class DiscoveryController
                 'name' => $rest['name'],
                 'subdomain' => $rest['subdomain'],
                 'cuisine' => $cuisineName,
-                'location' => 'Main Dining District',
-                'phone' => '+63 46 415 0010',
-                'operating_hours' => '11:00 - 22:00 UTC',
-                'parking' => 'On-site guest parking available',
+                'location' => !empty($rest['location']) ? (string)$rest['location'] : 'Main Dining District, Cavite',
+                'phone' => !empty($rest['phone']) ? (string)$rest['phone'] : '+63 46 415 0010',
+                'operating_hours' => !empty($rest['operating_hours']) ? (string)$rest['operating_hours'] : '11:00 - 22:00 UTC',
+                'parking' => !empty($rest['parking']) ? (string)$rest['parking'] : 'On-site guest parking available',
                 'average_rating' => $avgRating,
                 'review_count' => $reviewCount,
                 'dietary_tags' => $dietaryTags,
@@ -215,11 +230,11 @@ class DiscoveryController
             'id' => $restaurant['id'],
             'name' => $restaurant['name'],
             'subdomain' => $restaurant['subdomain'],
-            'cuisine' => str_contains($restaurant['name'], 'Pizza') ? 'Italian' : 'Contemporary Dining',
-            'location' => 'Main Campus Square, Cavite',
-            'phone' => '+63 46 415 0010',
-            'operating_hours' => '11:00 - 22:00 UTC',
-            'parking' => 'Dedicated customer parking lot and bicycle racks available',
+            'cuisine' => !empty($restaurant['cuisine']) ? (string)$restaurant['cuisine'] : (!empty($restaurant['cuisine_type']) ? (string)$restaurant['cuisine_type'] : (str_contains($restaurant['name'], 'Pizza') ? 'Italian' : 'Contemporary Dining')),
+            'location' => !empty($restaurant['location']) ? (string)$restaurant['location'] : 'Main Campus Square, Cavite',
+            'phone' => !empty($restaurant['phone']) ? (string)$restaurant['phone'] : '+63 46 415 0010',
+            'operating_hours' => !empty($restaurant['operating_hours']) ? (string)$restaurant['operating_hours'] : '11:00 - 22:00 UTC',
+            'parking' => !empty($restaurant['parking']) ? (string)$restaurant['parking'] : 'Dedicated customer parking lot and bicycle racks available',
             'average_rating' => $avgRating,
             'review_count' => $reviewCount,
             'reviews' => $reviews,

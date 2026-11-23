@@ -33,11 +33,43 @@ During this operational cycle, the Lead Systems Architect and Heavy AI Orchestra
 - **Verification**: Full `just test` exited `0`; PHP 8.3 lint passed for all source files; hardening suite reported `pass=82 fail=0`; canonical 13-route suite and asset/link gates passed.
 - **Blocker**: Seven dispatched workers terminated before execution due inference-provider `503`/`429` quota failures. No worker branch, commit, or implementation is verified.
 - **Remaining**:
-  - [ ] T1 Retry isolated Client ERP worker after provider quota recovery; verify branch, commit, syntax, no-inline-style scan, and `just test`.
-  - [ ] T2 Retry isolated Customer Portal worker after provider quota recovery; verify branch, commit, syntax, no-inline-style scan, and `just test`.
-  - [ ] T3 Complete unresolved credential/debug/specimen hardening and verify tracked `.env` handling.
-  - [ ] T4 Resolve remaining `org_id`/`tenant_id` integration contract before merging domain workers.
-- **Immediate next step**: Keep core fixes isolated; retry one worker only after provider quota reset and inspect its actual branch/files before merge.
+  - [x] T1 Retry isolated Client ERP worker after provider quota recovery; verify branch, commit, syntax, no-inline-style scan, and `just test`.
+  - [x] T2 Retry isolated Customer Portal worker after provider quota recovery; verify branch, commit, syntax, no-inline-style scan, and `just test`.
+  - [x] T3 Complete unresolved credential/debug/specimen hardening and verify tracked `.env` handling.
+  - [x] T4 Resolve remaining `org_id`/`tenant_id` integration contract before merging domain workers.
+
+---
+
+## 4. Session Entry: 2026-11-22 Reservation Checkout Pipeline & Dual-Ledger Settlement
+- **What was done**:
+  - **Baseline Verification**: Verified git status, validated codified ITEC50 Practical philosophies in `AGENTS.md` and `docs/dev/ai/philosophies-itec50-extracted.md`.
+  - **Loyalty Ledger Architecture**: Implemented `App\Services\LoyaltyLedgerService` (`src/app/Services/LoyaltyLedgerService.php`) providing atomic, append-only point accounting (`earnPoints`, `redeemPoints`, `getBalance`, `getLedger`) using dynamic `SUM(points_delta)` queries.
+  - **Deposit Ledger Settlement**: Added `applyDeposit()` to `App\Services\DepositLedgerService` (`src/app/Services/DepositLedgerService.php`) allowing held diner reservation deposits to be applied against bill totals upon dining completion.
+  - **Atomic Table Slot Release**: Implemented `TableAllocator::completeReservation()` (`src/app/Services/TableAllocator.php`) to transition reservations to `completed` and atomically free occupied 15-minute slot buckets from `reservation_slots`.
+  - **Checkout Endpoints Integration**:
+    - `ReservationController::checkout` (`POST /admin/restaurants/:id/reservations/:res_id/checkout`): Staff-facing reservation completion applying deposits and accruing loyalty rewards.
+    - `BookingFlowController::checkout` (`POST /bookings/:token/checkout`): Customer self-service checkout executing identical atomic completion and ledger settlement.
+    - `LoyaltyPortalController` & `DepositPortalController`: Refactored to delegate persistence to `LoyaltyLedgerService` and `DepositLedgerService`.
+  - **Request Abstraction Hardening**: Added `Request::setBody()` to `App\Core\Request` for synthetic test payload injection without polluting superglobals.
+  - **Test Suite Synchronization & Expansion**: Added Test 41 (`reservation_checkout_flow_deposit_and_loyalty_accrual`) in both `tests/runner.php` and `dev/tests/runner.php`. Synchronized include directory discovery across both test runners (`__DIR__ . '/../src'` and `__DIR__ . '/../../src'`).
+  - **Empirical Verification**:
+    - Integration tests: 41/41 passing (`exit code 0`).
+    - Hardening tests: 82/82 passing (`pass=82 fail=0`, `exit code 0`).
+    - PHP syntax lint (`php -l`): 100% clean on all modified files.
+  - **Packaging & Academic Monograph Verification**:
+    - Refreshed standalone air-gapped XAMPP bundle `dist/dict24-resto-erp-xampp.zip` (176 KB, integrity verified).
+    - Compiled XeLaTeX CvSU academic monograph (`Paper/main.pdf`, 78 KB, 6 pages).
+  - **Governance & Documentation Triad**: Synchronized `AGENTS.md`, `docs/CHANGELOG.md`, `docs/dev/ai/tasks.md` (`TASK-018`, `TASK-019`), and `docs/dev/ai/agent-handoff.md`.
+- **Problems faced & resolved**:
+  - `dev/tests/runner.php` failed to load classes outside Docker due to hardcoded single-level parent path `__DIR__ . '/../src'`; resolved by implementing fallback path search checking `dirname(dirname(__DIR__)) . '/src'`.
+  - Missing `setBody()` on `Request` object caused fatal error during synthetic test request dispatch; resolved by implementing `Request::setBody()`.
+- **What still needs to be done**:
+  - Evaluation defense and live panel demonstration preparation.
+- **Next instructions**:
+  - Run `php tests/runner.php && php dev/scripts/php/test-hardening.php` to verify environment baseline before any further modifications.
+  - Maintain the documentation triad in lockstep with all changes.
+
+---
 
 ## 5. Operational Continuity for Phase 5 (Future Directives)
 Incoming subagents executing future tasks must observe:

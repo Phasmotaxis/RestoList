@@ -33,78 +33,518 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
 
-    <link rel="preload stylesheet" as="style" href="/assets/css/style.css" />
+    <link rel="stylesheet" href="/assets/css/base.css" />
+    <link rel="stylesheet" href="/assets/css/themes/default.css" />
+    <link rel="stylesheet" href="/assets/css/themes/lyra.css" />
+    <script src="/assets/css/theme-engine.js"></script>
     <script defer src="/assets/js/app.js"></script>
 </head>
 <body>
     <header class="site-header">
-        <div class="container">
-            <h1>Enterprise Information Management System</h1>
-            <p class="subtitle">Cavite State University - Main Campus - 2nd year 1st semester 2026-27</p>
+        <div class="container site-header-content">
+            <div>
+                <h1><a href="/">Enterprise Information Management System</a></h1>
+                <p class="subtitle">Cavite State University - Main Campus - 2nd year 1st semester 2026-27</p>
+            </div>
+            <div class="theme-switcher-container">
+                <label for="theme-select" class="theme-switcher-label">Theme:</label>
+                <select id="theme-select" class="theme-select" aria-label="Select Color Theme">
+                    <option value="default">Default (Neutral)</option>
+                    <option value="lyra">Lyra (Piiiiink WCAG AA)</option>
+                </select>
+            </div>
         </div>
     </header>
     <main class="container">
 <section class="card">
-    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+    <div class="header-actions">
         <div>
             <h2>Tenant Organizations</h2>
             <p class="subtitle">Global multi-tenant provisioning and quota management</p>
         </div>
-        <a href="/superadmin/dashboard" style="color: var(--color-primary); font-weight: 500;">&larr; Back to Dashboard</a>
+        <a href="/superadmin/dashboard" class="link-nav">&larr; Back to Dashboard</a>
     </div>
 </section>
 
 <section class="card">
     <h3>Provision New Tenant Organization</h3>
-    <form method="POST" action="/superadmin/organizations" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; align-items: end; margin-top: 1rem;">
+    <form method="POST" action="/superadmin/organizations" class="form-grid-org" novalidate>
+        <input type="hidden" name="_csrf" value="a0a58aa526fd64a37aae7915425ad3fdb8589ed1189095e48a1c01829ac49c1d">        <div>
+            <label for="name" class="form-label">Organization Name</label>
+            <input type="text" id="name" name="name" class="form-input" required maxlength="255" value="" placeholder="e.g. CvSU Silang Campus" aria-describedby="name_error">
+                    </div>
         <div>
-            <label for="name" style="display: block; margin-bottom: 0.25rem;">Organization Name</label>
-            <input type="text" id="name" name="name" required placeholder="e.g. CvSU Silang Campus" style="width: 100%; padding: 0.5rem; border: 1px solid var(--color-border); border-radius: var(--radius-sm);">
-        </div>
+            <label for="subdomain" class="form-label">Subdomain Slug</label>
+            <input type="text" id="subdomain" name="subdomain" class="form-input" required maxlength="64" value="" placeholder="e.g. cvsu-silang" aria-describedby="subdomain_error">
+                    </div>
         <div>
-            <label for="subdomain" style="display: block; margin-bottom: 0.25rem;">Subdomain Slug</label>
-            <input type="text" id="subdomain" name="subdomain" required placeholder="e.g. cvsu-silang" style="width: 100%; padding: 0.5rem; border: 1px solid var(--color-border); border-radius: var(--radius-sm);">
-        </div>
-        <div>
-            <button type="submit" style="background: var(--color-primary); color: white; border: none; padding: 0.6rem 1.2rem; border-radius: var(--radius-sm); cursor: pointer; font-weight: 500;">Provision Tenant</button>
+            <button type="submit" class="btn-primary">Provision Tenant</button>
         </div>
     </form>
 </section>
 
 <section class="card">
     <h3>Existing Tenant Organizations</h3>
-    <div style="overflow-x: auto; margin-top: 0.5rem;">
-        <table style="width: 100%; border-collapse: collapse; text-align: left;">
+    <div class="table-wrapper">
+        <table class="data-table">
             <thead>
-                <tr style="border-bottom: 2px solid var(--color-border);">
-                    <th style="padding: 0.5rem;">Tenant ID</th>
-                    <th style="padding: 0.5rem;">Organization Name</th>
-                    <th style="padding: 0.5rem;">Subdomain</th>
-                    <th style="padding: 0.5rem;">Status</th>
-                    <th style="padding: 0.5rem;">Created At</th>
+                <tr>
+                    <th>Tenant ID</th>
+                    <th>Organization Name</th>
+                    <th>Subdomain</th>
+                    <th>Status</th>
+                    <th>Created At</th>
+                    <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
-                                    <tr style="border-bottom: 1px solid var(--color-border);">
-                        <td style="padding: 0.5rem;"><code>tenant-23180c3b77fc</code></td>
-                        <td style="padding: 0.5rem; font-weight: 500;">CvSU Trece Campus</td>
-                        <td style="padding: 0.5rem;"><code>cvsu-trece</code></td>
-                        <td style="padding: 0.5rem;"><span style="color: #16a34a; font-weight: bold;">Active</span></td>
-                        <td style="padding: 0.5rem;">2026-11-05 23:18:21</td>
+                                    <tr>
+                        <td><code>chaos-tenant-1795244870971440659</code></td>
+                        <td class="text-bold">Chaos Resilient Org</td>
+                        <td><code>chaos-1795244870972571547</code></td>
+                        <td><span class="badge-status-active">Active</span></td>
+                        <td>2026-11-21 07:07:54</td>
+                        <td><a href="/superadmin/organizations/edit?id=chaos-tenant-1795244870971440659" class="link-nav">Edit</a></td>
                     </tr>
-                                    <tr style="border-bottom: 1px solid var(--color-border);">
-                        <td style="padding: 0.5rem;"><code>tenant-cvsu-educ-002</code></td>
-                        <td style="padding: 0.5rem; font-weight: 500;">CvSU College of Education</td>
-                        <td style="padding: 0.5rem;"><code>cvsu-educ</code></td>
-                        <td style="padding: 0.5rem;"><span style="color: #16a34a; font-weight: bold;">Active</span></td>
-                        <td style="padding: 0.5rem;">2026-11-05 23:13:13</td>
+                                    <tr>
+                        <td><code>chaos-tenant-1793924102960571274</code></td>
+                        <td class="text-bold">Chaos Resilient Org</td>
+                        <td><code>chaos-1793924102961563592</code></td>
+                        <td><span class="badge-status-active">Active</span></td>
+                        <td>2026-11-06 00:15:06</td>
+                        <td><a href="/superadmin/organizations/edit?id=chaos-tenant-1793924102960571274" class="link-nav">Edit</a></td>
                     </tr>
-                                    <tr style="border-bottom: 1px solid var(--color-border);">
-                        <td style="padding: 0.5rem;"><code>tenant-cvsu-main-001</code></td>
-                        <td style="padding: 0.5rem; font-weight: 500;">Cavite State University Main Campus</td>
-                        <td style="padding: 0.5rem;"><code>cvsu-main</code></td>
-                        <td style="padding: 0.5rem;"><span style="color: #16a34a; font-weight: bold;">Active</span></td>
-                        <td style="padding: 0.5rem;">2026-11-05 23:13:13</td>
+                                    <tr>
+                        <td><code>chaos-tenant-1793923795456346263</code></td>
+                        <td class="text-bold">Chaos Resilient Org</td>
+                        <td><code>chaos-1793923795457332382</code></td>
+                        <td><span class="badge-status-active">Active</span></td>
+                        <td>2026-11-06 00:09:59</td>
+                        <td><a href="/superadmin/organizations/edit?id=chaos-tenant-1793923795456346263" class="link-nav">Edit</a></td>
+                    </tr>
+                                    <tr>
+                        <td><code>tenant-e3a7d6fd2343</code></td>
+                        <td class="text-bold">Organization Unit 000000</td>
+                        <td><code>org-000000</code></td>
+                        <td><span class="badge-status-active">Active</span></td>
+                        <td>2026-11-05 23:54:06</td>
+                        <td><a href="/superadmin/organizations/edit?id=tenant-e3a7d6fd2343" class="link-nav">Edit</a></td>
+                    </tr>
+                                    <tr>
+                        <td><code>tenant-f3024f515361</code></td>
+                        <td class="text-bold">Organization Unit 000001</td>
+                        <td><code>org-000001</code></td>
+                        <td><span class="badge-status-active">Active</span></td>
+                        <td>2026-11-05 23:54:06</td>
+                        <td><a href="/superadmin/organizations/edit?id=tenant-f3024f515361" class="link-nav">Edit</a></td>
+                    </tr>
+                                    <tr>
+                        <td><code>tenant-f28577dd96f8</code></td>
+                        <td class="text-bold">Organization Unit 000002</td>
+                        <td><code>org-000002</code></td>
+                        <td><span class="badge-status-active">Active</span></td>
+                        <td>2026-11-05 23:54:06</td>
+                        <td><a href="/superadmin/organizations/edit?id=tenant-f28577dd96f8" class="link-nav">Edit</a></td>
+                    </tr>
+                                    <tr>
+                        <td><code>tenant-b6fcc6313eb2</code></td>
+                        <td class="text-bold">Organization Unit 000003</td>
+                        <td><code>org-000003</code></td>
+                        <td><span class="badge-status-active">Active</span></td>
+                        <td>2026-11-05 23:54:06</td>
+                        <td><a href="/superadmin/organizations/edit?id=tenant-b6fcc6313eb2" class="link-nav">Edit</a></td>
+                    </tr>
+                                    <tr>
+                        <td><code>tenant-b74d30d52a7a</code></td>
+                        <td class="text-bold">Organization Unit 000004</td>
+                        <td><code>org-000004</code></td>
+                        <td><span class="badge-status-active">Active</span></td>
+                        <td>2026-11-05 23:54:06</td>
+                        <td><a href="/superadmin/organizations/edit?id=tenant-b74d30d52a7a" class="link-nav">Edit</a></td>
+                    </tr>
+                                    <tr>
+                        <td><code>tenant-63b146bde9dd</code></td>
+                        <td class="text-bold">Organization Unit 000005</td>
+                        <td><code>org-000005</code></td>
+                        <td><span class="badge-status-active">Active</span></td>
+                        <td>2026-11-05 23:54:06</td>
+                        <td><a href="/superadmin/organizations/edit?id=tenant-63b146bde9dd" class="link-nav">Edit</a></td>
+                    </tr>
+                                    <tr>
+                        <td><code>tenant-52aa1bcf1e63</code></td>
+                        <td class="text-bold">Organization Unit 000006</td>
+                        <td><code>org-000006</code></td>
+                        <td><span class="badge-status-active">Active</span></td>
+                        <td>2026-11-05 23:54:06</td>
+                        <td><a href="/superadmin/organizations/edit?id=tenant-52aa1bcf1e63" class="link-nav">Edit</a></td>
+                    </tr>
+                                    <tr>
+                        <td><code>tenant-c2b328c1b2e3</code></td>
+                        <td class="text-bold">Organization Unit 000007</td>
+                        <td><code>org-000007</code></td>
+                        <td><span class="badge-status-active">Active</span></td>
+                        <td>2026-11-05 23:54:06</td>
+                        <td><a href="/superadmin/organizations/edit?id=tenant-c2b328c1b2e3" class="link-nav">Edit</a></td>
+                    </tr>
+                                    <tr>
+                        <td><code>tenant-78b69fcf23af</code></td>
+                        <td class="text-bold">Organization Unit 000008</td>
+                        <td><code>org-000008</code></td>
+                        <td><span class="badge-status-active">Active</span></td>
+                        <td>2026-11-05 23:54:06</td>
+                        <td><a href="/superadmin/organizations/edit?id=tenant-78b69fcf23af" class="link-nav">Edit</a></td>
+                    </tr>
+                                    <tr>
+                        <td><code>tenant-d8430f8da218</code></td>
+                        <td class="text-bold">Organization Unit 000009</td>
+                        <td><code>org-000009</code></td>
+                        <td><span class="badge-status-active">Active</span></td>
+                        <td>2026-11-05 23:54:06</td>
+                        <td><a href="/superadmin/organizations/edit?id=tenant-d8430f8da218" class="link-nav">Edit</a></td>
+                    </tr>
+                                    <tr>
+                        <td><code>tenant-47ac5759b175</code></td>
+                        <td class="text-bold">Organization Unit 000010</td>
+                        <td><code>org-000010</code></td>
+                        <td><span class="badge-status-active">Active</span></td>
+                        <td>2026-11-05 23:54:06</td>
+                        <td><a href="/superadmin/organizations/edit?id=tenant-47ac5759b175" class="link-nav">Edit</a></td>
+                    </tr>
+                                    <tr>
+                        <td><code>tenant-a8f7ebcca421</code></td>
+                        <td class="text-bold">Organization Unit 000011</td>
+                        <td><code>org-000011</code></td>
+                        <td><span class="badge-status-active">Active</span></td>
+                        <td>2026-11-05 23:54:06</td>
+                        <td><a href="/superadmin/organizations/edit?id=tenant-a8f7ebcca421" class="link-nav">Edit</a></td>
+                    </tr>
+                                    <tr>
+                        <td><code>tenant-c2c9e3acdf29</code></td>
+                        <td class="text-bold">Organization Unit 000012</td>
+                        <td><code>org-000012</code></td>
+                        <td><span class="badge-status-active">Active</span></td>
+                        <td>2026-11-05 23:54:06</td>
+                        <td><a href="/superadmin/organizations/edit?id=tenant-c2c9e3acdf29" class="link-nav">Edit</a></td>
+                    </tr>
+                                    <tr>
+                        <td><code>tenant-676f0697e0c6</code></td>
+                        <td class="text-bold">Organization Unit 000013</td>
+                        <td><code>org-000013</code></td>
+                        <td><span class="badge-status-active">Active</span></td>
+                        <td>2026-11-05 23:54:06</td>
+                        <td><a href="/superadmin/organizations/edit?id=tenant-676f0697e0c6" class="link-nav">Edit</a></td>
+                    </tr>
+                                    <tr>
+                        <td><code>tenant-4fa152161e61</code></td>
+                        <td class="text-bold">Organization Unit 000014</td>
+                        <td><code>org-000014</code></td>
+                        <td><span class="badge-status-active">Active</span></td>
+                        <td>2026-11-05 23:54:06</td>
+                        <td><a href="/superadmin/organizations/edit?id=tenant-4fa152161e61" class="link-nav">Edit</a></td>
+                    </tr>
+                                    <tr>
+                        <td><code>tenant-cf31f1a7cfa1</code></td>
+                        <td class="text-bold">Organization Unit 000015</td>
+                        <td><code>org-000015</code></td>
+                        <td><span class="badge-status-active">Active</span></td>
+                        <td>2026-11-05 23:54:06</td>
+                        <td><a href="/superadmin/organizations/edit?id=tenant-cf31f1a7cfa1" class="link-nav">Edit</a></td>
+                    </tr>
+                                    <tr>
+                        <td><code>tenant-ad9e670cef01</code></td>
+                        <td class="text-bold">Organization Unit 000016</td>
+                        <td><code>org-000016</code></td>
+                        <td><span class="badge-status-active">Active</span></td>
+                        <td>2026-11-05 23:54:06</td>
+                        <td><a href="/superadmin/organizations/edit?id=tenant-ad9e670cef01" class="link-nav">Edit</a></td>
+                    </tr>
+                                    <tr>
+                        <td><code>tenant-65b5251ef349</code></td>
+                        <td class="text-bold">Organization Unit 000017</td>
+                        <td><code>org-000017</code></td>
+                        <td><span class="badge-status-active">Active</span></td>
+                        <td>2026-11-05 23:54:06</td>
+                        <td><a href="/superadmin/organizations/edit?id=tenant-65b5251ef349" class="link-nav">Edit</a></td>
+                    </tr>
+                                    <tr>
+                        <td><code>tenant-d440c3501e15</code></td>
+                        <td class="text-bold">Organization Unit 000018</td>
+                        <td><code>org-000018</code></td>
+                        <td><span class="badge-status-active">Active</span></td>
+                        <td>2026-11-05 23:54:06</td>
+                        <td><a href="/superadmin/organizations/edit?id=tenant-d440c3501e15" class="link-nav">Edit</a></td>
+                    </tr>
+                                    <tr>
+                        <td><code>tenant-7b90f0dc8664</code></td>
+                        <td class="text-bold">Organization Unit 000019</td>
+                        <td><code>org-000019</code></td>
+                        <td><span class="badge-status-active">Active</span></td>
+                        <td>2026-11-05 23:54:06</td>
+                        <td><a href="/superadmin/organizations/edit?id=tenant-7b90f0dc8664" class="link-nav">Edit</a></td>
+                    </tr>
+                                    <tr>
+                        <td><code>tenant-f950dce5e06e</code></td>
+                        <td class="text-bold">Organization Unit 000020</td>
+                        <td><code>org-000020</code></td>
+                        <td><span class="badge-status-active">Active</span></td>
+                        <td>2026-11-05 23:54:06</td>
+                        <td><a href="/superadmin/organizations/edit?id=tenant-f950dce5e06e" class="link-nav">Edit</a></td>
+                    </tr>
+                                    <tr>
+                        <td><code>tenant-115f6d3dff1c</code></td>
+                        <td class="text-bold">Organization Unit 000021</td>
+                        <td><code>org-000021</code></td>
+                        <td><span class="badge-status-active">Active</span></td>
+                        <td>2026-11-05 23:54:06</td>
+                        <td><a href="/superadmin/organizations/edit?id=tenant-115f6d3dff1c" class="link-nav">Edit</a></td>
+                    </tr>
+                                    <tr>
+                        <td><code>tenant-c247af4ba9de</code></td>
+                        <td class="text-bold">Organization Unit 000022</td>
+                        <td><code>org-000022</code></td>
+                        <td><span class="badge-status-active">Active</span></td>
+                        <td>2026-11-05 23:54:06</td>
+                        <td><a href="/superadmin/organizations/edit?id=tenant-c247af4ba9de" class="link-nav">Edit</a></td>
+                    </tr>
+                                    <tr>
+                        <td><code>tenant-33a650eafb30</code></td>
+                        <td class="text-bold">Organization Unit 000023</td>
+                        <td><code>org-000023</code></td>
+                        <td><span class="badge-status-active">Active</span></td>
+                        <td>2026-11-05 23:54:06</td>
+                        <td><a href="/superadmin/organizations/edit?id=tenant-33a650eafb30" class="link-nav">Edit</a></td>
+                    </tr>
+                                    <tr>
+                        <td><code>tenant-c189311a0c09</code></td>
+                        <td class="text-bold">Organization Unit 000024</td>
+                        <td><code>org-000024</code></td>
+                        <td><span class="badge-status-active">Active</span></td>
+                        <td>2026-11-05 23:54:06</td>
+                        <td><a href="/superadmin/organizations/edit?id=tenant-c189311a0c09" class="link-nav">Edit</a></td>
+                    </tr>
+                                    <tr>
+                        <td><code>tenant-dc9b0d1b17d6</code></td>
+                        <td class="text-bold">Organization Unit 000025</td>
+                        <td><code>org-000025</code></td>
+                        <td><span class="badge-status-active">Active</span></td>
+                        <td>2026-11-05 23:54:06</td>
+                        <td><a href="/superadmin/organizations/edit?id=tenant-dc9b0d1b17d6" class="link-nav">Edit</a></td>
+                    </tr>
+                                    <tr>
+                        <td><code>tenant-1a0544407d84</code></td>
+                        <td class="text-bold">Organization Unit 000026</td>
+                        <td><code>org-000026</code></td>
+                        <td><span class="badge-status-active">Active</span></td>
+                        <td>2026-11-05 23:54:06</td>
+                        <td><a href="/superadmin/organizations/edit?id=tenant-1a0544407d84" class="link-nav">Edit</a></td>
+                    </tr>
+                                    <tr>
+                        <td><code>tenant-a015660cfdc3</code></td>
+                        <td class="text-bold">Organization Unit 000027</td>
+                        <td><code>org-000027</code></td>
+                        <td><span class="badge-status-active">Active</span></td>
+                        <td>2026-11-05 23:54:06</td>
+                        <td><a href="/superadmin/organizations/edit?id=tenant-a015660cfdc3" class="link-nav">Edit</a></td>
+                    </tr>
+                                    <tr>
+                        <td><code>tenant-70f8b8dfd27c</code></td>
+                        <td class="text-bold">Organization Unit 000028</td>
+                        <td><code>org-000028</code></td>
+                        <td><span class="badge-status-active">Active</span></td>
+                        <td>2026-11-05 23:54:06</td>
+                        <td><a href="/superadmin/organizations/edit?id=tenant-70f8b8dfd27c" class="link-nav">Edit</a></td>
+                    </tr>
+                                    <tr>
+                        <td><code>tenant-480a6f89cc45</code></td>
+                        <td class="text-bold">Organization Unit 000029</td>
+                        <td><code>org-000029</code></td>
+                        <td><span class="badge-status-active">Active</span></td>
+                        <td>2026-11-05 23:54:06</td>
+                        <td><a href="/superadmin/organizations/edit?id=tenant-480a6f89cc45" class="link-nav">Edit</a></td>
+                    </tr>
+                                    <tr>
+                        <td><code>tenant-f910007499d2</code></td>
+                        <td class="text-bold">Organization Unit 000030</td>
+                        <td><code>org-000030</code></td>
+                        <td><span class="badge-status-active">Active</span></td>
+                        <td>2026-11-05 23:54:06</td>
+                        <td><a href="/superadmin/organizations/edit?id=tenant-f910007499d2" class="link-nav">Edit</a></td>
+                    </tr>
+                                    <tr>
+                        <td><code>tenant-642bceebc66b</code></td>
+                        <td class="text-bold">Organization Unit 000031</td>
+                        <td><code>org-000031</code></td>
+                        <td><span class="badge-status-active">Active</span></td>
+                        <td>2026-11-05 23:54:06</td>
+                        <td><a href="/superadmin/organizations/edit?id=tenant-642bceebc66b" class="link-nav">Edit</a></td>
+                    </tr>
+                                    <tr>
+                        <td><code>tenant-8ebf7e2f7a56</code></td>
+                        <td class="text-bold">Organization Unit 000032</td>
+                        <td><code>org-000032</code></td>
+                        <td><span class="badge-status-active">Active</span></td>
+                        <td>2026-11-05 23:54:06</td>
+                        <td><a href="/superadmin/organizations/edit?id=tenant-8ebf7e2f7a56" class="link-nav">Edit</a></td>
+                    </tr>
+                                    <tr>
+                        <td><code>tenant-240cff0494f8</code></td>
+                        <td class="text-bold">Organization Unit 000033</td>
+                        <td><code>org-000033</code></td>
+                        <td><span class="badge-status-active">Active</span></td>
+                        <td>2026-11-05 23:54:06</td>
+                        <td><a href="/superadmin/organizations/edit?id=tenant-240cff0494f8" class="link-nav">Edit</a></td>
+                    </tr>
+                                    <tr>
+                        <td><code>tenant-d6cdaffe3f40</code></td>
+                        <td class="text-bold">Organization Unit 000034</td>
+                        <td><code>org-000034</code></td>
+                        <td><span class="badge-status-active">Active</span></td>
+                        <td>2026-11-05 23:54:06</td>
+                        <td><a href="/superadmin/organizations/edit?id=tenant-d6cdaffe3f40" class="link-nav">Edit</a></td>
+                    </tr>
+                                    <tr>
+                        <td><code>tenant-dc9ae3941485</code></td>
+                        <td class="text-bold">Organization Unit 000035</td>
+                        <td><code>org-000035</code></td>
+                        <td><span class="badge-status-active">Active</span></td>
+                        <td>2026-11-05 23:54:06</td>
+                        <td><a href="/superadmin/organizations/edit?id=tenant-dc9ae3941485" class="link-nav">Edit</a></td>
+                    </tr>
+                                    <tr>
+                        <td><code>tenant-0a902ecdf160</code></td>
+                        <td class="text-bold">Organization Unit 000036</td>
+                        <td><code>org-000036</code></td>
+                        <td><span class="badge-status-active">Active</span></td>
+                        <td>2026-11-05 23:54:06</td>
+                        <td><a href="/superadmin/organizations/edit?id=tenant-0a902ecdf160" class="link-nav">Edit</a></td>
+                    </tr>
+                                    <tr>
+                        <td><code>tenant-17fd8ce488bf</code></td>
+                        <td class="text-bold">Organization Unit 000037</td>
+                        <td><code>org-000037</code></td>
+                        <td><span class="badge-status-active">Active</span></td>
+                        <td>2026-11-05 23:54:06</td>
+                        <td><a href="/superadmin/organizations/edit?id=tenant-17fd8ce488bf" class="link-nav">Edit</a></td>
+                    </tr>
+                                    <tr>
+                        <td><code>tenant-fc55d5c8edbd</code></td>
+                        <td class="text-bold">Organization Unit 000038</td>
+                        <td><code>org-000038</code></td>
+                        <td><span class="badge-status-active">Active</span></td>
+                        <td>2026-11-05 23:54:06</td>
+                        <td><a href="/superadmin/organizations/edit?id=tenant-fc55d5c8edbd" class="link-nav">Edit</a></td>
+                    </tr>
+                                    <tr>
+                        <td><code>tenant-d68234f5dc0d</code></td>
+                        <td class="text-bold">Organization Unit 000039</td>
+                        <td><code>org-000039</code></td>
+                        <td><span class="badge-status-active">Active</span></td>
+                        <td>2026-11-05 23:54:06</td>
+                        <td><a href="/superadmin/organizations/edit?id=tenant-d68234f5dc0d" class="link-nav">Edit</a></td>
+                    </tr>
+                                    <tr>
+                        <td><code>tenant-d401c98291a3</code></td>
+                        <td class="text-bold">Organization Unit 000040</td>
+                        <td><code>org-000040</code></td>
+                        <td><span class="badge-status-active">Active</span></td>
+                        <td>2026-11-05 23:54:06</td>
+                        <td><a href="/superadmin/organizations/edit?id=tenant-d401c98291a3" class="link-nav">Edit</a></td>
+                    </tr>
+                                    <tr>
+                        <td><code>tenant-9c2875301498</code></td>
+                        <td class="text-bold">Organization Unit 000041</td>
+                        <td><code>org-000041</code></td>
+                        <td><span class="badge-status-active">Active</span></td>
+                        <td>2026-11-05 23:54:06</td>
+                        <td><a href="/superadmin/organizations/edit?id=tenant-9c2875301498" class="link-nav">Edit</a></td>
+                    </tr>
+                                    <tr>
+                        <td><code>tenant-c11855eedb87</code></td>
+                        <td class="text-bold">Organization Unit 000042</td>
+                        <td><code>org-000042</code></td>
+                        <td><span class="badge-status-active">Active</span></td>
+                        <td>2026-11-05 23:54:06</td>
+                        <td><a href="/superadmin/organizations/edit?id=tenant-c11855eedb87" class="link-nav">Edit</a></td>
+                    </tr>
+                                    <tr>
+                        <td><code>tenant-4db047c42cf8</code></td>
+                        <td class="text-bold">Organization Unit 000043</td>
+                        <td><code>org-000043</code></td>
+                        <td><span class="badge-status-active">Active</span></td>
+                        <td>2026-11-05 23:54:06</td>
+                        <td><a href="/superadmin/organizations/edit?id=tenant-4db047c42cf8" class="link-nav">Edit</a></td>
+                    </tr>
+                                    <tr>
+                        <td><code>tenant-f4c4a3c3c7ba</code></td>
+                        <td class="text-bold">Organization Unit 000044</td>
+                        <td><code>org-000044</code></td>
+                        <td><span class="badge-status-active">Active</span></td>
+                        <td>2026-11-05 23:54:06</td>
+                        <td><a href="/superadmin/organizations/edit?id=tenant-f4c4a3c3c7ba" class="link-nav">Edit</a></td>
+                    </tr>
+                                    <tr>
+                        <td><code>tenant-2dc567945af4</code></td>
+                        <td class="text-bold">Organization Unit 000045</td>
+                        <td><code>org-000045</code></td>
+                        <td><span class="badge-status-active">Active</span></td>
+                        <td>2026-11-05 23:54:06</td>
+                        <td><a href="/superadmin/organizations/edit?id=tenant-2dc567945af4" class="link-nav">Edit</a></td>
+                    </tr>
+                                    <tr>
+                        <td><code>tenant-34dc5bd1084e</code></td>
+                        <td class="text-bold">Organization Unit 000046</td>
+                        <td><code>org-000046</code></td>
+                        <td><span class="badge-status-active">Active</span></td>
+                        <td>2026-11-05 23:54:06</td>
+                        <td><a href="/superadmin/organizations/edit?id=tenant-34dc5bd1084e" class="link-nav">Edit</a></td>
+                    </tr>
+                                    <tr>
+                        <td><code>tenant-7ae502b994b9</code></td>
+                        <td class="text-bold">Organization Unit 000047</td>
+                        <td><code>org-000047</code></td>
+                        <td><span class="badge-status-active">Active</span></td>
+                        <td>2026-11-05 23:54:06</td>
+                        <td><a href="/superadmin/organizations/edit?id=tenant-7ae502b994b9" class="link-nav">Edit</a></td>
+                    </tr>
+                                    <tr>
+                        <td><code>tenant-5e69e320d14e</code></td>
+                        <td class="text-bold">Organization Unit 000048</td>
+                        <td><code>org-000048</code></td>
+                        <td><span class="badge-status-active">Active</span></td>
+                        <td>2026-11-05 23:54:06</td>
+                        <td><a href="/superadmin/organizations/edit?id=tenant-5e69e320d14e" class="link-nav">Edit</a></td>
+                    </tr>
+                                    <tr>
+                        <td><code>tenant-d46c2ce92d97</code></td>
+                        <td class="text-bold">Organization Unit 000049</td>
+                        <td><code>org-000049</code></td>
+                        <td><span class="badge-status-active">Active</span></td>
+                        <td>2026-11-05 23:54:06</td>
+                        <td><a href="/superadmin/organizations/edit?id=tenant-d46c2ce92d97" class="link-nav">Edit</a></td>
+                    </tr>
+                                    <tr>
+                        <td><code>chaos-tenant-1793922745</code></td>
+                        <td class="text-bold">Chaos Resilient Org</td>
+                        <td><code>chaos-resilient</code></td>
+                        <td><span class="badge-status-active">Active</span></td>
+                        <td>2026-11-05 23:52:29</td>
+                        <td><a href="/superadmin/organizations/edit?id=chaos-tenant-1793922745" class="link-nav">Edit</a></td>
+                    </tr>
+                                    <tr>
+                        <td><code>tenant-cvsu-main-001</code></td>
+                        <td class="text-bold">Cavite State University Main Campus</td>
+                        <td><code>cvsu-main</code></td>
+                        <td><span class="badge-status-active">Active</span></td>
+                        <td>2026-11-05 23:52:25</td>
+                        <td><a href="/superadmin/organizations/edit?id=tenant-cvsu-main-001" class="link-nav">Edit</a></td>
+                    </tr>
+                                    <tr>
+                        <td><code>tenant-cvsu-educ-002</code></td>
+                        <td class="text-bold">CvSU College of Education</td>
+                        <td><code>cvsu-educ</code></td>
+                        <td><span class="badge-status-active">Active</span></td>
+                        <td>2026-11-05 23:52:25</td>
+                        <td><a href="/superadmin/organizations/edit?id=tenant-cvsu-educ-002" class="link-nav">Edit</a></td>
                     </tr>
                             </tbody>
         </table>

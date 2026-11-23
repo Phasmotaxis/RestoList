@@ -56,6 +56,14 @@ cd eims
 # Initialize environment
 cp .env.example .env
 just setup
+
+# Run pre-flight environment audit (Docker, Ports, PHP, Python, LaTeX)
+just doctor
+```
+
+Alternatively, from native Windows PowerShell (outside WSL):
+```powershell
+powershell -ExecutionPolicy Bypass -File dev\scripts\ps1\ensure-docker.ps1 -CheckPorts
 ```
 
 ---

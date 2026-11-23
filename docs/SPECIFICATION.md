@@ -1,7 +1,13 @@
-# DICT24 Restaurant ERP & Reservation Platform: Unified Specification
+# DCIT 24 Restaurant ERP & Reservation Platform: Unified Specification
 
+**University**: Cavite State University - Main Campus  
+**College**: College of Engineering and Information Technology (CEIT)  
+**Department**: Department of Information Technology (DIT)  
+**Course**: DCIT 24 - Information Management  
+**Academic Term**: 1st Semester, Academic Year 2026-2027  
+**Submission Date**: December 18, 2026  
+**Author**: EIMS Development Team  
 **Version**: 1.0.0  
-**Date**: 2026-11-20  
 **Status**: LOCKED for Waves 0–3 implementation  
 **Revision**: Final (no changes during Wave 0–3 execution without Red Team consensus)
 

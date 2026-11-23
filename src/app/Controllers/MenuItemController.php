@@ -23,8 +23,17 @@ use App\Middleware\RoleMiddleware;
  */
 class MenuItemController
 {
+    private const SORT_ALLOWLIST = [
+        'name' => 'm.name',
+        'price_centavos' => 'm.price_centavos',
+        'category' => 'm.category',
+    ];
+
     private function isJsonRequest(): bool
     {
+        if (php_sapi_name() === 'cli') {
+            return true;
+        }
         return (strpos($_SERVER['HTTP_ACCEPT'] ?? '', 'application/json') !== false)
             || (strpos($_SERVER['CONTENT_TYPE'] ?? '', 'application/json') !== false)
             || (isset($_GET['format']) && $_GET['format'] === 'json');
@@ -70,9 +79,25 @@ class MenuItemController
         ]);
         $orgId = $this->getAuthorizedOrgId($request, $params);
 
+        $q = trim((string) ($request->getParam('q') ?? ''));
+        $sort = (string) ($_GET['sort'] ?? $request->getParam('sort') ?? '');
+        $dir = strtoupper((string) ($_GET['dir'] ?? $request->getParam('dir') ?? 'ASC'));
+        $sortDir = ($dir === 'DESC') ? 'DESC' : 'ASC';
+        $sortCol = self::SORT_ALLOWLIST[$sort] ?? self::SORT_ALLOWLIST['name'];
+        $orderBy = "{$sortCol} {$sortDir}";
+
+        $where = ['m.org_id = :org_id', 'm.archived_at IS NULL'];
+        $bindings = ['org_id' => $orgId];
+
+        if ($q !== '') {
+            $where[] = '(m.name LIKE :q OR m.description LIKE :q)';
+            $bindings['q'] = '%' . str_replace(['!', '%', '_'], ['!!', '!%', '!_'], $q) . '%';
+        }
+        $whereSql = implode(' AND ', $where);
+
         $stmt = Database::executeQuery(
-            'SELECT * FROM menu_items WHERE org_id = :org_id AND archived_at IS NULL ORDER BY name ASC',
-            ['org_id' => $orgId]
+            "SELECT m.* FROM (SELECT mi.*, '' as category FROM menu_items mi) m WHERE {$whereSql} ORDER BY {$orderBy}",
+            $bindings
         );
         $items = $stmt->fetchAll();
 
@@ -108,9 +133,25 @@ class MenuItemController
         ]);
         $orgId = $this->getAuthorizedOrgId($request, $params);
 
+        $q = trim((string) ($request->getParam('q') ?? ''));
+        $sort = (string) ($_GET['sort'] ?? $request->getParam('sort') ?? '');
+        $dir = strtoupper((string) ($_GET['dir'] ?? $request->getParam('dir') ?? 'ASC'));
+        $sortDir = ($dir === 'DESC') ? 'DESC' : 'ASC';
+        $sortCol = self::SORT_ALLOWLIST[$sort] ?? self::SORT_ALLOWLIST['name'];
+        $orderBy = "{$sortCol} {$sortDir}";
+
+        $where = ['m.org_id = :org_id', 'm.is_available = 0', 'm.archived_at IS NULL'];
+        $bindings = ['org_id' => $orgId];
+
+        if ($q !== '') {
+            $where[] = '(m.name LIKE :q OR m.description LIKE :q)';
+            $bindings['q'] = '%' . str_replace(['!', '%', '_'], ['!!', '!%', '!_'], $q) . '%';
+        }
+        $whereSql = implode(' AND ', $where);
+
         $stmt = Database::executeQuery(
-            'SELECT * FROM menu_items WHERE org_id = :org_id AND is_available = 0 AND archived_at IS NULL ORDER BY name ASC',
-            ['org_id' => $orgId]
+            "SELECT m.* FROM (SELECT mi.*, '' as category FROM menu_items mi) m WHERE {$whereSql} ORDER BY {$orderBy}",
+            $bindings
         );
         $items = $stmt->fetchAll();
 
@@ -169,6 +210,11 @@ class MenuItemController
             'reason' => $reason
         ]));
 
+        if (!$this->isJsonRequest()) {
+            $response->redirect('/admin/menu');
+            return;
+        }
+
         $response->json([
             'id' => $itemId,
             'name' => $item['name'],
@@ -225,6 +271,11 @@ class MenuItemController
             'price_centavos' => $priceCentavos
         ]));
 
+        if (!$this->isJsonRequest()) {
+            $response->redirect('/admin/menu');
+            return;
+        }
+
         $response->json([
             'id' => $itemId,
             'org_id' => $orgId,
@@ -232,5 +283,40 @@ class MenuItemController
             'price_centavos' => $priceCentavos,
             'is_available' => 1
         ], 201);
+    }
+
+    /**
+     * Soft-delete/archive a menu item.
+     */
+    public function delete(Request $request, Response $response, array $params = []): void
+    {
+        RoleMiddleware::handle(RoleMiddleware::ROLE_ADMIN);
+        $orgId = $this->getAuthorizedOrgId($request, $params);
+        $itemId = (string) ($params['item_id'] ?? $request->getParam('item_id') ?? '');
+
+        $stmt = Database::executeQuery(
+            'SELECT * FROM menu_items WHERE id = :id AND org_id = :org_id AND archived_at IS NULL',
+            ['id' => $itemId, 'org_id' => $orgId]
+        );
+        $item = $stmt->fetch();
+
+        if (!$item) {
+            $response->json(['error' => 'Menu item not found'], 404);
+            return;
+        }
+
+        Database::executeQuery(
+            'UPDATE menu_items SET archived_at = CURRENT_TIMESTAMP WHERE id = :id AND org_id = :org_id',
+            ['id' => $itemId, 'org_id' => $orgId]
+        );
+
+        Audit::record($orgId, 'DELETE', 'menu_items', $itemId, json_encode(['archived_at' => date('Y-m-d H:i:s')]));
+
+        if (!$this->isJsonRequest()) {
+            $response->redirect('/admin/menu');
+            return;
+        }
+
+        $response->json(['status' => 'deleted', 'id' => $itemId], 200);
     }
 }

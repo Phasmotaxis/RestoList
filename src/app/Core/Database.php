@@ -138,6 +138,29 @@ class Database
         // Enable foreign key constraint enforcement (SQLite3 default is OFF).
         $pdo->exec('PRAGMA foreign_keys = ON;');
 
+        // Check for unified master schema (22 operational tables + seed dataset)
+        $masterSchemaCandidates = [
+            __DIR__ . '/../../database/dict24_resto_erp.sql',
+            dirname(__DIR__, 3) . '/database/dict24_resto_erp.sql',
+            dirname(__DIR__, 2) . '/database/dict24_resto_erp.sql',
+        ];
+
+        foreach ($masterSchemaCandidates as $schemaPath) {
+            if (file_exists($schemaPath)) {
+                $sql = file_get_contents($schemaPath);
+                if ($sql !== false && $sql !== '') {
+                    $cleanSql = preg_replace('/SET\s+FOREIGN_KEY_CHECKS\s*=\s*[01];/i', '', $sql);
+                    $cleanSql = str_ireplace('AUTO_INCREMENT', 'AUTOINCREMENT', $cleanSql);
+                    // Split DDL from seed dataset so tables are created without seed data pollution in test runs
+                    $parts = preg_split('/--\s*=+[\r\n]+--\s*REALISTIC SEED DATASET/i', $cleanSql);
+                    $ddl = $parts[0] ?? $cleanSql;
+                    $pdo->exec($ddl);
+                    return;
+                }
+            }
+        }
+
+        // Fallback baseline schema if master SQL is unreadable
         // Tenants: Multi-tenant isolation boundary. Each restaurant, cafeteria, or commissary is a tenant.
         $pdo->exec('CREATE TABLE IF NOT EXISTS tenants (
             id VARCHAR(36) PRIMARY KEY,

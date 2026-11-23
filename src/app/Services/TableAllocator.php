@@ -106,9 +106,10 @@ class TableAllocator
                 }
             }
 
-            // Create reservation master record.
+            // Create reservation master record with explicit bound UTC timestamps.
+            $nowUtc = gmdate('Y-m-d H:i:s');
             $resStmt = $pdo->prepare(
-                'INSERT INTO reservations (id, org_id, customer_id, party_size, start_at, end_at, status, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)'
+                'INSERT INTO reservations (id, org_id, customer_id, party_size, start_at, end_at, status, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
             );
             $resStmt->execute([
                 $reservationId,
@@ -118,7 +119,9 @@ class TableAllocator
                 $startAt,
                 $endAt,
                 'pending',
-                $notes
+                $notes,
+                $nowUtc,
+                $nowUtc
             ]);
 
             // Link tables to reservation (many-to-many).
@@ -197,9 +200,46 @@ class TableAllocator
         try {
             $pdo->beginTransaction();
 
-            // Mark reservation as cancelled.
-            $pdo->prepare('UPDATE reservations SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
-                ->execute(['cancelled', $reservationId]);
+            // Mark reservation as cancelled with explicit UTC timestamp.
+            $nowUtc = gmdate('Y-m-d H:i:s');
+            $pdo->prepare('UPDATE reservations SET status = ?, updated_at = ? WHERE id = ?')
+                ->execute(['cancelled', $nowUtc, $reservationId]);
+
+            // Delete slot bucket entries for this reservation (clean up via join to reservation_tables).
+            $pdo->prepare(
+                'DELETE FROM reservation_slots WHERE (org_id, table_id, slot_start_utc) IN (SELECT rs.org_id, rs.table_id, rs.slot_start_utc FROM reservation_slots rs INNER JOIN reservation_tables rt ON rs.table_id = rt.table_id WHERE rt.reservation_id = ?)'
+            )->execute([$reservationId]);
+
+            $pdo->commit();
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            throw $e;
+        }
+    }
+
+    /**
+     * Complete reservation atomically and free all booked slots.
+     *
+     * Sets reservation status to 'completed' and deletes associated slot bucket entries.
+     * Transaction ensures consistency: if slot deletion fails, entire operation rolls back.
+     *
+     * @param string $reservationId Reservation primary key.
+     *
+     * @return void
+     *
+     * @throws Exception If transaction fails or reservation not found.
+     */
+    public static function completeReservation(string $reservationId): void
+    {
+        $pdo = Database::getConnection();
+
+        try {
+            $pdo->beginTransaction();
+
+            // Mark reservation as completed with explicit UTC timestamp.
+            $nowUtc = gmdate('Y-m-d H:i:s');
+            $pdo->prepare('UPDATE reservations SET status = ?, updated_at = ? WHERE id = ?')
+                ->execute(['completed', $nowUtc, $reservationId]);
 
             // Delete slot bucket entries for this reservation (clean up via join to reservation_tables).
             $pdo->prepare(

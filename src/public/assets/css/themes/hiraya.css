@@ -1,0 +1,45 @@
+/* EIMS Filipiniana Tenant Theme (Hiraya Bistro) */
+/* Authentic Philippine heritage aesthetic: warm ivory capiz/linen, parian parchment, antique burnished Manila gold, Vigan terracotta, roasted barako typography */
+/* Contrast: Body text >= 7:1 (WCAG AAA Conformance) */
+
+[data-theme="hiraya"] {
+    /* Surfaces & Backgrounds */
+    --bg-primary: #fbf9f4;        /* Warm ivory capiz / linen */
+    --bg-secondary: #f4eee2;      /* Parian parchment */
+    --bg-surface: #f4eee2;        /* Input & container parchment */
+    --bg-elevated: #ffffff;       /* Crisp table linen */
+    --card-bg: #ffffff;           /* Table linen card surface */
+
+    /* Borders & Dividers */
+    --border-subtle: #e2d7c5;     /* Woven reed border */
+    --border-strong: #b8934a;     /* Antique burnished Manila gold */
+    --border-color: #e2d7c5;      /* Canonical subtle border */
+
+    /* Text & Foreground (WCAG AAA Conformance) */
+    --text-primary: #24160e;      /* Roasted barako / dark kamagong (15.6:1 contrast) */
+    --text-secondary: #5c4436;    /* Warm mahogany (8.0:1 contrast) */
+    --text-muted: #5c4436;        /* Warm mahogany accessible muted text */
+
+    /* Brand & Interactive Accents */
+    --accent-primary: #8c3b2d;    /* Vigan clay / terracotta accent (7.2:1 contrast) */
+    --accent-primary-hover: #732f23;
+    --accent-secondary: #b8934a;  /* Antique burnished Manila gold */
+    --accent-tertiary: #3a5335;   /* Patio moss (7.5:1 contrast) */
+
+    /* Status Tokens */
+    --status-success: #3a5335;    /* Patio moss green */
+    --status-warning: #b8934a;    /* Antique gold */
+    --status-error: #8c3b2d;      /* Vigan terracotta clay */
+
+    /* Focus & Accessibility */
+    --focus-ring: 0 0 0 3px rgba(140, 59, 45, 0.45);
+
+    /* Typography: Philippine Heritage Serif Stack */
+    --font-family: 'Playfair Display', 'Cormorant Garamond', 'Baskerville', 'Georgia', 'Times New Roman', serif;
+
+    /* Dimensions & Geometry */
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --spacing-unit: 1rem;
+    --max-width: 1200px;
+}

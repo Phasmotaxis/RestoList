@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Middleware;
 
+require_once __DIR__ . '/AuthMiddleware.php';
+
 use App\Core\Session;
 
 /**

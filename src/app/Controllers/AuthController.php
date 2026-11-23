@@ -54,6 +54,18 @@ class AuthController
                 $response->redirect('/admin/dashboard');
                 return;
             }
+            if (($mask & RoleMiddleware::ROLE_FRONTOFHOUSE) === RoleMiddleware::ROLE_FRONTOFHOUSE) {
+                $response->redirect('/admin/tables');
+                return;
+            }
+            if (($mask & RoleMiddleware::ROLE_KITCHEN) === RoleMiddleware::ROLE_KITCHEN) {
+                $response->redirect('/admin/menu/86');
+                return;
+            }
+            if (($mask & RoleMiddleware::ROLE_CUSTOMER) === RoleMiddleware::ROLE_CUSTOMER) {
+                $response->redirect('/discover');
+                return;
+            }
             $response->redirect('/user/dashboard');
             return;
         }
@@ -145,6 +157,18 @@ class AuthController
                 }
                 if (($mask & RoleMiddleware::ROLE_ADMIN) === RoleMiddleware::ROLE_ADMIN) {
                     $response->redirect('/admin/dashboard');
+                    return;
+                }
+                if (($mask & RoleMiddleware::ROLE_FRONTOFHOUSE) === RoleMiddleware::ROLE_FRONTOFHOUSE) {
+                    $response->redirect('/admin/tables');
+                    return;
+                }
+                if (($mask & RoleMiddleware::ROLE_KITCHEN) === RoleMiddleware::ROLE_KITCHEN) {
+                    $response->redirect('/admin/menu/86');
+                    return;
+                }
+                if (($mask & RoleMiddleware::ROLE_CUSTOMER) === RoleMiddleware::ROLE_CUSTOMER) {
+                    $response->redirect('/discover');
                     return;
                 }
                 $response->redirect('/user/dashboard');

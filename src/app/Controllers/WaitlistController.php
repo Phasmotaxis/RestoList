@@ -25,8 +25,17 @@ use App\Services\TableAllocator;
  */
 class WaitlistController
 {
+    private const SORT_ALLOWLIST = [
+        'created_at' => 'w.created_at',
+        'party_size' => 'w.party_size',
+        'position' => 'w.position',
+    ];
+
     private function isJsonRequest(): bool
     {
+        if (php_sapi_name() === 'cli') {
+            return true;
+        }
         return (strpos($_SERVER['HTTP_ACCEPT'] ?? '', 'application/json') !== false)
             || (strpos($_SERVER['CONTENT_TYPE'] ?? '', 'application/json') !== false)
             || (isset($_GET['format']) && $_GET['format'] === 'json');
@@ -82,13 +91,37 @@ class WaitlistController
             // Ignore if date function differs in driver
         }
 
+        $q = trim((string) ($request->getParam('q') ?? ''));
+        $status = trim((string) ($request->getParam('status') ?? ''));
+        $sort = (string) ($_GET['sort'] ?? $request->getParam('sort') ?? '');
+        $dir = strtoupper((string) ($_GET['dir'] ?? $request->getParam('dir') ?? 'ASC'));
+        $sortDir = ($dir === 'DESC') ? 'DESC' : 'ASC';
+        $sortCol = self::SORT_ALLOWLIST[$sort] ?? null;
+        $orderBy = $sortCol !== null ? "{$sortCol} {$sortDir}" : 'w.position ASC, w.join_at ASC';
+
+        $where = ['w.org_id = :org_id'];
+        $bindings = ['org_id' => $orgId];
+
+        if ($status !== '' && in_array($status, ['waiting', 'notified', 'cancelled', 'seated', 'expired'], true)) {
+            $where[] = 'w.status = :status';
+            $bindings['status'] = $status;
+        } else {
+            $where[] = 'w.status IN ("waiting", "notified")';
+        }
+
+        if ($q !== '') {
+            $where[] = '(w.preferred_zone LIKE :q OR z.name LIKE :q)';
+            $bindings['q'] = '%' . str_replace(['!', '%', '_'], ['!!', '!%', '!_'], $q) . '%';
+        }
+        $whereSql = implode(' AND ', $where);
+
         $stmt = Database::executeQuery(
-            'SELECT w.*, z.name as zone_name
-             FROM waitlist_entries w
+            "SELECT w.*, z.name as zone_name
+             FROM (SELECT we.*, we.join_at as created_at FROM waitlist_entries we) w
              LEFT JOIN dining_zones z ON w.preferred_zone = z.id
-             WHERE w.org_id = :org_id AND w.status IN ("waiting", "notified")
-             ORDER BY w.position ASC, w.join_at ASC',
-            ['org_id' => $orgId]
+             WHERE {$whereSql}
+             ORDER BY {$orderBy}",
+            $bindings
         );
         $entries = $stmt->fetchAll();
 
@@ -160,6 +193,11 @@ class WaitlistController
             'preferred_zone' => $preferredZone
         ]));
 
+        if (!$this->isJsonRequest()) {
+            $response->redirect('/admin/waitlist');
+            return;
+        }
+
         $response->json([
             'id' => $id,
             'org_id' => $orgId,
@@ -200,6 +238,11 @@ class WaitlistController
 
         Audit::record($orgId, 'REORDER_WAITLIST', 'waitlist_entries', $entryId, "Position moved to {$newPosition}");
 
+        if (!$this->isJsonRequest()) {
+            $response->redirect('/admin/waitlist');
+            return;
+        }
+
         $response->json([
             'id' => $entryId,
             'position' => $newPosition,
@@ -234,6 +277,11 @@ class WaitlistController
 
         Audit::record($orgId, 'NOTIFY_WAITLIST', 'waitlist_entries', $entryId, 'Notification dispatched to customer');
 
+        if (!$this->isJsonRequest()) {
+            $response->redirect('/admin/waitlist');
+            return;
+        }
+
         $response->json([
             'id' => $entryId,
             'status' => 'notified',
@@ -267,6 +315,11 @@ class WaitlistController
         );
 
         Audit::record($orgId, 'REMOVE_WAITLIST', 'waitlist_entries', $entryId, 'Removed from waitlist');
+
+        if (!$this->isJsonRequest()) {
+            $response->redirect('/admin/waitlist');
+            return;
+        }
 
         $response->json(['status' => 'removed', 'id' => $entryId], 200);
     }

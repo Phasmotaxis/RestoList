@@ -1,8 +1,13 @@
 system:
   name: "Enterprise Information Management System"
   short_name: "EIMS"
-  academic_term: "2nd year 1st semester 2026-27"
+  university: "Cavite State University - Main Campus"
   institution: "Cavite State University - Main Campus"
+  college: "College of Engineering and Information Technology (CEIT)"
+  department: "Department of Information Technology (DIT)"
+  course: "DCIT 24 - Information Management"
+  academic_term: "1st Semester, Academic Year 2026-2027"
+  submission_date: "December 18, 2026"
   author: "EIMS Development Team"
   domain: "eims-cvsu.lyra-on.top"
   site_url: "https://eims-cvsu.lyra-on.top"
@@ -10,12 +15,21 @@ system:
   banner_image: "/assets/images/banner.png"
   logo_image: "/assets/images/icons/logo.png"
 themes:
+  lyra:
+    name: "Lyra (Platform Neon)"
+    slug: "lyra"
+    wcag_compliance: "AAA"
+  hiraya:
+    name: "Hiraya Bistro (Filipiniana)"
+    slug: "hiraya"
+    wcag_compliance: "AAA"
+  katipunan:
+    name: "Katipunan Grill (Rustic Smokehouse)"
+    slug: "katipunan"
+    wcag_compliance: "AAA"
   default:
     name: "Default Neutral"
     slug: "default"
-  lyra:
-    name: "Lyra (Piiiiink)"
-    slug: "lyra"
     wcag_compliance: "AA"
 security:
   trusted_proxies: "127.0.0.1,10.0.0.1"

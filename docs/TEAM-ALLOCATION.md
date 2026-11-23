@@ -3,9 +3,12 @@
 **Date**: 2026-11-20  
 **Phase**: Wave 0.2 Team Allocation  
 **Status**: LOCKED for parallel Layer 2 worker dispatch (Wave 2)  
-**Revision**: Final
+**Revision**: Final  
+**Human Teammate Backlog**: [Team Onboarding Guide & Developer Handbook](TEAM-ONBOARDING-GUIDE.md) | [Comprehensive Teammate Task Allocation Matrix (30 Tasks, 6 Roles)](TEAM-ALLOCATION-TASKS.md) | [54-Ticket Atomic Volunteer Task Queue (8 Members)](TEAM-TASK-QUEUE.md)
 
 ---
+
+> **Note for Course Evaluators and Student Groups**: This document outlines the automated Layer 2 worker orchestration model for kernel subsystems. For the 4-to-8 human member project delegation backlog covering non-kernel deliverables (Video Production, Windows/XAMPP QA, Cultural Menu Data, User Manuals, Oral Defense Coordination, and Relational Schema Documentation), see **[docs/TEAM-ALLOCATION-TASKS.md](TEAM-ALLOCATION-TASKS.md)**. For the granular 54-ticket atomic Kanban task queue for the 8-member group, see **[docs/TEAM-TASK-QUEUE.md](TEAM-TASK-QUEUE.md)**.
 
 ## 1. Executive Summary
 

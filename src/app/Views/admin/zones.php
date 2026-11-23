@@ -1,5 +1,8 @@
 <?php
+declare(strict_types=1);
+
 use App\Core\Session;
+use App\Core\Request;
 
 $title = $title ?? 'Dining Zones - Admin';
 require_once __DIR__ . '/../layouts/header.php';
@@ -13,13 +16,13 @@ $orgId = $orgId ?? (string) Session::get('tenant_id');
             <h2>Dining Zones Management</h2>
             <p class="subtitle">Configure restaurant floor zones and capacities</p>
         </div>
-        <a href="/admin/dashboard" class="link-nav">&larr; Back to Dashboard</a>
+        <a href="<?= htmlspecialchars(Request::url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>" class="link-nav">&larr; Back to Dashboard</a>
     </div>
 </section>
 
 <section class="card">
     <h3>Add New Dining Zone</h3>
-    <form method="POST" action="/admin/restaurants/<?= htmlspecialchars($orgId, ENT_QUOTES, 'UTF-8') ?>/zones" class="form-grid-admin" novalidate>
+    <form method="POST" action="<?= htmlspecialchars(Request::url('/admin/restaurants/' . urlencode($orgId) . '/zones'), ENT_QUOTES, 'UTF-8') ?>" class="form-grid-admin" novalidate>
         <?= Session::csrfField() ?>
         <div>
             <label for="name" class="form-label">Zone Name</label>
@@ -61,7 +64,7 @@ $orgId = $orgId ?? (string) Session::get('tenant_id');
                             <td><?= (int)($zone['total_capacity'] ?? $zone['capacity']) ?> seats</td>
                             <td><?= htmlspecialchars(substr((string)$zone['created_at'], 0, 10), ENT_QUOTES, 'UTF-8') ?></td>
                             <td>
-                                <form method="POST" action="/admin/restaurants/<?= htmlspecialchars($orgId, ENT_QUOTES, 'UTF-8') ?>/zones/<?= htmlspecialchars((string)$zone['id'], ENT_QUOTES, 'UTF-8') ?>/delete" class="inline-form">
+                                <form method="POST" action="<?= htmlspecialchars(Request::url('/admin/restaurants/' . urlencode($orgId) . '/zones/' . urlencode((string)$zone['id']) . '/delete'), ENT_QUOTES, 'UTF-8') ?>" class="inline-form">
                                     <?= Session::csrfField() ?>
                                     <button type="submit" class="btn-danger-sm" onclick="return confirm('Archive this zone?');">Delete</button>
                                 </form>

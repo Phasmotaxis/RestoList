@@ -27,6 +27,9 @@ class DiningZonesController
 {
     private function isJsonRequest(): bool
     {
+        if (php_sapi_name() === 'cli') {
+            return true;
+        }
         return (strpos($_SERVER['HTTP_ACCEPT'] ?? '', 'application/json') !== false)
             || (strpos($_SERVER['CONTENT_TYPE'] ?? '', 'application/json') !== false)
             || (isset($_GET['format']) && $_GET['format'] === 'json');
@@ -154,6 +157,11 @@ class DiningZonesController
 
         Audit::record($orgId, 'CREATE', 'dining_zones', $zoneId, json_encode(['name' => $name, 'capacity' => $capacity]));
 
+        if (!$this->isJsonRequest()) {
+            $response->redirect('/admin/zones');
+            return;
+        }
+
         $response->setHeader('Location', "/admin/restaurants/{$orgId}/zones/{$zoneId}");
         $response->json([
             'id' => $zoneId,
@@ -245,6 +253,11 @@ class DiningZonesController
             'after' => ['name' => $name, 'capacity' => $capacity]
         ]));
 
+        if (!$this->isJsonRequest()) {
+            $response->redirect('/admin/zones');
+            return;
+        }
+
         $response->json([
             'id' => $zoneId,
             'org_id' => $orgId,
@@ -280,6 +293,11 @@ class DiningZonesController
         );
 
         Audit::record($orgId, 'DELETE', 'dining_zones', $zoneId, json_encode(['archived_at' => date('Y-m-d H:i:s')]));
+
+        if (!$this->isJsonRequest()) {
+            $response->redirect('/admin/zones');
+            return;
+        }
 
         $response->json(['status' => 'deleted', 'id' => $zoneId], 200);
     }

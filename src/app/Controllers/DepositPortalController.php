@@ -10,6 +10,7 @@ use App\Core\Request;
 use App\Core\Response;
 use App\Core\Session;
 use App\Core\Validator;
+use App\Services\DepositLedgerService;
 use App\Services\FeatureFlagService;
 
 /**
@@ -87,15 +88,9 @@ class DepositPortalController
             return;
         }
 
-        // Calculate running balance: SUM(amount_centavos)
-        $balStmt = $pdo->prepare('SELECT COALESCE(SUM(amount_centavos), 0) as balance_centavos FROM deposit_ledger WHERE org_id = :org_id AND customer_id = :customer_id');
-        $balStmt->execute([':org_id' => $orgId, ':customer_id' => $customerId]);
-        $balanceCentavos = (int) ($balStmt->fetch()['balance_centavos'] ?? 0);
-
-        // Fetch recent ledger history
-        $histStmt = $pdo->prepare('SELECT id, amount_centavos, action, reason, created_at FROM deposit_ledger WHERE org_id = :org_id AND customer_id = :customer_id ORDER BY created_at DESC LIMIT 50');
-        $histStmt->execute([':org_id' => $orgId, ':customer_id' => $customerId]);
-        $history = $histStmt->fetchAll();
+        // Calculate running balance and fetch recent ledger history via DepositLedgerService
+        $balanceCentavos = DepositLedgerService::getBalance($orgId, $customerId);
+        $history = DepositLedgerService::getLedger($orgId, $customerId, 50);
 
         $formattedHistory = [];
         foreach ($history as $row) {
@@ -191,18 +186,9 @@ class DepositPortalController
             return;
         }
 
-        $ledgerId = bin2hex(random_bytes(18));
         $fullReason = $reservationId !== '' ? "{$reason} (Res: {$reservationId})" : $reason;
 
-        $ins = $pdo->prepare('INSERT INTO deposit_ledger (id, org_id, customer_id, amount_centavos, action, reason, created_at) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)');
-        $ins->execute([
-            $ledgerId,
-            $orgId,
-            $customerId,
-            $amountCentavos,
-            'hold',
-            $fullReason,
-        ]);
+        $ledgerId = DepositLedgerService::holdDeposit($orgId, $customerId, $amountCentavos, $fullReason);
 
         Audit::log(
             $orgId,
@@ -213,10 +199,7 @@ class DepositPortalController
             "Held deposit of {$amountCentavos} centavos for customer {$customerId}"
         );
 
-        // Fetch updated balance
-        $balStmt = $pdo->prepare('SELECT COALESCE(SUM(amount_centavos), 0) as balance_centavos FROM deposit_ledger WHERE org_id = :org_id AND customer_id = :customer_id');
-        $balStmt->execute([':org_id' => $orgId, ':customer_id' => $customerId]);
-        $newBalance = (int) ($balStmt->fetch()['balance_centavos'] ?? 0);
+        $newBalance = DepositLedgerService::getBalance($orgId, $customerId);
 
         $response->json([
             'id' => $ledgerId,

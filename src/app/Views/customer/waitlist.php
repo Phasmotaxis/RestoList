@@ -28,13 +28,13 @@ require_once __DIR__ . '/../layouts/header.php';
         </div>
 
         <div class="action-group">
-            <form method="POST" action="/waitlist/<?= urlencode($entry['id']) ?>/cancel" onsubmit="return confirm('Leave waitlist queue?');">
+            <form method="POST" action="<?= htmlspecialchars(\App\Core\Request::url('/waitlist/' . urlencode($entry['id']) . '/cancel'), ENT_QUOTES, 'UTF-8') ?>" onsubmit="return confirm('Leave waitlist queue?');">
                 <button type="submit" class="btn-secondary link-danger">Leave Queue</button>
             </form>
-            <a href="/discover" class="btn-primary">Browse Other Restaurants</a>
+            <a href="<?= htmlspecialchars(\App\Core\Request::url('/discover'), ENT_QUOTES, 'UTF-8') ?>" class="btn-primary">Browse Other Restaurants</a>
         </div>
     <?php else: ?>
-        <form method="POST" action="/waitlist/<?= urlencode($restaurant['id'] ?? '') ?>/join" class="waitlist-form">
+        <form method="POST" action="<?= htmlspecialchars(\App\Core\Request::url('/waitlist/' . urlencode($restaurant['id'] ?? '') . '/join'), ENT_QUOTES, 'UTF-8') ?>" class="waitlist-form">
             <div class="grid-form">
                 <div class="form-group">
                     <label for="wl-email">Email Address</label>
@@ -58,7 +58,7 @@ require_once __DIR__ . '/../layouts/header.php';
             </div>
             <div class="action-group">
                 <button type="submit" class="btn-primary">Join Waitlist</button>
-                <a href="/discover" class="btn-secondary">Cancel</a>
+                <a href="<?= htmlspecialchars(\App\Core\Request::url('/discover'), ENT_QUOTES, 'UTF-8') ?>" class="btn-secondary">Cancel</a>
             </div>
         </form>
     <?php endif; ?>

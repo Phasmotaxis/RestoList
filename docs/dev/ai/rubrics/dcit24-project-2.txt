@@ -1,0 +1,197 @@
+Republic of the Philippines
+
+CAVITE STATE UNIVERSITY
+Don Severino delas Alas Campus
+Indang, Cavite
+
+DCIT 24 – Information Management
+
+Project Descriptions
+
+I. PROJECT OVERVIEW:
+•
+For this final project, students are required to design, develop, and demonstrate a fully functional, database-driven web
+application using HTML, CSS, PHP, and MySQL.
+•
+Students shall develop a web-based information system that addresses a specific problem, improves an existing manual
+process, or provides a practical solution to a real-world situation.
+•
+The developed system must allow users to interact with a website while performing database operations such as inserting,
+retrieving, updating, and deleting records.
+II. GENERAL SYSTEM REQUIREMENTS:
+Your application must meet the following requirements:
+1.
+
+Programming Languages and Technologies
+Technology
+Purpose
+HTML
+Website structure and content
+CSS
+Website design, styling, and layout
+PHP
+Server-side programming and system functionality
+MySQL
+Database creation, storage, and management
+JavaScript
+Optional frontend interactivity and enhancements
+WAMPP / XAMPP
+Local web server and database environment
+
+2.
+
+Database Requirements
+✓ The database must contain at least four (4) interconnected tables relevant to the proposed system.
+✓ Each table must have a clearly defined Primary Key (PK).
+✓ Foreign Keys (FK) must be implemented where necessary to establish relationships between tables.
+✓ Appropriate SQL data types must be used, such as INT, VARCHAR, TEXT, DATE, DATETIME, and DECIMAL.
+✓ The database must contain sufficient sample records to demonstrate the system's functionality.
+✓ Database records must be stored and retrieved from MySQL rather than hardcoded into the website.
+✓ Students must demonstrate the use of SQL statements, including SELECT, INSERT, UPDATE, and DELETE.
+
+3.
+
+Required System Functionalities
+1. User Authentication
+2. CRUD Operations
+3. Search, Filter, and Sorting
+4. Dashboard or Main Interface
+5. Input Validation and Error Handling
+6. User Interface and Navigation
+
+III. REQUIRED PROJECT DELIVERABLES
+A. Complete Source Code
+•
+Students must submit a compressed ZIP file containing the complete and functional project.
+•
+The submission must include:
+o All PHP source code files.
+o HTML, CSS, and JavaScript files, if applicable.
+o Images, icons, and other assets used by the system.
+o The exported MySQL database as an .sql file.
+o A README.txt or README.md file containing installation and execution instructions.
+o Test login credentials for the instructor.
+B. Project Documentation (Soft Copy)
+•
+Title Page
+•
+Introduction
+•
+Project Objectives
+•
+Scope and Limitations
+•
+System Requirements
+•
+Entity-Relationship Diagram
+•
+Database Design
+•
+System Features
+•
+Testing and Results
+•
+Conclusion
+
+Republic of the Philippines
+
+CAVITE STATE UNIVERSITY
+Don Severino delas Alas Campus
+Indang, Cavite
+
+DCIT 24 – Information Management
+
+Project Descriptions
+
+C.
+
+System Demonstration Video
+Each group must submit a recorded video demonstrating the complete functionality of their developed system.
+Video Duration: 10–15 minutes
+
+VIDEO DEMONSTRATION
+STUDENT’S
+CAMERA
+
+The demonstration must include:
+1.
+2.
+3.
+4.
+5.
+6.
+7.
+8.
+
+Project Introduction: State the project title, its purpose, and the problem it addresses.
+System Overview: Present the main interface, dashboard, and available modules.
+User Authentication: Demonstrate login, invalid login handling, and logout.
+CRUD Operations: Show the actual insertion, retrieval, modification, and deletion of records.
+Search, Filter, and Sorting: Demonstrate how the system retrieves and organizes information.
+Database Demonstration: Open phpMyAdmin or a MySQL client to show the tables, relationships, and actual records
+stored in the database.
+System Testing: Demonstrate how the system handles invalid inputs or unsuccessful operations.
+Conclusion: Briefly explain the group's accomplishments and the challenges encountered.
+•
+•
+•
+
+Every group member must appear or provide a clearly identifiable speaking part in the demonstration video. Each
+member must explain or demonstrate a specific part of the system.
+A student who does not participate in the video demonstration will receive zero (0) points for the demonstration
+component, regardless of the group's overall performance.
+A video containing only slides, screenshots, or a pre-recorded presentation without an actual working system
+demonstration will not satisfy the requirements.
+
+IV. PROJECT GRADING RUBRICS
+Criteria
+Database Design and Implementation
+System Functionality and CRUD Operations
+User Interface and Usability
+Source Code and Project Documentation
+System Demonstration Video
+Individual Participation and Technical Understanding
+TOTAL
+
+Percentage
+25
+30
+15
+10
+10
+10
+100% (Finals Output / Portfolio)
+
+Individual Participation Rule (Midterms Practical Exam – 10pts): The demonstration and participation component will be evaluated
+individually. A member who does not participate in the video will receive zero for the project, subject to the mandatory participation
+requirement stated above.
+Project Documentation – Soft Copy (Finals Practical Exam – 10pts)
+V. IMPORTANT REMINDERS
+•
+Originality of Work. Students must develop their own project. Copying an existing system, downloading a complete project
+from the internet, or submitting another group's work as their own is strictly prohibited.
+•
+Use of Artificial Intelligence. AI tools may be used as learning aids for understanding programming concepts, debugging, or
+obtaining explanations. However, students must understand, verify, and be able to explain any AI-assisted code included in their
+project. Submitting a fully AI-generated system without understanding its implementation is not acceptable.
+
+Republic of the Philippines
+
+CAVITE STATE UNIVERSITY
+Don Severino delas Alas Campus
+Indang, Cavite
+
+DCIT 24 – Information Management
+
+Project Descriptions
+
+•
+
+DATE OF SUBMISSION AND GOOGLE DRIVE FOLDERS:
+December 18, 2026 – Friday
+Use your CvSU Email to upload files here:
+BSIT 2-4 Submission Link: https://drive.google.com/drive/folders/1wEOqw8jB7ssO3dCA1tPoY-gHUfgkAgS9?usp=sharing
+BSIT 2-5 Submission Link: https://drive.google.com/drive/folders/175myDB-Mk5GgKjJYqEqYbWcXNJi5k1X7?usp=sharing
+The Google drive link will be closed at exactly 11:59PM of December 18, 2026. Late submission won’t be entertained.
+
+

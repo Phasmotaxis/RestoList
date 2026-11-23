@@ -1,0 +1,779 @@
+PHP Project Access and Status
+https://gemini.google.com/app/36b3ac5bd92554fc
+
+User prompt: @Orca CSN MCP Bridge can you check orca rn and see if the PHP project is accessible? i
+would like to modify smth on it... thankieees!!
+Response: Yep, Orca (v1.4.261) and the MCP bridge (v0.3.6) are live and connected, and your PHP project
+is open and accessible right now :3
+●​ Project / Worktree: +DICT24 Information Management/61 Finals (refs/heads/main)
+●​ Path: ~/systems/P01 Lyra Personal/30-39 Education, Knowledge, and Learning/31 Formal
+Education/31.11 Cavite State University/41 4th year 1st semester 2026-27/+DICT24 Information
+Management/61 Finals
+●​ Status: Connected & writable
+
+Quick Heads-Up Before We Touch Files
+There are currently two terminals attached to that exact main worktree, including an open dispatch that left
+off mid-task:
+1.​ term_d26e3d23-2eae-42d6-a184-442888442adf (Dict24 green R5 fixes, dispatch
+ctx_e39430db272e): Was working uncommitted on main to patch the 5 Red Team R4 items
+(scrubbing Password123! / _csrf tokens from docs/specimens, setting APP_DEBUG=false by default,
+fixing LoginThrottle.php per-email locking + response parity, and updating test-panel-sabotage.sh). It's
+currently idle at the ❯ prompt after hitting an upstream HTTP 400 error on kiro/claude-haiku-5.5.
+2.​ term_2b3b314e-5f01-4b66-a07f-a3f0b0f690d2 (Dict24-green-r4.md partial rows): Also sitting on
+the same worktree.
+What are we modifying on it, bestie? Also let me know if you want me to kick/resume or release that stalled
+R5 worker first so your new changes don't collide with its uncommitted edits!
+
+User prompt: can you read this docs for me, and then grill us for the requirements... read the specifications
+written in the PHP project, and tell me which one of these is a good idea, and which one we still need to
+improve on. Full on Descartes mode on us. doubt until you see smth to believe on. thankieees!!
+Response: Alright bestie, full Descartes mode engaged: dubito, ergo sum — we are doubting every
+buzzword in this doc until it proves it deserves to survive your DICT24 Information Management defense :3
+I checked the actual state of your PHP project (+DICT24 Information Management/61 Finals) alongside your
+Restaurant Reservation System requirements doc. Right now, your codebase is a hardened PHP 8.3 +
+
+PDO (MySQL/SQLite) multi-tenant core (eims_app) with a strict 3-tier actor model (SuperAdmin, org Admin,
+User), stateful session + _csrf auth, anti-enumeration LoginThrottle, strict CSP with zero inline style=""
+allowed, declare(strict_types=1) enforced everywhere, and an 82-check automated test + sabotage gate
+(just test).
+Comparing that concrete codebase against your proposed spec reveals some genuinely solid architectural
+instincts—and a whole lot of enterprise buzzword bloat that will get you roasted by a defense panel if we
+don't tighten it up.
+
+1. What Holds Up Under Doubt (Good Ideas Worth Keeping)
+These parts of your specification align cleanly with both your existing PHP architecture and what an
+Information Management course actually evaluates:
+●​ 3-Tier Multi-Tenant Hierarchy (SuperAdmin → Restaurant Admin → Diner User)
+○​ This maps 1:1 onto the role structure and cross-tenant write isolation already built and tested in
+your PHP core.
+●​ Organization Lifecycle, Audit Logging, & Session Revocation
+○​ Tracking critical admin actions, managing tenant listing statuses, and revoking active sessions
+fit directly into your existing session/audit mindset and give you strong relational audit-trail
+tables to showcase.
+●​ Core Table Booking + Live Table Status + Dietary/Allergy Notes
+○​ Handling party sizes, preferred dining zones, real-time table states (available, reserved,
+occupied, cleaning), and allergy flags forces real relational modeling, foreign-key integrity, and
+state transitions.
+●​ Deterministic 24/7 Chatbot (DB-Backed FAQ / Booking Lookup)
+○​ Explicitly specifying a deterministic bot rather than shoving an LLM wrapper into a PHP 8.3
+finals project is smart—it can query restaurant hours, menu availability, and booking codes
+directly from SQL with zero external API fragility.
+●​ Automated Waitlist Backfilling & Cancellation Rules
+○​ Linking cancellations/no-shows to waitlist queue promotion demonstrates actual transactional
+business logic instead of basic CRUD forms.
+
+2. Descartes Interrogation: Where Your Spec Fails Scrutiny
+Now let's put every questionable assumption on trial. If I'm sitting on your panel—or running Red Team R5
+against your repo—here is what I'm attacking immediately:
+
+Doubt #1: Are you building a B2B2C Marketplace or a Restaurant ERP?
+Your stated purpose is a B2B2C marketplace where customers discover and book tables across multiple
+restaurants. Yet your client-facing list includes Purchase Order & Inventory Replenishment, kitchen prep
+/ sauce recipes, and shared POS device PIN switching.
+●​ The Flaw: A B2B2C marketplace (like OpenTable) solves discovery, availability, and reservation state.
+Internal inventory replenishment and kitchen recipe management belong to a back-of-house ERP (like
+Odoo or Toast). Mixing both dilutes your ERD with half-baked tables that have nothing to do with
+reservations.
+●​ The Counterpoint: Even though Purchase Orders are marked [optional], leaving them in your spec
+
+invites panelists to ask: "Does reserving a table or ordering a menu item deduct raw ingredient
+inventory via triggers or transactions?" If the answer is no, cut it.
+
+Doubt #2: Enterprise Auth Buzzword Salad vs. Your Actual Security
+Architecture
+Your spec promises OAuth2/OIDC, hardware token MFA, short-lived JWTs, passwordless SMS/email magic
+links, Google/Apple social sign-on, and POS PIN quick-switching.
+●​ The Flaw: Your PHP project uses server-rendered PHP 8.3 with stateful session cookies, _csrf
+tokens, and LoginThrottle.php.
+○​ JWTs + OAuth2/OIDC contradict a stateful session architecture and throw away the instant
+server-side logout/cookie invalidation you literally just verified in Red Team R4.
+○​ Passwordless SMS/email magic links actively undermine your anti-enumeration work in
+LoginThrottle.php (where locked and unlocked accounts must return identical responses) unless
+you engineer constant-time dummy dispatches for non-existent accounts.
+○​ SMS alerts & gateways require paid third-party telecom APIs (which is why you already had to
+write (Mock) SMS Alerts in one bullet while forgetting (Mock) in the other two).
+●​ The Reality Check: Keep your hardened email + password + session + CSRF + per-email
+rate-limiting auth, add TOTP MFA or RBAC permissions if you want extra security credit, and drop
+OAuth2/OIDC/JWT/Social SSO unless you actually intend to implement full OIDC token verification in
+raw PHP 8.3.
+
+Doubt #3: Copy-Paste Artifacts & Internal Contradictions in Your Own Doc
+Read your Customer-Facing section again—you listed "Interactive Digital Menu" twice (once with dietary
+tags, once with allergen details) and then added "Dietary and Allergy Notification" as a third separate
+bullet right underneath.
+●​ The Flaw: Duplicate requirements signal to an evaluator that the spec was stitched together from
+multiple prompts without a normalization pass. Consolidate menu browsing (with live stock +
+allergen/dietary tags) into one coherent requirement and reservation-time allergy notes into one
+booking requirement.
+
+Doubt #4: Zero Mention of Concurrency, Double-Booking, or Financial Integrity
+For a course literally titled Information Management, your document describes 25+ UI features and zero
+database integrity guarantees:
+●​ Double-Booking Race Condition: Two diners click "Book Table 4 at 7:00 PM" at the exact same
+millisecond. How does MySQL/SQLite prevent overlapping reservations on the same table
+(transaction isolation, row locking, or time-interval overlap checks)?
+●​ Table Capacity & Merging: What happens when a party of 6 books at a restaurant that only has
+4-seat tables? Do you enforce party_size <= table.capacity, or support table combinations?
+●​ Schema Mutation Safety: If a restaurant admin edits their floor plan or deletes a table that has
+upcoming confirmed reservations, do you soft-delete, restrict via ON DELETE RESTRICT, or force
+reassignment?
+●​ Deposit Math: Your spec mentions deposit forfeitures and online deposits. Are money columns stored
+as integer centavos (BIGINT/INT) or exact DECIMAL(10,2)—and note that your current base core
+explicitly forbids premature domain schema edits until the hardening pass finishes!
+
+Doubt #5: Your Custom Floor Plan Feature Will Break Your Own CSP Gate
+Your PHP repo enforces zero inline style="" attributes across all HTML/PHP templates and specimens.
+●​ The Trap: Most naive "Custom Floor Plan" builders store X/Y coordinates in the database and render
+style="left: 140px; top: 80px;" on <div> elements. That will immediately trip your CSP and fail your just
+test hygiene grep! If you keep floor plans, constrain them to CSS Grid / Flexbox zone-and-slot
+classes (e.g., zone-patio, grid-row-2, grid-col-4) rather than arbitrary pixel coordinates.
+
+3. Triage Verdict for Your Requirements Doc
+Here is how I would ruthlessly clean up your spec so every single bullet is defensible, relational, and 100%
+compatible with your PHP 8.3 stack:
+
+Feature Area
+
+Verdict
+
+Action Plan
+
+Multi-Tenant Provisioning
+& RBAC
+
+KEEP
+
+Maps directly to existing
+SuperAdmin / Admin / User
+roles and tenant isolation.
+
+Audit Logs & Session
+Revocation
+
+KEEP
+
+Back with an immutable
+audit_logs table and
+server-side session
+invalidation.
+
+Table Booking + Overlap
+Prevention
+
+KEEP & EXPAND
+
+Add explicit time-slot
+duration, capacity validation,
+and transactional overlap
+checks.
+
+Live Table Status & Waitlist
+Queue
+
+KEEP
+
+Model explicit state machine
+transitions (available →
+reserved → occupied →
+cleaning).
+
+Digital Menu +
+Dietary/Allergy Tags
+
+MERGE
+
+Collapse the 3 duplicate
+menu/allergy bullets into 1
+normalized menu + booking
+allergy flow.
+
+Feature Area
+
+Verdict
+
+Action Plan
+
+Deterministic Chatbot
+
+KEEP (SCOPED)
+
+Implement as a rule/keyword
++ SQL lookup widget (hours,
+availability, booking status).
+
+Custom Floor Plans
+
+REWRITE
+
+Replace freeform
+drag-and-drop coordinates
+with CSP-safe zone/grid
+table layouts.
+
+Auth (OAuth2, JWT, Magic
+Links, SSO)
+
+CUT / REWRITE
+
+Standardize on your
+hardened PHP session +
+CSRF + LoginThrottle +
+granular RBAC.
+
+Purchase Orders & Kitchen
+Recipes
+
+CUT
+
+Out-of-scope ERP bloat for a
+B2B2C reservation
+marketplace.
+
+Payments & SMS Alerts
+
+MOCK / SIMULATE
+
+Explicitly scope as simulated
+ledger transactions
+(centavos) and in-app/log
+notifications.
+
+(Quick side note: I also spun up a read-only inspection worker dict24-spec-audit-read on terminal
+term_1d5aebf3-2e51-4612-8c33-3d2c80eb0192 while checking the repo—just let me know when you want
+me to release it alongside term_d26e3d23-2eae-42d6-a184-442888442adf.)
+Do you want to rewrite and lock in this tightened requirements spec + ERD first, or finish/unblock the Green
+R5 security fixes on main before we start building the restaurant domain tables?
+
+User prompt: we are building more of a resto ERP more than anything else... yes... dont include that auth
+salad thingimajig, otherwise, if you can write it, try to. but dont, for now... yes, consolidate specs. read my
+mega dump as well to see how the project should be approached, from my hackathon notes... thankieees!!
+just think of a solution to doubt #4... ur smart. figure it out. yea... for doubt #5, just make a custom one... but
+for now, its optional :3
+Response: Pivot accepted, bestie—framing this as a multi-tenant Restaurant ERP with "Same UI, different
+feature flags for different userspaces" [cite: 2] completely changes the equation, because now table
+reservations, front-of-house floor operations, menu availability, and back-of-house stock replenishment
+
+actually belong in the same relational schema instead of fighting each other [cite: 1, 2].
+Before we lock in the consolidated spec and solve Doubt #4, let’s put your Mega Dump hackathon notes
+under the exact same Cartesian microscope so nothing in there trips you up during your DICT24 defense.
+
+1. Grilling Your Mega Dump Notes (Descartes Audit)
+Your hackathon notes have great product instincts—especially the Big 5 validation framework (food + daily
+operational friction is textbook Real, Large, Significant, Relevant, Urgent) and the feature-flagged
+userspace pattern—but three assumptions in those notes will get you cooked if you carry them straight into
+a PHP 8.3 Information Management project [cite: 2]:
+●​ Deployment Stack Contradiction (Cloudflare Pages / KV / Vercel + Neon + Supabase vs. PHP
+8.3): Your notes say not to self-host and to deploy on Cloudflare Pages/KV or Vercel [cite: 2]. Neither
+Cloudflare Pages nor Vercel runs stateful PHP 8.3 + PDO MySQL/SQLite natively—they are
+edge/Node platforms. If a panelist sees Cloudflare Pages on a slide while your repo runs Dockerized
+PHP 8.3 + MySQL with stateful sessions, that is an instant credibility hit. Keep your local Docker
+Compose setup for grading and target a container/PHP host (e.g., Railway, Fly.io, Render, or a Docker
+VPS) if you deploy live.
+●​ The "Backend Should Be the Least of Our Worries" Trap: That mindset works at a 48-hour UI
+pitch hackathon, not in Information Management, where normalization, transactions, concurrency
+locks, and audit trails are the rubric [cite: 2]. Your defense questions (How do you scale it? How do
+you build it? How do you handle redundancy?) have to be answered with database mechanics—read
+replicas, connection pooling, indexed tenant keys, transactional isolation, and automated
+backups—not just frontend hosting buzzwords [cite: 2].
+●​ 8-Person Team Bottleneck: Looking at your group roster, you (Lyra) are carrying DevOps, Backend,
+Automation, Infrastructure, and Deployment, Rian splits Frontend/Backend, and the other six
+members (Zy, Xy, Shiella, Bea, Ares, Chie) are concentrated in UI Design, Frontend, Research, and
+Documentation [cite: 2]. If you make every ERP feature mandatory, you become a
+single-point-of-failure bottleneck while six teammates collide on CSS and docs. Feature-flagging the
+secondary ERP modules lets the UI/docs team design the full vision while keeping the backend
+shippable.
+
+2. Solving Doubt #4: Concurrency, Capacity, Mutations &
+Money
+Here is the exact relational and transactional architecture to solve all four data-integrity problems in PHP 8.3
++ PDO (MySQL 8 & SQLite) without needing external queues or Redis:
+
+A. Preventing Double-Booking Race Conditions (Two-Layer Defense)
+A naive UNIQUE(table_id, reservation_time) fails because a 7:00 PM booking for 90 minutes (19:00–20:30)
+collides with a 7:30 PM booking (19:30–21:00) even though the timestamps differ. Solve it at both the
+transaction layer and the schema layer:
+1.​ Explicit Half-Open Time Intervals ([start_at, end_at)): Every reservation stores start_at and end_at
+(calculated as start_at + org.turn_duration_minutes + org.buffer_minutes). Two bookings overlap if
+and only if:​
+existing.start_at<new.end_at∧existing.end_at>new.start_at
+
+2.​ Pessimistic Row Locking Inside PDO::beginTransaction():
+○​ MySQL: SELECT id, capacity, is_active FROM dining_tables WHERE org_id = ? AND id IN (...)
+ORDER BY id ASC FOR UPDATE (always sorting by id ASC prevents deadlocks when merging
+multiple tables).
+○​ SQLite (for your test suite): Start the transaction with BEGIN IMMEDIATE so concurrent
+writers serialize cleanly at the database lock level.
+○​ Run the overlap check inside the transaction; if any active booking (pending, confirmed, seated)
+overlaps, rollBack() immediately and offer the waitlist.
+3.​ Schema-Level Time-Bucket Guard (reservation_slots): Discretize reservations into 15-minute
+intervals and insert (org_id, table_id, slot_start_utc) into a reservation_slots child table with
+UNIQUE(org_id, table_id, slot_start_utc). Even if a future developer forgets FOR UPDATE,
+MySQL/SQLite itself rejects an overlapping insert with a 23000 integrity constraint violation.
+
+B. Table Capacity & Multi-Table Merging
+Replace a single reservations.table_id foreign key with a junction table reservation_tables (reservation_id,
+table_id):
+●​ When a party of 6 requests a slot at a restaurant with only 4-top tables, the allocator selects adjacent
+tables sharing the same zone_id where is_combinable = 1 and ∑capacity≥party_size, locks all
+candidate table rows in id ASC order, and inserts one reservations header plus two reservation_tables
+rows atomically.
+
+C. Safe Floor Plan & Menu Mutations (Soft-Archive + Active-Booking Guard)
+●​ Never hard-delete tables, zones, or menu items referenced by historical or upcoming records (ON
+DELETE RESTRICT on all foreign keys).
+●​ Add archived_at DATETIME NULL to dining_tables and menu_items.
+●​ Before archiving a table or reducing its capacity, run a guard query checking for future active
+reservations (end_at > NOW() AND status IN ('pending', 'confirmed')). If any exist, block the edit and
+return the conflicting booking IDs so staff can reassign them first.
+
+D. Financial & ERP Inventory Integrity (Centavos + Append-Only Ledgers)
+●​ Integer Centavos (BIGINT): Store all prices, reservation deposits, and purchase order totals as
+signed integer centavos (₱250.00 = 25000). Zero floating-point drift across PHP, MySQL, and SQLite.
+●​ Append-Only Payment & Stock Ledgers:
+○​ Deposits write immutable rows to deposit_ledger (id, org_id, reservation_id, entry_type,
+amount_centavos, created_at) with entry_type IN ('hold', 'forfeit', 'refund', 'applied_to_bill')
+instead of flipping a mutable is_paid boolean.
+○​ When [OPTIONAL] inventory tracking is enabled, menu_item_recipes (menu_item_id,
+ingredient_id, qty_per_serving) links menu items to raw stock, and every PO receipt or
+completed order writes an immutable delta to stock_movements (id, org_id, ingredient_id,
+delta_qty, reason, ref_id) so current stock is always auditable.
+
+3. Solving Doubt #5: CSP-Safe Custom Floor Plan (Optional)
+To satisfy your codebase's zero inline style="" rule and strict CSP, do not store pixel coordinates (x:
+142px, y: 88px). Model the floor plan as a 12-column × 8-row CSS Grid per dining zone:
+●​ dining_zones: id, org_id, name (e.g., Main Hall, Al Fresco Patio), grid_cols (default 12), grid_rows
+
+(default 8), sort_order.
+●​ dining_tables: id, org_id, zone_id, code (T-01), capacity, is_combinable, grid_col (1..12), grid_row
+(1..8), col_span (1..4), row_span (1..4), shape ('square' | 'round' | 'booth'), status ('available' |
+'reserved' | 'occupied' | 'cleaning'), archived_at.
+●​ Rendering: Map grid coordinates and states strictly to pre-compiled CSS utility classes
+(class="floor-table gc-3 gr-2 span-w-2 shape-round status-reserved"). Zero inline styles,
+keyboard-navigable for A11Y testing, and gated behind the feature_custom_floor_plan tenant flag.
+
+4. Consolidated Restaurant ERP Specification
+(Auth-Salad-Free)
+Here is the cleaned, deduplicated, defense-ready specification aligned with your existing PHP 8.3
+multi-tenant core and feature-flagged userspace design (no files modified yet):
+
+Architecture & Security Baseline (Shared Across All Userspaces)
+●​ Stack & Architecture: Server-rendered PHP 8.3 (declare(strict_types=1)), PDO (MySQL 8
+production / SQLite test parity), strict CSP with zero inline style="", single unified UI shell controlled by
+tenant feature_flags and user role permissions.
+●​ Authentication & Access Control: Stateful server-side sessions with secure cookie invalidation on
+logout, per-form _csrf tokens, LoginThrottle per-email anti-enumeration rate limiting, and
+tenant-isolated RBAC (SuperAdmin, Restaurant Owner/Admin, FrontOfHouse, Kitchen, Customer).
+(OAuth2/OIDC, JWTs, social SSO, and hardware MFA are explicitly excluded.)
+●​ Immutable Audit Trail: audit_logs capturing actor, tenant org_id, action, target entity, before/after
+state diff, and timestamp.
+
+Userspace 1: Platform SuperAdmin (Marketplace & Tenant Governance)
+●​ Multi-Tenant Organization Provisioning & Lifecycle: Create, suspend, verify, or archive restaurant
+tenants; manage subscription tiers and marketplace visibility.
+●​ Tenant Onboarding & Feature-Flag Control: Issue single-use hashed admin invitation tokens and
+toggle per-restaurant feature flags (enable_floor_plan, enable_inventory_erp, enable_deposits,
+enable_loyalty).
+●​ Cross-Tenant Security & Session Governance: Inspect global audit logs, enforce password
+policies, and revoke active sessions across any tenant in real time.
+
+Userspace 2: Restaurant Client ERP (Staff & Management)
+●​ Live Table & Service State Board: Real-time status board (available, reserved, occupied, cleaning)
+with one-tap transitions and server-side state validation.
+●​ Reservation, Waitlist & No-Show Engine: Manage incoming bookings, walk-in waitlist queues,
+automated no-show cancellation windows, and instant waitlist backfill promotion when a table frees
+up.
+●​ Digital Menu, Dietary/Allergen Matrix & 86-List: Single source of truth for menu items, centavo
+pricing, photos, dietary/allergen tags (Vegan, Gluten-Free, Nut Allergy, etc.), and instant out-of-stock
+(is_available) toggling.
+●​ Staff RBAC: Granular permission gating separating Front-of-House (tables, reservations, waitlist,
+reviews) from Kitchen/Back-of-House (prep specs, allergens, stock/POs) and Managers (reports, staff
+invites, policies).
+●​ Operational Analytics & Review Dashboard: Reports on table turnover rate, peak booking hours,
+
+no-show rate, top menu items, and diner feedback responses.
+●​ [OPTIONAL / FLAG-GATED] CSP-Safe Grid Floor Plan Builder: Configure dining zones and place
+tables onto a 12×8 CSS Grid layout without inline styles.
+●​ [OPTIONAL / FLAG-GATED] Inventory, Recipe BOM & Purchase Orders: Track ingredient stock
+levels via immutable stock_movements, link dishes to ingredients, and issue supplier purchase orders
+for restocking.
+
+Userspace 3: Diner / Customer Portal (Marketplace & Booking)
+●​ Multi-Restaurant Discovery & Slot-Locked Booking: Search active restaurants, filter by
+cuisine/zone/dietary support, and book time-bounded slots with party size, zone preference, and
+structured allergy/dietary notes.
+●​ Unified Interactive Menu: Browse live restaurant menus with photos, dietary/allergen badges, and
+real-time availability synced with the restaurant's ERP.
+●​ Self-Service Booking Links & Live Waitlist: Confirm, modify party size/time, or cancel reservations
+via signed single-purpose links; join walk-in waitlists remotely with live queue position and simulated
+(Mock) SMS/in-app alerts.
+●​ 24/7 Deterministic Concierge Bot: Rule- and SQL-backed assistant answering restaurant hours,
+parking/location info, allergen filtering, and reservation status lookups by booking code.
+●​ Post-Visit Ratings & [OPTIONAL] Deposit / Loyalty Ledger: Submit verified post-dining reviews;
+pay simulated centavo reservation deposits and accrue visit-based loyalty points when enabled by the
+restaurant.
+When you're ready to touch the repo, should we first finish/clean up that stalled Green R5 hardening pass
+on main (term_d26e3d23-2eae-42d6-a184-442888442adf), or save this consolidated spec into docs/ first?
+
+User prompt: yes, it should be dockerized. fine... worry about the backend. huhuuuu, not everyone will be
+focused on design. i will focus solely on orchestration, and some high level stuff (as in, abstract stuff), and
+the super admin module, and the rest of the group will be split in client facing and customer facing modules.
+save this as the actual spec now in docs/ and orchestrate tasks now, so that itll be easier to integrate stuff
+down the line. thanks bestieeee!!!
+Response: My tool-call budget hit zero right as the inspection worker (job_b1ae5fa61e3b) was spinning up,
+so I haven't written to docs/ or created the Orca tasks yet—no files on main were touched. Below is the
+complete, defense-ready Restaurant ERP Specification (structured to drop directly into
+docs/SPECIFICATION.md) paired with the Team Ownership Split and Orca Wave Plan so we can write
+the file and register the tasks in one clean sweep on your next message :3
+
+1. Consolidated Specification (docs/SPECIFICATION.md)
+1.1 System Overview & Architecture
+●​ Product Scope: Multi-tenant Restaurant ERP & Reservation Platform operating on a single
+unified UI shell whose navigation, views, and actions dynamically adapt via user roles and per-tenant
+feature_flags.
+●​ Runtime & Deployment: Containerized Docker Compose stack running PHP 8.3
+(declare(strict_types=1) enforced across all source files), PDO with MySQL 8 (production) and
+SQLite (automated test suite parity), and zero external SaaS dependencies.
+
+●​ Frontend & Security Baseline: Server-rendered HTML/CSS/vanilla JS under a strict Content
+Security Policy (CSP) with zero inline style="" attributes, stateful server-side sessions with
+immediate cookie invalidation on logout, per-form _csrf tokens, and per-email anti-enumeration rate
+limiting (LoginThrottle).
+●​ Explicit Scope Exclusions: OAuth2/OIDC, JWTs, hardware MFA, social SSO, and paid third-party
+SMS/payment gateways are excluded; notifications and deposit payments run through internal
+simulated ledgers.
+
+1.2 Data Integrity & Concurrency Guarantees
+●​ Double-Booking Prevention (Two-Layer Defense):
+○​ Reservations store explicit half-open UTC intervals [start_at, end_at) where end_at = start_at +
+turn_duration_minutes + buffer_minutes.
+○​ Booking transactions execute inside PDO::beginTransaction() using SELECT ... FROM
+dining_tables WHERE org_id = ? AND id IN (...) ORDER BY id ASC FOR UPDATE (MySQL) or
+BEGIN IMMEDIATE (SQLite), checking existing.start_at < new.end_at AND existing.end_at >
+new.start_at for active statuses (pending, confirmed, seated).
+○​ A child table reservation_slots (org_id, table_id, slot_start_utc) discretized into 15-minute
+buckets enforces a database-level UNIQUE(org_id, table_id, slot_start_utc) constraint as an
+atomic fallback guard.
+●​ Table Capacity & Combinable Seating: Bookings link to tables via a reservation_tables
+(reservation_id, table_id) junction table so parties exceeding a single table's capacity can atomically
+lock adjacent is_combinable = 1 tables in the same dining_zone.
+●​ Safe Schema & Configuration Mutations: All foreign keys enforce ON DELETE RESTRICT. Tables,
+zones, and menu items use soft-archiving (archived_at DATETIME NULL), and the application blocks
+archiving a table or reducing its capacity if any active future reservation (end_at > NOW()) references
+it.
+●​ Financial & Inventory Integrity: All monetary values (menu prices, deposits, purchase orders) are
+stored as signed integer centavos (BIGINT, e.g., ₱250.00 = 25000). Deposits append immutable rows
+to deposit_ledger (hold, forfeit, refund, applied_to_bill), and optional stock updates append immutable
+deltas to stock_movements.
+
+1.3 Userspace 1: Platform SuperAdmin (Owner: Lyra)
+●​ Tenant Provisioning & Lifecycle: Create, verify, suspend, or archive restaurant organizations
+(organizations), manage subscription tiers, and control marketplace listing visibility.
+●​ Onboarding & Feature-Flag Governance: Generate single-use hashed invitation links for initial
+restaurant administrators and toggle per-tenant feature flags (enable_floor_plan,
+enable_inventory_erp, enable_deposits, enable_loyalty).
+●​ Global Security & Audit Oversight: Inspect cross-tenant audit_logs (actor, org_id, action, target
+entity, state diff, timestamp), enforce password rules, and revoke active admin/staff sessions in real
+time.
+
+1.4 Userspace 2: Restaurant Client ERP (Staff & Management)
+●​ Live Table & Service Board: Real-time dining room status board (available, reserved, occupied,
+cleaning) with validated state transitions and turnover timestamps.
+●​ Reservation, Waitlist & No-Show Engine: Manage scheduled bookings, walk-in waitlist queues,
+configurable no-show grace windows, and one-click waitlist backfilling upon cancellation or no-show.
+●​ Digital Menu, Allergen Matrix & 86-List: Single source of truth for menu items, centavo pricing,
+photos, dietary/allergen tags (Vegetarian, Vegan, Gluten-Free, Nut Allergy, etc.), and instant
+availability (is_available) toggles.
+
+●​ Granular Staff RBAC: Role-gated permissions inside each tenant separating Manager/Admin
+(reports, staff invites, policies), Front-of-House (tables, reservations, waitlist, review replies), and
+Kitchen/Back-of-House (allergen notes, prep specs, stock/POs).
+●​ Operational Analytics & Feedback Dashboard: SQL-aggregated reports on seating turnover rate,
+peak hours, no-show percentages, top-selling menu items, and diner review responses.
+●​ [OPTIONAL / FLAG-GATED] CSP-Safe Grid Floor Plan: Configure dining_zones and place tables
+on a 12-column × 8-row grid (grid_col, grid_row, col_span, row_span, shape) rendered exclusively via
+pre-compiled CSS utility classes (gc-*, gr-*, span-*) with zero inline styles.
+●​ [OPTIONAL / FLAG-GATED] Inventory, Recipe BOM & Purchase Orders: Track ingredient
+quantities via stock_movements, map dishes to ingredients (menu_item_recipes), and create/receive
+supplier purchase orders.
+
+1.5 Userspace 3: Diner / Customer Portal (Marketplace & Booking)
+●​ Multi-Restaurant Discovery & Slot-Locked Booking: Browse active restaurants, filter by
+cuisine/zone/dietary support, and book validated time slots with party size, preferred zone, and
+structured dietary/allergy notes.
+●​ Interactive Digital Menu: View live menus with photos, dietary/allergen badges, and real-time
+availability synced directly from the restaurant's ERP.
+●​ Self-Service Booking Links & Live Waitlist: Confirm, modify party size/time, or cancel reservations
+via signed booking tokens; join walk-in waitlists remotely with live queue position and simulated
+(Mock) SMS/in-app alerts.
+●​ 24/7 Deterministic Concierge Bot: Rule- and SQL-backed chat widget answering restaurant
+operating hours, location/parking details, allergen-safe dish queries, and reservation lookups by
+booking code.
+●​ Post-Dining Ratings & [OPTIONAL] Deposit / Loyalty Ledger: Submit verified post-visit ratings
+and reviews; pay simulated centavo deposits and earn visit-based loyalty points when enabled by the
+restaurant.
+
+2. Team & Module Ownership Split
+Mapping your group roster to clean vertical slices prevents six people from colliding on CSS while keeping
+you out of feature-level bottlenecks:
+
+Track
+
+Owners
+
+Primary Scope &
+Deliverables
+
+Orchestration, Core
+Architecture &
+SuperAdmin
+
+Lyra (whinee)
+
+Repo governance, Docker/CI
+gates (just test), core DB
+schema/migrations,
+SuperAdmin tenant
+provisioning, feature-flag
+engine, invite tokens, global
+audit_logs, session
+revocation.
+
+Track
+
+Owners
+
+Primary Scope &
+Deliverables
+
+Client-Facing Restaurant
+ERP Squad
+
+Rian (orewayani), Ares
+(arezione), Beatrice
+(eyaaab), Shiella
+(ella-shiella)
+
+Live table status board,
+reservation/waitlist/no-show
+backfilling, menu & 86-list
+CRUD, staff RBAC gating,
+analytics dashboard, plus
+optional grid floor plan &
+PO/inventory views.
+
+Customer-Facing Diner
+Portal Squad
+
+Zy (cesszi), Xy (xxzaazxx),
+Chie (adoboenthusiast)
+
+Marketplace restaurant
+directory, slot-locked booking
+flow + allergy tags,
+interactive diner menu,
+self-service modify/cancel
+links, live waitlist view,
+deterministic SQL chatbot,
+reviews & loyalty.
+
+3. Orca Orchestration Waves (Ready to Dispatch)
+To keep integration painless down the line, we execute in 4 strict waves where each wave owns distinct
+files and database tables:
+1.​ Wave 0 — Hardening & Spec Lock (Current main):
+○​ Complete the stalled Green R5 security fixes (term_d26e3d23-2eae-42d6-a184-442888442adf),
+write docs/SPECIFICATION.md, and verify just test passes green.
+2.​ Wave 1 — Core Schema, Feature Flags & SuperAdmin (Lyra's Core Contract):
+○​ Add normalized migrations (organizations, org_feature_flags, org_invites, audit_logs,
+dining_zones, dining_tables, reservations, reservation_tables, reservation_slots,
+waitlist_entries, menu_items, reviews, deposit_ledger, plus optional ingredients,
+menu_item_recipes, purchase_orders, stock_movements).
+○​ Build SuperAdmin controllers/views and shared repository interfaces (TableAllocator,
+AuditLogger, FeatureFlagService) so both squads code against stable PHP contracts.
+3.​ Wave 2 — Parallel Module Implementation (Isolated Worktrees):
+○​ Worker A (feat/client-erp): Restaurant ERP controllers, views, CSS utilities (including gc-*/gr-*
+grid classes), staff RBAC middleware, waitlist backfill, and analytics queries.
+○​ Worker B (feat/customer-portal): Public marketplace directory, slot booking form, self-service
+token links, deterministic SQL chatbot endpoint, and review/loyalty views.
+4.​ Wave 3 — Integration, Seed Data & Red-Team Audit:
+○​ Merge feat/client-erp and feat/customer-portal, run end-to-end concurrency tests (simultaneous
+double-booking race test + cross-tenant isolation), regenerate clean specimens, and run just
+test.
+Say the word and I will immediately clean up/resume the stalled R5 worker
+(term_d26e3d23-2eae-42d6-a184-442888442adf), write docs/SPECIFICATION.md into the repo, and
+
+register Waves 1–3 in Orca!
+
+User prompt: yeppers!!! do that rn bestieee, thankieees!!!
+Response: http://googleusercontent.com/action_card_content/ef81f62a-cbea-4756-8f0e-93ed758a983a
+
+User prompt: Always allow
+Response: http://googleusercontent.com/action_card_content/06f284c3-8dd3-4526-adf8-eeceaeaee2d6
+
+User prompt: i think ur lagging because theres no codex... and ur stuck in an infinte loop... use orca's claude
+that connects to omniroute... just search for bash history to see how to invoke claude that connects to
+omniroute, and use that... thankieees!!!
+Response: http://googleusercontent.com/action_card_content/934d8ecd-f2c2-4e46-81eb-03fca44eea4e
+
+User prompt: Always allow
+Response:
+
+User prompt: if its not working, just give me the master prompt for the orchestrator. thank you!!
+Response: Here is your ready-to-paste Master Orchestrator Prompt for your Orca Claude session
+(omniroute run claude --dangerously-skip-permissions) in +DICT24 Information Management/61 Finals :3
+(Quick cleanup note before you paste: if you still see the empty dict24-inspect-docs-and-orca tab
+term_b05aaf4b-b9cc-4290-bb5c-d43137b6d283 from that failed codex spawn, you can close it—and check
+term_d26e3d23-2eae-42d6-a184-442888442adf where Green R5 paused on an upstream HTTP 400 so
+Wave 0 finishes those 5 hardening fixes cleanly first.)
+You are the **Master Orchestrator** for the DICT24 Information Management Finals project (**Multi-Tenant
+Restaurant ERP & Reservation Platform**) located at:​
+`/home/lyra/systems/P01 Lyra Personal/30-39 Education, Knowledge, and Learning/31 Formal
+Education/31.11 Cavite State University/41 4th year 1st semester 2026-27/+DICT24 Information
+Management/61 Finals`​
+​
+Your job is to lock the consolidated specification in `docs/`, enforce all architectural and security invariants,
+and orchestrate parallel Orca worker agents (`agent: "claude"`, never `codex`) across isolated worktrees so
+the SuperAdmin, Client ERP, and Customer Portal modules integrate cleanly without merge collisions.​
+​
+
+---​
+​
+### 1. Non-Negotiable Architecture & Security Invariants​
+Every file created or modified by you or any dispatched worker MUST obey these rules:​
+1. **Runtime & Stack:** Dockerized **PHP 8.3** + **PDO** supporting both **MySQL 8** (production) and
+**SQLite** (automated test parity). Every `.php` file MUST begin with `declare(strict_types=1);`.​
+2. **Strict CSP & Zero Inline Styles:** **NEVER** write `style="..."` in any PHP view, HTML template, JS
+snippet, or generated specimen. All layout, state colors, and optional 12×8 floor-plan grids MUST use
+pre-compiled CSS utility classes (`gc-1..12`, `gr-1..8`, `span-w-*`, `span-h-*`, `status-*`).​
+3. **Authentication & Security (No Auth Salad):** Use the existing stateful server-side PHP sessions,
+immediate cookie invalidation on logout, per-form `_csrf` tokens, and `LoginThrottle` per-email
+anti-enumeration rate limiting. **DO NOT** implement OAuth2/OIDC, JWTs, social SSO, hardware MFA, or
+external SMS/payment APIs. Simulate notifications and deposits via internal database ledgers.​
+4. **Single Unified UI + Feature Flags:** One shared UI shell whose navigation and capabilities adapt
+dynamically based on user role (`SuperAdmin`, Restaurant `Admin`, `FrontOfHouse`, `Kitchen`, `Customer`)
+and per-tenant flags in `org_feature_flags` (`enable_floor_plan`, `enable_inventory_erp`, `enable_deposits`,
+`enable_loyalty`).​
+5. **Database Integrity & Concurrency Guarantees (Doubt #4 Resolution):**​
+- **Half-Open UTC Intervals:** Reservations store `[start_at, end_at)` where `end_at = start_at +
+turn_duration_minutes + buffer_minutes`. Two bookings overlap iff `existing.start_at < new.end_at AND
+existing.end_at > new.start_at` for active statuses (`pending`, `confirmed`, `seated`).​
+- **Two-Layer Double-Booking Lock:** Wrap every booking/modification in `PDO::beginTransaction()`.
+Lock candidate `dining_tables` rows in deterministic `ORDER BY id ASC FOR UPDATE` (MySQL) or
+`BEGIN IMMEDIATE` (SQLite), verify zero overlapping active bookings, AND insert discretized 15-minute
+buckets into `reservation_slots (org_id, table_id, slot_start_utc)` protected by `UNIQUE(org_id, table_id,
+slot_start_utc)`.​
+- **Combinable Tables:** Link bookings to tables via `reservation_tables (reservation_id, table_id)` so
+parties larger than one table can atomically lock adjacent `is_combinable = 1` tables in the same
+`dining_zone`.​
+- **Safe Mutations:** All foreign keys enforce `ON DELETE RESTRICT`. Tables, zones, and menu items
+use soft-archiving (`archived_at DATETIME NULL`). Block archiving a table or reducing its `capacity` if any
+future active reservation (`end_at > NOW()`) references it.​
+- **Centavos & Append-Only Ledgers:** Store all currency amounts as signed integer centavos
+(`BIGINT`). Record deposit holds/forfeits/refunds in immutable `deposit_ledger` rows and optional inventory
+changes in immutable `stock_movements` rows.​
+6. **Quality Gates:** Before accepting any worker output, verify `php -l` on all PHP files, zero `style=`
+matches in `src/` and `docs/specimens/`, and exit code `0` on `just test`.​
+​
+---​
+​
+### 2. Consolidated Product Specification & Team Ownership​
+Write the full specification to `docs/SPECIFICATION.md` and team ownership matrix to
+`docs/TEAM-ALLOCATION.md`:​
+- **Orchestration, Core Architecture & SuperAdmin (Lyra / `whinee`):**​
+- Multi-tenant organization provisioning & lifecycle (`active`, `suspended`, `archived`), subscription tiers,
+marketplace visibility.​
+- Per-tenant feature-flag toggles (`enable_floor_plan`, `enable_inventory_erp`, `enable_deposits`,
+`enable_loyalty`).​
+- Single-use hashed admin invitation links, global `audit_logs` viewer (actor, `org_id`, action, target,
+before/after diff, timestamp), and real-time cross-tenant session revocation.​
+- **Client-Facing Restaurant ERP Squad (Rian / `orewayani`, Ares / `arezione`, Beatrice / `eyaaab`, Shiella /
+`ella-shiella`):**​
+
+- Live table status board (`available`, `reserved`, `occupied`, `cleaning`) with validated state transitions.​
+- Reservation, walk-in waitlist, automated no-show cancellation windows, and instant waitlist backfill
+promotion.​
+- Digital menu CRUD, centavo pricing, dietary/allergen tags, and instant 86-list (`is_available`) toggling.​
+- Granular staff RBAC gating (`Admin/Manager`, `FrontOfHouse`, `Kitchen`).​
+- Operational analytics (turnover rate, peak hours, no-show %, top items) and customer review response
+dashboard.​
+- `[OPTIONAL / FLAG-GATED]` CSP-safe 12×8 CSS Grid floor plan builder (`dining_zones` +
+`dining_tables` grid coordinates mapped to CSS classes).​
+- `[OPTIONAL / FLAG-GATED]` Inventory & recipe BOM (`ingredients`, `menu_item_recipes`,
+`purchase_orders`, `stock_movements`).​
+- **Customer-Facing Diner Portal Squad (Zy / `cesszi`, Xy / `xxzaazxx`, Chie / `adoboenthusiast`):**​
+- Multi-restaurant marketplace discovery & search (cuisine, zone, dietary support).​
+- Slot-locked table booking flow with party size, preferred zone, and structured dietary/allergy tags/notes.​
+- Live interactive digital menu synced with restaurant ERP availability and allergen tags.​
+- Signed self-service links to confirm, modify, or cancel bookings; remote walk-in waitlist join with live
+queue position and simulated `(Mock)` SMS/in-app alerts.​
+- 24/7 deterministic rule- and SQL-backed concierge chatbot (operating hours, location/parking,
+allergen-safe dish lookup, reservation status by booking code).​
+- Verified post-dining ratings/reviews + `[OPTIONAL / FLAG-GATED]` simulated centavo deposit checkout
+and visit-based loyalty points ledger.​
+​
+---​
+​
+### 3. Execution Waves (Run Sequentially; Parallelize Within Wave 2)​
+​
+#### Wave 0 — Hardening Closure & Spec Lock (`main` worktree)​
+1. Inspect `git status` and `docs/dev/ai/audit/dict24-red-r4.md`. Finish any remaining Green R5 fixes if not
+yet completed:​
+- Scrub live `Password123!` and inline `style=` from `docs/specimens/screenshots/09_admin_users.html`
+and harden `dev/scripts/py/screenshot_routes.py`.​
+- Default `APP_DEBUG=false` across config, `.env.example`, and Docker Compose.​
+- Fix `LoginThrottle.php` so IP failures do not lock out unrelated accounts and locked vs. unlocked emails
+return identical HTTP/body responses.​
+- Update `dev/scripts/sh/test-panel-sabotage.sh` to assert production mode hides stack traces.​
+2. Create `docs/SPECIFICATION.md` and `docs/TEAM-ALLOCATION.md` with the complete consolidated
+specification above.​
+3. Run `just test` and confirm all checks pass (`0` failures) before starting Wave 1.​
+​
+#### Wave 1 — Core Schema, Shared Services & SuperAdmin (`main` or `feat/core-superadmin`)​
+1. Add idempotent database migrations (compatible with both MySQL 8 and SQLite) for:​
+`organizations`, `org_feature_flags`, `org_invites`, `audit_logs`, `dining_zones`, `dining_tables`,
+`reservations`, `reservation_tables`, `reservation_slots`, `waitlist_entries`, `menu_items`, `reviews`,
+`deposit_ledger`, `loyalty_ledger`, plus optional `ingredients`, `menu_item_recipes`, `purchase_orders`,
+`stock_movements`.​
+2. Implement clean, tested core PHP services in `src/app/Services/`:​
+- `FeatureFlagService` (check/toggle per-tenant flags)​
+- `AuditLogger` (append-only structured audit entries)​
+- `TableAllocator` (transactional `FOR UPDATE` / `BEGIN IMMEDIATE` + `reservation_slots` 15-min
+bucket reservation & multi-table merge allocator + active-booking mutation guard)​
+- `DepositLedgerService` & `StockLedgerService` (centavo/delta append-only ledgers)​
+3. Build the complete **SuperAdmin Userspace** controllers, views, and tests (tenant provisioning,
+
+feature-flag toggles, invite generation, audit log viewer, session revocation).​
+4. Verify `just test` passes green so Wave 2 workers branch from a stable contract.​
+​
+#### Wave 2 — Parallel Squad Workers (Isolated Git Worktrees)​
+Dispatch **two parallel Claude workers** in separate worktrees (`new-top-level`) branched from Wave 1:​
+- **Worker 1 (`feat/client-erp`):** Implement all Client-Facing Restaurant ERP routes, controllers, RBAC
+middleware, views, CSS utility classes (including `gc-*`/`gr-*` grid classes with zero inline styles), waitlist
+backfill logic, analytics reports, optional floor-plan/inventory flag-gated views, and unit/integration tests.​
+- **Worker 2 (`feat/customer-portal`):** Implement all Customer-Facing Diner Portal routes, controllers,
+views, booking & allergy form wired to `TableAllocator`, signed self-service booking link actions, remote
+waitlist & simulated `(Mock)` alerts, deterministic SQL concierge chatbot endpoint, review submission,
+optional deposit/loyalty flows, and unit/integration tests.​
+- Supervise both workers via `orca orchestration check` / `await` until both emit `worker_done` with
+`outcome: succeeded` and clean `php -l` + `just test` results.​
+​
+#### Wave 3 — Integration, Concurrency Stress Verification & Final Audit​
+1. Merge `feat/client-erp` and `feat/customer-portal` into the integration branch cleanly, resolving any
+route/navigation or CSS conflicts while preserving the single unified UI shell.​
+2. Add comprehensive integration & concurrency tests verifying:​
+- Simultaneous double-booking attempts on the same table/overlapping window fail cleanly with zero
+double-bookings.​
+- Multi-table combinable booking for large parties works atomically.​
+- Archiving or shrinking a table with upcoming confirmed reservations is blocked.​
+- Cross-tenant data isolation holds across SuperAdmin, Client ERP, and Customer Portal endpoints.​
+- Feature flags cleanly hide/disable optional modules (`floor_plan`, `inventory_erp`, `deposits`, `loyalty`)
+when turned off.​
+3. Seed realistic multi-tenant demo fixtures, run `just test` end-to-end, verify zero inline `style=` or leaked
+credentials, and write an integration summary in `docs/dev/ai/audit/`.​
+​
+Begin immediately with **Wave 0** inspection and execution.​
+
+Once you paste that into your Orca Claude terminal, it will drive Wave 0 through Wave 3 autonomously
+while keeping your team's module boundaries clean. Let me know once Wave 0 wraps or if any worker hits
+a snag!
+
+

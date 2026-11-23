@@ -173,3 +173,69 @@
     font-size: 0.75rem;
     font-weight: 500;
 }
+
+/* Navigation Bar (Role-Based Dynamic Header Navigation) */
+.site-nav {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-top: 0.75rem;
+    padding-top: 0.65rem;
+    border-top: 1px solid var(--border-subtle, #334155);
+}
+
+.nav-item {
+    color: var(--text-primary, #e2e8f0);
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 500;
+    padding: 0.35rem 0.65rem;
+    border-radius: var(--radius-sm, 4px);
+    transition: background-color 0.15s ease, color 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+}
+
+.nav-item:hover,
+.nav-item:focus-visible {
+    background-color: var(--card-bg, rgba(255, 255, 255, 0.08));
+    color: var(--accent-primary, #38bdf8);
+    text-decoration: none;
+}
+
+.nav-item-primary {
+    background-color: var(--accent-primary, #0284c7);
+    color: #ffffff;
+}
+
+.nav-item-primary:hover,
+.nav-item-primary:focus-visible {
+    background-color: var(--accent-hover, #0369a1);
+    color: #ffffff;
+}
+
+.nav-logout-form {
+    display: inline-flex;
+    margin: 0;
+    padding: 0;
+}
+
+.nav-logout-btn {
+    background: none;
+    border: 1px solid var(--border-subtle, #475569);
+    color: var(--status-error, #f43f5e);
+    font-size: 0.85rem;
+    font-weight: 500;
+    padding: 0.3rem 0.65rem;
+    border-radius: var(--radius-sm, 4px);
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.nav-logout-btn:hover,
+.nav-logout-btn:focus-visible {
+    background-color: var(--status-error, #f43f5e);
+    color: #ffffff;
+    border-color: var(--status-error, #f43f5e);
+}

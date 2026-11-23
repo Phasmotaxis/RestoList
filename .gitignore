@@ -4,10 +4,22 @@
 
 # User-Ignored Folders
 docs/dev/ai/condom/
-docs/.obsidian/
+**/.obsidian/
 storage/
+**/tmp/
 
 # User-Ignored Files
+# SQLite Databases
+**/*.sqlite
+**/*.sqlite3
+**/*.db
+
+# Local Environments
+.env
+.env.local
+.env.*.local
+
+# LaTeX Build Cache & Intermediate Artifacts
 **/*.aux
 **/*.log
 **/*.fls
@@ -16,8 +28,15 @@ storage/
 **/*.toc
 **/*.bbl
 **/*.blg
+**/*.bcf
+**/*.run.xml
+**/*.lof
+**/*.lot
 **/*.synctex.gz
 **/*.xdv
+
+# Ephemeral Distribution & Test Archives
+dist/*.zip
 
 # User-Unignored Folders
 

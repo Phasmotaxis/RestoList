@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta name="apple-mobile-web-app-title" content="User Workspace - EIMS" />
-    <meta name="twitter:title" content="User Workspace - EIMS" />
-    <meta property="og:site_name" content="User Workspace - EIMS" />
-    <meta property="og:title" content="User Workspace - EIMS" />
-    <title>User Workspace - EIMS</title>
+    <meta name="apple-mobile-web-app-title" content="Login - EIMS" />
+    <meta name="twitter:title" content="Login - EIMS" />
+    <meta property="og:site_name" content="Login - EIMS" />
+    <meta property="og:title" content="Login - EIMS" />
+    <title>Login - EIMS</title>
 
     <meta name="author" content="EIMS Development Team">
 
@@ -33,110 +33,43 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
 
-    <link rel="preload stylesheet" as="style" href="/assets/css/style.css" />
+    <link rel="stylesheet" href="/assets/css/base.css" />
+    <link rel="stylesheet" href="/assets/css/themes/default.css" />
+    <link rel="stylesheet" href="/assets/css/themes/lyra.css" />
+    <script src="/assets/css/theme-engine.js"></script>
     <script defer src="/assets/js/app.js"></script>
 </head>
 <body>
     <header class="site-header">
-        <div class="container">
-            <h1>Enterprise Information Management System</h1>
-            <p class="subtitle">Cavite State University - Main Campus - 2nd year 1st semester 2026-27</p>
+        <div class="container site-header-content">
+            <div>
+                <h1><a href="/">Enterprise Information Management System</a></h1>
+                <p class="subtitle">Cavite State University - Main Campus - 2nd year 1st semester 2026-27</p>
+            </div>
+            <div class="theme-switcher-container">
+                <label for="theme-select" class="theme-switcher-label">Theme:</label>
+                <select id="theme-select" class="theme-select" aria-label="Select Color Theme">
+                    <option value="default">Default (Neutral)</option>
+                    <option value="lyra">Lyra (Piiiiink WCAG AA)</option>
+                </select>
+            </div>
         </div>
     </header>
     <main class="container">
-<section class="card">
-    <h2>Welcome, Standard StudentUser</h2>
-    <p class="subtitle">Organization: <strong>Cavite State University Main Campus</strong> &bull; Email: user@cvsu.edu.ph</p>
-</section>
-
-<section class="card">
-    <h3>Account & Privacy Operations (RA 10173)</h3>
-    <p>Under the Philippine Data Privacy Act of 2012 (RA 10173), you have the right to data portability and visibility over your personal information records.</p>
-    <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 1rem;">
-        <a href="/user/export" style="background: var(--color-primary); color: white; padding: 0.6rem 1.2rem; border-radius: var(--radius-sm); text-decoration: none; font-weight: 500;">Export My Personal Data (CSV) &darr;</a>
-        <form method="POST" action="/logout" style="display: inline;">
-            <button type="submit" style="background: none; border: 1px solid var(--color-border); color: var(--color-danger, #dc2626); padding: 0.6rem 1.2rem; border-radius: var(--radius-sm); cursor: pointer; font-weight: 500;">Sign Out</button>
-        </form>
-    </div>
-</section>
-
-<section class="card">
-    <h3>Your Recent Activity Log</h3>
-            <div style="overflow-x: auto;">
-            <table style="width: 100%; border-collapse: collapse; text-align: left; margin-top: 0.5rem;">
-                <thead>
-                    <tr style="border-bottom: 2px solid var(--color-border);">
-                        <th style="padding: 0.5rem;">Action</th>
-                        <th style="padding: 0.5rem;">Details</th>
-                        <th style="padding: 0.5rem;">IP Address</th>
-                        <th style="padding: 0.5rem;">Date</th>
-                    </tr>
-                </thead>
-                <tbody>
-                                            <tr style="border-bottom: 1px solid var(--color-border);">
-                            <td style="padding: 0.5rem;"><code>AUTH_LOGIN</code></td>
-                            <td style="padding: 0.5rem;">User logged in successfully</td>
-                            <td style="padding: 0.5rem;">172.18.0.1</td>
-                            <td style="padding: 0.5rem;">2026-11-05 23:28:02</td>
-                        </tr>
-                                            <tr style="border-bottom: 1px solid var(--color-border);">
-                            <td style="padding: 0.5rem;"><code>AUTH_LOGOUT</code></td>
-                            <td style="padding: 0.5rem;">User logged out</td>
-                            <td style="padding: 0.5rem;">172.18.0.1</td>
-                            <td style="padding: 0.5rem;">2026-11-05 23:27:06</td>
-                        </tr>
-                                            <tr style="border-bottom: 1px solid var(--color-border);">
-                            <td style="padding: 0.5rem;"><code>AUTH_LOGIN</code></td>
-                            <td style="padding: 0.5rem;">User logged in successfully</td>
-                            <td style="padding: 0.5rem;">172.18.0.1</td>
-                            <td style="padding: 0.5rem;">2026-11-05 23:27:06</td>
-                        </tr>
-                                            <tr style="border-bottom: 1px solid var(--color-border);">
-                            <td style="padding: 0.5rem;"><code>AUTH_LOGIN</code></td>
-                            <td style="padding: 0.5rem;">User logged in successfully</td>
-                            <td style="padding: 0.5rem;">172.18.0.1</td>
-                            <td style="padding: 0.5rem;">2026-11-05 23:24:31</td>
-                        </tr>
-                                            <tr style="border-bottom: 1px solid var(--color-border);">
-                            <td style="padding: 0.5rem;"><code>AUTH_LOGOUT</code></td>
-                            <td style="padding: 0.5rem;">User logged out</td>
-                            <td style="padding: 0.5rem;">172.18.0.1</td>
-                            <td style="padding: 0.5rem;">2026-11-05 23:24:31</td>
-                        </tr>
-                                            <tr style="border-bottom: 1px solid var(--color-border);">
-                            <td style="padding: 0.5rem;"><code>AUTH_LOGOUT</code></td>
-                            <td style="padding: 0.5rem;">User logged out</td>
-                            <td style="padding: 0.5rem;">172.18.0.1</td>
-                            <td style="padding: 0.5rem;">2026-11-05 23:22:53</td>
-                        </tr>
-                                            <tr style="border-bottom: 1px solid var(--color-border);">
-                            <td style="padding: 0.5rem;"><code>AUTH_LOGIN</code></td>
-                            <td style="padding: 0.5rem;">User logged in successfully</td>
-                            <td style="padding: 0.5rem;">172.18.0.1</td>
-                            <td style="padding: 0.5rem;">2026-11-05 23:22:53</td>
-                        </tr>
-                                            <tr style="border-bottom: 1px solid var(--color-border);">
-                            <td style="padding: 0.5rem;"><code>AUTH_LOGIN</code></td>
-                            <td style="padding: 0.5rem;">User logged in successfully</td>
-                            <td style="padding: 0.5rem;">172.18.0.1</td>
-                            <td style="padding: 0.5rem;">2026-11-05 23:19:39</td>
-                        </tr>
-                                            <tr style="border-bottom: 1px solid var(--color-border);">
-                            <td style="padding: 0.5rem;"><code>AUTH_LOGOUT</code></td>
-                            <td style="padding: 0.5rem;">User logged out</td>
-                            <td style="padding: 0.5rem;">172.18.0.1</td>
-                            <td style="padding: 0.5rem;">2026-11-05 23:19:39</td>
-                        </tr>
-                                            <tr style="border-bottom: 1px solid var(--color-border);">
-                            <td style="padding: 0.5rem;"><code>AUTH_LOGOUT</code></td>
-                            <td style="padding: 0.5rem;">User logged out</td>
-                            <td style="padding: 0.5rem;">172.18.0.1</td>
-                            <td style="padding: 0.5rem;">2026-11-05 23:19:05</td>
-                        </tr>
-                                    </tbody>
-            </table>
+<section class="card card-auth">
+    <h2>Authentication</h2>
+        <form method="POST" action="/login">
+        <input type="hidden" name="_csrf" value="62eac20de046ba0ac378153c293a76c05e96ee4216a9c7f55338feaa3cd62a82">        <div class="form-group">
+            <label for="email" class="form-label">Email Address</label>
+            <input type="email" id="email" name="email" class="form-input" required autocomplete="email">
         </div>
-    </section>
+        <div class="form-group-lg">
+            <label for="password" class="form-label">Password</label>
+            <input type="password" id="password" name="password" class="form-input" required autocomplete="current-password">
+        </div>
+        <button type="submit" class="btn-primary">Sign In</button>
+    </form>
+</section>
     </main>
     <footer class="site-footer container">
         <p>&copy; 2026 EIMS Development Team. All rights reserved.</p>

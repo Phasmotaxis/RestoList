@@ -1,0 +1,119 @@
+\chapter{Scope and Limitations}
+\label{chap:scope_limitations}
+
+\section{Functional Boundaries}
+\label{sec:scope_boundaries}
+The functional perimeter of the Enterprise Information Management System (EIMS) encompasses the entire operational lifecycle of multi-tenant restaurant management, dining room floor plan scheduling, customer reservation intake, kitchen menu synchronization, and financial transaction accounting.
+
+The system is architected as an air-gapped, self-contained web platform designed to function with total autonomy in local demonstration environments, campus computer laboratories, edge single-board computers, or cloud container clusters. All functional boundaries are strictly governed by tenant discriminator keys (\texttt{org\_id}), preventing cross-tenant data visibility and isolating all mutations within the authenticated organizational context.
+
+\section{Supported User Roles and Permissions Matrix}
+\label{sec:scope_roles}
+EIMS formalizes a hierarchical, bitmask-governed Role-Based Access Control (RBAC) model supporting five distinct user roles across three primary userspaces (SuperAdmin Governance, Client Restaurant ERP, and Customer Portal):
+
+\begin{enumerate}[label=\textbf{R\arabic*.}]
+    \item \textbf{SuperAdmin (Role Mask 1 / Effective Mask 31):}
+    \begin{itemize}
+        \item \textbf{Target Domain:} Platform Governance and Multi-Tenant Administration.
+        \item \textbf{Permissions:} \texttt{TENANT\_MANAGE} (1), \texttt{USER\_MANAGE} (2), \texttt{DATA\_READ} (4), \texttt{DATA\_WRITE} (8), \texttt{SYSTEM\_AUDIT} (16).
+        \item \textbf{Capabilities:} Provision, configure, suspend, and archive restaurant tenant accounts; configure organization subdomains; inspect global immutable audit logs across all tenants; monitor system-wide database health and driver failover status; govern global feature flag defaults.
+    \end{itemize}
+    \item \textbf{Admin (Role Mask 2 / Effective Mask 14):}
+    \begin{itemize}
+        \item \textbf{Target Domain:} Restaurant Organization Management and Operational Governance.
+        \item \textbf{Permissions:} \texttt{USER\_MANAGE} (2), \texttt{DATA\_READ} (4), \texttt{DATA\_WRITE} (8).
+        \item \textbf{Capabilities:} Configure restaurant profile, dining zones, and dining tables; define floor plan coordinates on the 12x8 grid; establish table combinability rules; manage restaurant staff accounts (FOH, Kitchen, Admin); set menu items, categories, and prices; configure deposit requirements and loyalty point rules; moderate customer reviews.
+    \end{itemize}
+    \item \textbf{FrontOfHouse / FOH (Role Mask 8 / Effective Mask 28):}
+    \begin{itemize}
+        \item \textbf{Target Domain:} Floor Management, Seating Operations, and Reception.
+        \item \textbf{Permissions:} \texttt{DATA\_READ} (4), \texttt{DATA\_WRITE} (8), \texttt{RESERVATION\_MANAGE} (16).
+        \item \textbf{Capabilities:} Inspect real-time 12x8 floor plan visualization with color-coded seating states; execute walk-in seatings and manual reservation check-ins; transition reservation states (\texttt{confirmed} $\to$ \texttt{seated} $\to$ \texttt{completed}); manage the FIFO customer waitlist; execute table reassignments and handle party checkouts.
+    \end{itemize}
+    \item \textbf{Kitchen (Role Mask 16 / Effective Mask 36):}
+    \begin{itemize}
+        \item \textbf{Target Domain:} Culinary Production, 86-List Sync, and Recipe Management.
+        \item \textbf{Permissions:} \texttt{DATA\_READ} (4), \texttt{RECIPE\_VIEW} (32).
+        \item \textbf{Capabilities:} View upcoming dining reservations and aggregate party covers; toggle real-time dish availability (the 86-list) to instantly remove sold-out dishes from customer menus; inspect recipe Bill of Materials (BOM) and required ingredients; log inventory stock movement adjustments.
+    \end{itemize}
+    \item \textbf{Customer (Role Mask 4 / Public Patron):}
+    \begin{itemize}
+        \item \textbf{Target Domain:} Public Restaurant Discovery and Dining Reservation Portal.
+        \item \textbf{Permissions:} \texttt{DATA\_READ} (4).
+        \item \textbf{Capabilities:} Discover participating restaurants via public landing and tenant subdomains; browse categorized food menus with dietary and allergen flags; check real-time table availability; submit reservations via 15-minute slot selection; join the digital waitlist queue; manage booking deposit holds; track loyalty point rewards; submit post-dining reviews.
+    \end{itemize}
+\end{enumerate}
+
+Table~\ref{tab:role_permissions_matrix} formalizes the granular permission distribution across all supported system roles.
+
+\begin{table}[htbp]
+\centering
+\caption{EIMS Role-Based Access Control and Capability Matrix}
+\label{tab:role_permissions_matrix}
+\small
+\begin{tabularx}{\textwidth}{lccccc}
+\toprule
+\textbf{Functional Capability} & \textbf{SuperAdmin} & \textbf{Admin} & \textbf{FOH} & \textbf{Kitchen} & \textbf{Customer} \\
+\midrule
+Tenant Creation and Archival & \textbf{YES} & No & No & No & No \\
+Global System Audit Log Inspection & \textbf{YES} & No & No & No & No \\
+Restaurant Staff User Provisioning & \textbf{YES} & \textbf{YES} & No & No & No \\
+Dining Zone and Table Layout Configuration & \textbf{YES} & \textbf{YES} & No & No & No \\
+Active-State Table Deletion Guard & \textbf{YES} & \textbf{YES} & No & No & No \\
+Real-Time Floor Plan Status Inspection & \textbf{YES} & \textbf{YES} & \textbf{YES} & No & No \\
+Table State Transitions (\texttt{seated}, \texttt{completed}) & \textbf{YES} & \textbf{YES} & \textbf{YES} & No & No \\
+Kitchen 86-List Availability Toggling & \textbf{YES} & \textbf{YES} & No & \textbf{YES} & No \\
+Recipe BOM and Ingredient Inspection & \textbf{YES} & \textbf{YES} & No & \textbf{YES} & No \\
+Customer Review Moderation and Reply & \textbf{YES} & \textbf{YES} & No & No & No \\
+Public Menu and Restaurant Discovery & \textbf{YES} & \textbf{YES} & \textbf{YES} & \textbf{YES} & \textbf{YES} \\
+Real-Time Slot Reservation Booking & \textbf{YES} & \textbf{YES} & \textbf{YES} & No & \textbf{YES} \\
+Digital Waitlist Queue Registration & \textbf{YES} & \textbf{YES} & \textbf{YES} & No & \textbf{YES} \\
+Deposit Hold and Loyalty Point Inspection & \textbf{YES} & \textbf{YES} & No & No & \textbf{YES} \\
+Post-Dining Review Submission & No & No & No & No & \textbf{YES} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Features In-Scope}
+\label{sec:scope_features}
+The features implemented in EIMS span three dedicated userspace modules:
+
+\begin{itemize}
+    \item \textbf{Userspace 1: SuperAdmin Platform Governance:}
+    \begin{itemize}
+        \item Multi-tenant organization registry, subdomain routing, and lifecycle states (Active, Suspended, Archived).
+        \item Immutable, append-only system audit log tracking administrative mutations across all tenant entities.
+        \item Centralized feature flag governance controlling tenant-level module activation.
+        \item Dual-driver database connection health monitor and failover diagnosis dashboard.
+    \end{itemize}
+    \item \textbf{Userspace 2: Client Restaurant ERP:}
+    \begin{itemize}
+        \item Interactive 12x8 floor plan grid with visual coordinate assignment for dining tables and zones.
+        \item Table capacity governance, minimum party size constraints, and adjacency-based combinable table linking.
+        \item Active-state mutation guards blocking deletion or capacity reductions on tables with active bookings.
+        \item Menu catalog management with categories, pricing, dietary indicators, and kitchen 86-list toggling.
+        \item Review moderation queue with automated spam-link detection heuristics and management response tools.
+        \item Role-scoped staff invitation and account management with cryptographic invite tokens.
+    \end{itemize}
+    \item \textbf{Userspace 3: Customer Portal:}
+    \begin{itemize}
+        \item Public restaurant discovery portal displaying active restaurant profiles and menus.
+        \item Real-time reservation booking wizard with 15-minute slot availability calendar.
+        \item Digital FIFO waitlist queue with automated cancellation backfill heuristics.
+        \item Signed integer centavo deposit ledger portal tracking booking holds and refund states.
+        \item Customer loyalty points reward ledger tracking accruals, redemptions, and balances.
+        \item Moderated review submission system for confirmed and completed dining patrons.
+    \end{itemize}
+\end{itemize}
+
+\section{Explicit Limitations and Delimitations}
+\label{sec:scope_limitations}
+To maintain architectural focus, ensure air-gapped operational independence, and strictly satisfy the DCIT 24 academic rubric, the project establishes several deliberate delimitations:
+
+\begin{enumerate}[label=\textbf{L\arabic*.}]
+    \item \textbf{Delimitation of External Payment Gateways:} The system intentionally does not integrate direct third-party commercial payment processing APIs (such as Stripe, PayPal, PayMongo, or GCash REST APIs). Commercial payment gateways introduce external network dependencies, non-deterministic sandbox behaviors, and remote secrets that compromise air-gapped evaluation. Instead, financial transactions are modeled and settled through verified internal deposit ledger entries denominated in signed integer centavos, guaranteeing full relational accounting without external network dependencies.
+    \item \textbf{Delimitation of External Cloud Messaging Services:} Third-party cloud messaging services (e.g., Twilio SMS, SendGrid, or AWS SES) are deliberately omitted. Transactional notifications, booking confirmations, and cancellation alerts are handled through internal in-system notification registries and immutable audit logs, preserving total local self-sufficiency.
+    \item \textbf{Time-Slot Discretization Constraint:} Reservation start and end times are strictly constrained to discrete 15-minute quanta (:00, :15, :30, :45). The system does not permit arbitrary minute-level reservation boundaries (e.g., a booking starting at 19:07). This deliberate architectural constraint enables the mathematical discretization of continuous time into discrete relational slot buckets, forming the foundation of the double-booking prevention engine.
+    \item \textbf{Subdomain Simulation in Offline Environments:} In production cloud environments, tenant resolution is driven by DNS wildcards and HTTP \texttt{Host} headers. In local, air-gapped demonstration environments (such as XAMPP or localhost testing), subdomain routing is simulated via request parameters or session context to allow seamless multi-tenant evaluation on single-domain machines without requiring administrative alterations to system \texttt{hosts} files.
+    \item \textbf{Scope of Point-of-Sale (POS) Operations:} While EIMS models inventory depletions, Bill of Materials recipe requirements, and menu item pricing, it does not implement a physical kitchen thermal printer interface, barcode scanning driver, or cash drawer peripheral interface, focusing its core architecture on the relational database management and scheduling tier.
+\end{enumerate}

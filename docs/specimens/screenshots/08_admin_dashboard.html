@@ -33,14 +33,26 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
 
-    <link rel="preload stylesheet" as="style" href="/assets/css/style.css" />
+    <link rel="stylesheet" href="/assets/css/base.css" />
+    <link rel="stylesheet" href="/assets/css/themes/default.css" />
+    <link rel="stylesheet" href="/assets/css/themes/lyra.css" />
+    <script src="/assets/css/theme-engine.js"></script>
     <script defer src="/assets/js/app.js"></script>
 </head>
 <body>
     <header class="site-header">
-        <div class="container">
-            <h1>Enterprise Information Management System</h1>
-            <p class="subtitle">Cavite State University - Main Campus - 2nd year 1st semester 2026-27</p>
+        <div class="container site-header-content">
+            <div>
+                <h1><a href="/">Enterprise Information Management System</a></h1>
+                <p class="subtitle">Cavite State University - Main Campus - 2nd year 1st semester 2026-27</p>
+            </div>
+            <div class="theme-switcher-container">
+                <label for="theme-select" class="theme-switcher-label">Theme:</label>
+                <select id="theme-select" class="theme-select" aria-label="Select Color Theme">
+                    <option value="default">Default (Neutral)</option>
+                    <option value="lyra">Lyra (Piiiiink WCAG AA)</option>
+                </select>
+            </div>
         </div>
     </header>
     <main class="container">
@@ -49,99 +61,87 @@
     <p class="subtitle">Subdomain: <code>cvsu-main</code></p>
 </section>
 
-<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
-    <div class="card" style="margin-bottom: 0;">
+<div class="specimen-grid-cards">
+    <div class="card specimen-card-tight">
         <h3>Scoped Users</h3>
-        <p style="font-size: 2rem; font-weight: bold; color: var(--color-primary);">4</p>
+        <p class="specimen-stat-primary">3</p>
         <p class="subtitle">Users within this organization</p>
     </div>
-    <div class="card" style="margin-bottom: 0;">
+    <div class="card specimen-card-tight">
         <h3>Organization Status</h3>
-        <p style="font-size: 1.5rem; font-weight: bold; color: #16a34a;">ACTIVE</p>
+        <p class="specimen-status-active">ACTIVE</p>
         <p class="subtitle">Tenant operational status</p>
     </div>
 </div>
 
 <section class="card">
     <h3>Administration Actions</h3>
-    <ul style="list-style-type: none; padding-left: 0; display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 1rem;">
-        <li><a href="/admin/users" style="color: var(--color-primary); font-weight: 500;">Manage Tenant Users &rarr;</a></li>
-        <li><form method="POST" action="/logout" style="display: inline;"><button type="submit" style="background: none; border: none; color: var(--color-danger, #dc2626); cursor: pointer; font-weight: 500; font-size: 1rem; padding: 0;">Logout &rarr;</button></form></li>
+    <ul class="specimen-action-list">
+        <li><a href="/admin/users" class="specimen-link-primary">Manage Tenant Users &rarr;</a></li>
+        <li><form method="POST" action="/logout" class="specimen-inline-form"><input type="hidden" name="_csrf" value="a6dd363dcd50396fc5a70c7c59697c6d4429e1c931b7481652a70f2056aeb88e"><button type="submit" class="specimen-button-danger">Logout &rarr;</button></form></li>
     </ul>
 </section>
 
 <section class="card">
     <h3>Recent Tenant Audit Activity</h3>
-            <div style="overflow-x: auto;">
-            <table style="width: 100%; border-collapse: collapse; text-align: left; margin-top: 0.5rem;">
+            <div class="specimen-table-scroll">
+            <table class="specimen-table-spaced">
                 <thead>
-                    <tr style="border-bottom: 2px solid var(--color-border);">
-                        <th style="padding: 0.5rem;">Action</th>
-                        <th style="padding: 0.5rem;">Entity</th>
-                        <th style="padding: 0.5rem;">Details</th>
-                        <th style="padding: 0.5rem;">Timestamp</th>
+                    <tr class="specimen-row-header">
+                        <th class="specimen-cell">Action</th>
+                        <th class="specimen-cell">Entity</th>
+                        <th class="specimen-cell">Details</th>
+                        <th class="specimen-cell">Timestamp</th>
                     </tr>
                 </thead>
                 <tbody>
-                                            <tr style="border-bottom: 1px solid var(--color-border);">
-                            <td style="padding: 0.5rem;"><code>AUTH_LOGIN</code></td>
-                            <td style="padding: 0.5rem;">users</td>
-                            <td style="padding: 0.5rem;">User logged in successfully</td>
-                            <td style="padding: 0.5rem;">2026-11-05 23:28:02</td>
+                                            <tr class="specimen-row">
+                            <td class="specimen-cell"><code>AUTH_LOGOUT</code></td>
+                            <td class="specimen-cell">users</td>
+                            <td class="specimen-cell">User logged out</td>
+                            <td class="specimen-cell">2026-11-21 07:51:41</td>
                         </tr>
-                                            <tr style="border-bottom: 1px solid var(--color-border);">
-                            <td style="padding: 0.5rem;"><code>AUTH_LOGIN</code></td>
-                            <td style="padding: 0.5rem;">users</td>
-                            <td style="padding: 0.5rem;">User logged in successfully</td>
-                            <td style="padding: 0.5rem;">2026-11-05 23:28:02</td>
+                                            <tr class="specimen-row">
+                            <td class="specimen-cell"><code>AUTH_LOGIN</code></td>
+                            <td class="specimen-cell">users</td>
+                            <td class="specimen-cell">User logged in successfully</td>
+                            <td class="specimen-cell">2026-11-21 07:51:25</td>
                         </tr>
-                                            <tr style="border-bottom: 1px solid var(--color-border);">
-                            <td style="padding: 0.5rem;"><code>AUTH_LOGIN</code></td>
-                            <td style="padding: 0.5rem;">users</td>
-                            <td style="padding: 0.5rem;">User logged in successfully</td>
-                            <td style="padding: 0.5rem;">2026-11-05 23:28:02</td>
+                                            <tr class="specimen-row">
+                            <td class="specimen-cell"><code>AUTH_LOGIN</code></td>
+                            <td class="specimen-cell">users</td>
+                            <td class="specimen-cell">User logged in successfully</td>
+                            <td class="specimen-cell">2026-11-21 07:51:18</td>
                         </tr>
-                                            <tr style="border-bottom: 1px solid var(--color-border);">
-                            <td style="padding: 0.5rem;"><code>AUTH_LOGIN</code></td>
-                            <td style="padding: 0.5rem;">users</td>
-                            <td style="padding: 0.5rem;">User logged in successfully</td>
-                            <td style="padding: 0.5rem;">2026-11-05 23:27:06</td>
+                                            <tr class="specimen-row">
+                            <td class="specimen-cell"><code>AUTH_LOGIN</code></td>
+                            <td class="specimen-cell">users</td>
+                            <td class="specimen-cell">User logged in successfully</td>
+                            <td class="specimen-cell">2026-11-21 07:51:11</td>
                         </tr>
-                                            <tr style="border-bottom: 1px solid var(--color-border);">
-                            <td style="padding: 0.5rem;"><code>AUTH_LOGOUT</code></td>
-                            <td style="padding: 0.5rem;">users</td>
-                            <td style="padding: 0.5rem;">User logged out</td>
-                            <td style="padding: 0.5rem;">2026-11-05 23:27:06</td>
+                                            <tr class="specimen-row">
+                            <td class="specimen-cell"><code>AUTH_LOGOUT</code></td>
+                            <td class="specimen-cell">users</td>
+                            <td class="specimen-cell">User logged out</td>
+                            <td class="specimen-cell">2026-11-21 07:50:14</td>
                         </tr>
-                                            <tr style="border-bottom: 1px solid var(--color-border);">
-                            <td style="padding: 0.5rem;"><code>AUTH_LOGIN</code></td>
-                            <td style="padding: 0.5rem;">users</td>
-                            <td style="padding: 0.5rem;">User logged in successfully</td>
-                            <td style="padding: 0.5rem;">2026-11-05 23:27:06</td>
+                                            <tr class="specimen-row">
+                            <td class="specimen-cell"><code>AUTH_LOGIN</code></td>
+                            <td class="specimen-cell">users</td>
+                            <td class="specimen-cell">User logged in successfully</td>
+                            <td class="specimen-cell">2026-11-21 07:50:00</td>
                         </tr>
-                                            <tr style="border-bottom: 1px solid var(--color-border);">
-                            <td style="padding: 0.5rem;"><code>AUTH_LOGIN</code></td>
-                            <td style="padding: 0.5rem;">users</td>
-                            <td style="padding: 0.5rem;">User logged in successfully</td>
-                            <td style="padding: 0.5rem;">2026-11-05 23:27:06</td>
+                                            <tr class="specimen-row">
+                            <td class="specimen-cell"><code>AUTH_LOGIN</code></td>
+                            <td class="specimen-cell">users</td>
+                            <td class="specimen-cell">User logged in successfully</td>
+                            <td class="specimen-cell">2026-11-21 07:49:52</td>
                         </tr>
-                                            <tr style="border-bottom: 1px solid var(--color-border);">
-                            <td style="padding: 0.5rem;"><code>AUTH_LOGIN</code></td>
-                            <td style="padding: 0.5rem;">users</td>
-                            <td style="padding: 0.5rem;">User logged in successfully</td>
-                            <td style="padding: 0.5rem;">2026-11-05 23:24:31</td>
-                        </tr>
-                                            <tr style="border-bottom: 1px solid var(--color-border);">
-                            <td style="padding: 0.5rem;"><code>AUTH_LOGIN</code></td>
-                            <td style="padding: 0.5rem;">users</td>
-                            <td style="padding: 0.5rem;">User logged in successfully</td>
-                            <td style="padding: 0.5rem;">2026-11-05 23:24:31</td>
-                        </tr>
-                                            <tr style="border-bottom: 1px solid var(--color-border);">
-                            <td style="padding: 0.5rem;"><code>AUTH_LOGIN</code></td>
-                            <td style="padding: 0.5rem;">users</td>
-                            <td style="padding: 0.5rem;">User logged in successfully</td>
-                            <td style="padding: 0.5rem;">2026-11-05 23:24:31</td>
+                                            <tr class="specimen-row">
+                            <td class="specimen-cell"><code>AUTH_LOGIN</code></td>
+                            <td class="specimen-cell">users</td>
+                            <td class="specimen-cell">User logged in successfully</td>
+                            <td class="specimen-cell">2026-11-21 07:49:45</td>
                         </tr>
                                     </tbody>
             </table>

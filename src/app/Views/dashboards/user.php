@@ -16,8 +16,9 @@ require_once __DIR__ . '/../layouts/header.php';
     <h3>Account & Privacy Operations (RA 10173)</h3>
     <p>Under the Philippine Data Privacy Act of 2012 (RA 10173), you have the right to data portability and visibility over your personal information records.</p>
     <div class="specimen-actions">
-        <a href="/user/export" class="specimen-link-button">Export My Personal Data (CSV) &darr;</a>
-        <form method="POST" action="/logout" class="specimen-inline-form">
+        <a href="<?= htmlspecialchars(\App\Core\Request::url('/discover'), ENT_QUOTES, 'UTF-8') ?>" class="specimen-link-button">Browse Restaurants & Table Booking &rarr;</a>
+        <a href="<?= htmlspecialchars(\App\Core\Request::url('/user/export'), ENT_QUOTES, 'UTF-8') ?>" class="specimen-link-button">Export My Personal Data (CSV) &darr;</a>
+        <form method="POST" action="<?= htmlspecialchars(\App\Core\Request::url('/logout'), ENT_QUOTES, 'UTF-8') ?>" class="specimen-inline-form">
             <?= Session::csrfField() ?>
             <button type="submit" class="specimen-button-outline-danger">Sign Out</button>
         </form>

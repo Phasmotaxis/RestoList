@@ -5,32 +5,31 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Core\Database;
+use InvalidArgumentException;
+use PDO;
 
 /**
  * Deposit Ledger Service: Immutable centavo-based customer deposit tracking.
  *
- * Records all deposit transactions (holds, forfeits, refunds) in append-only deposit_ledger table.
+ * Records all deposit transactions (holds, forfeits, refunds, applications) in append-only deposit_ledger table.
  * Calculates running balances from ledger sum for deposit accounting in POS and table reservations.
- * Supports refund workflows, no-show penalties, and customer prepayment management.
+ * Enforces strict non-negative balance invariants and positive transaction amounts.
  */
 class DepositLedgerService
 {
     /**
      * Record customer deposit hold (freeze funds for upcoming reservation or order).
      *
-     * Creates ledger entry with positive amount (funds moved into hold). Used when customer
-     * prepays for table reservation or group order. Action = 'hold'.
+     * Creates ledger entry with positive amount (funds moved into hold).
      *
      * @param string $orgId Tenant/location identifier.
      * @param string $customerId Customer primary key.
-     * @param int $amountCentavos Deposit amount in centavos (1 peso = 100 centavos).
-     * @param string $reason Transaction reason/reference (e.g. 'reservation #12345', default empty).
+     * @param int $amountCentavos Deposit amount in centavos (must be > 0).
+     * @param string $reason Transaction reason/reference.
      *
      * @return string Generated ledger ID.
      *
-     * @throws PDOException If INSERT fails.
-     *
-     * @see DepositLedgerService::refundDeposit() Reverse a hold (refund).
+     * @throws InvalidArgumentException If amount is not positive centavos.
      */
     public static function holdDeposit(
         string $orgId,
@@ -38,23 +37,25 @@ class DepositLedgerService
         int $amountCentavos,
         string $reason = ''
     ): string {
+        if ($amountCentavos <= 0) {
+            throw new InvalidArgumentException('Deposit hold amount must be positive centavos');
+        }
         return self::recordLedgerEntry($orgId, $customerId, $amountCentavos, 'hold', $reason);
     }
 
     /**
      * Record deposit forfeit (retain funds for customer no-show or policy violation).
      *
-     * Creates ledger entry with negative amount (funds removed from customer balance).
-     * Action = 'forfeit'. Used when customer misses reservation or violates cancellation terms.
+     * Deducts funds from customer held balance. Enforces non-negative balance invariant.
      *
      * @param string $orgId Tenant/location identifier.
      * @param string $customerId Customer primary key.
-     * @param int $amountCentavos Amount to forfeit in centavos.
-     * @param string $reason Forfeit reason/policy reference (default empty).
+     * @param int $amountCentavos Amount to forfeit in centavos (must be > 0).
+     * @param string $reason Forfeit reason/policy reference.
      *
      * @return string Generated ledger ID.
      *
-     * @throws PDOException If INSERT fails.
+     * @throws InvalidArgumentException If amount <= 0 or exceeds held balance.
      */
     public static function forfeitDeposit(
         string $orgId,
@@ -62,23 +63,26 @@ class DepositLedgerService
         int $amountCentavos,
         string $reason = ''
     ): string {
-        return self::recordLedgerEntry($orgId, $customerId, -$amountCentavos, 'forfeit', $reason);
+        if ($amountCentavos <= 0) {
+            throw new InvalidArgumentException('Forfeit amount must be positive centavos');
+        }
+
+        return self::executeAtomicDeduction($orgId, $customerId, $amountCentavos, 'forfeit', $reason);
     }
 
     /**
      * Record deposit refund (return funds to customer).
      *
-     * Creates ledger entry with negative amount (funds returned). Action = 'refund'.
-     * Used when customer cancels reservation, complaint adjustment, or end-of-event balance settlement.
+     * Deducts funds from held deposit. Enforces that refund cannot exceed held balance.
      *
      * @param string $orgId Tenant/location identifier.
      * @param string $customerId Customer primary key.
-     * @param int $amountCentavos Amount to refund in centavos.
-     * @param string $reason Refund reason (e.g. 'cancellation', 'complaint credit', default empty).
+     * @param int $amountCentavos Amount to refund in centavos (must be > 0).
+     * @param string $reason Refund reason.
      *
      * @return string Generated ledger ID.
      *
-     * @throws PDOException If INSERT fails.
+     * @throws InvalidArgumentException If amount <= 0 or exceeds held balance.
      */
     public static function refundDeposit(
         string $orgId,
@@ -86,14 +90,66 @@ class DepositLedgerService
         int $amountCentavos,
         string $reason = ''
     ): string {
-        return self::recordLedgerEntry($orgId, $customerId, -$amountCentavos, 'refund', $reason);
+        if ($amountCentavos <= 0) {
+            throw new InvalidArgumentException('Refund amount must be positive centavos');
+        }
+
+        return self::executeAtomicDeduction($orgId, $customerId, $amountCentavos, 'refund', $reason);
+    }
+
+    /**
+     * Record deposit refund by reservation identifier or customer identifier.
+     *
+     * @param string $orgId Organization identifier.
+     * @param string $reservationOrCustomerId Target reservation or customer identifier.
+     * @param int $amountCentavos Refund amount in centavos (must be > 0).
+     * @param string $reason Refund reason.
+     *
+     * @return string Generated ledger ID.
+     *
+     * @throws InvalidArgumentException If amount <= 0 or exceeds held balance.
+     */
+    public static function recordRefund(
+        string $orgId,
+        string $reservationOrCustomerId,
+        int $amountCentavos,
+        string $reason = ''
+    ): string {
+        if ($amountCentavos <= 0) {
+            throw new InvalidArgumentException('Refund amount must be positive centavos');
+        }
+
+        $customerId = self::resolveCustomerId($orgId, $reservationOrCustomerId);
+        return self::executeAtomicDeduction($orgId, $customerId, $amountCentavos, 'refund', $reason);
+    }
+
+    /**
+     * Record deposit applied to customer bill / settlement (deduct funds).
+     *
+     * @param string $orgId Tenant/location identifier.
+     * @param string $customerId Customer primary key.
+     * @param int $amountCentavos Amount applied in centavos (must be > 0).
+     * @param string $reason Transaction reference.
+     *
+     * @return string Generated ledger ID.
+     *
+     * @throws InvalidArgumentException If amount <= 0 or exceeds held balance.
+     */
+    public static function applyDeposit(
+        string $orgId,
+        string $customerId,
+        int $amountCentavos,
+        string $reason = ''
+    ): string {
+        if ($amountCentavos <= 0) {
+            throw new InvalidArgumentException('Applied amount must be positive centavos');
+        }
+
+        return self::executeAtomicDeduction($orgId, $customerId, $amountCentavos, 'applied', $reason);
     }
 
     /**
      * Calculate current deposit balance for customer.
-     *
-     * Sums all amount_centavos in deposit_ledger for customer. Positive balance = funds held,
-     * negative balance = customer owes (rare, typically means refund pending).
      *
      * @param string $orgId Tenant/location identifier.
      * @param string $customerId Customer primary key.
@@ -102,9 +158,11 @@ class DepositLedgerService
      */
     public static function getBalance(string $orgId, string $customerId): int
     {
+        $resolvedCustId = self::resolveCustomerId($orgId, $customerId);
+
         $row = Database::executeQuery(
-            'SELECT SUM(amount_centavos) as total FROM deposit_ledger WHERE org_id = :org_id AND customer_id = :customer_id',
-            ['org_id' => $orgId, 'customer_id' => $customerId]
+            'SELECT COALESCE(SUM(amount_centavos), 0) as total FROM deposit_ledger WHERE org_id = :org_id AND customer_id = :customer_id',
+            ['org_id' => $orgId, 'customer_id' => $resolvedCustId]
         )->fetch();
 
         return (int) ($row['total'] ?? 0);
@@ -113,23 +171,22 @@ class DepositLedgerService
     /**
      * Retrieve deposit transaction history for customer (paginated).
      *
-     * Returns all ledger entries in descending timestamp order (newest first).
-     * Used for customer statements and admin audit trails.
-     *
      * @param string $orgId Tenant/location identifier.
      * @param string $customerId Customer primary key.
      * @param int $limit Maximum rows per page (default 100).
      * @param int $offset Pagination offset (default 0).
      *
-     * @return array<int, array> Ledger rows: [id, org_id, customer_id, amount_centavos, action, reason, created_at, ...].
+     * @return array<int, array> Ledger rows.
      */
     public static function getLedger(string $orgId, string $customerId, int $limit = 100, int $offset = 0): array
     {
+        $resolvedCustId = self::resolveCustomerId($orgId, $customerId);
+
         return Database::executeQuery(
             'SELECT * FROM deposit_ledger WHERE org_id = :org_id AND customer_id = :customer_id ORDER BY created_at DESC LIMIT :limit OFFSET :offset',
             [
                 'org_id' => $orgId,
-                'customer_id' => $customerId,
+                'customer_id' => $resolvedCustId,
                 'limit' => $limit,
                 'offset' => $offset
             ]
@@ -137,17 +194,78 @@ class DepositLedgerService
     }
 
     /**
+     * Execute atomic deduction (refund, forfeit, applied) with strict balance protection.
+     *
+     * Prevents race conditions and balance overdraw via database transaction locking.
+     */
+    private static function executeAtomicDeduction(
+        string $orgId,
+        string $customerId,
+        int $amountCentavos,
+        string $action,
+        string $reason
+    ): string {
+        $pdo = Database::getConnection();
+        $isDriverSqlite = (Database::getDriverName() === 'sqlite');
+
+        if ($isDriverSqlite) {
+            $pdo->exec('BEGIN IMMEDIATE');
+        } else {
+            $pdo->beginTransaction();
+        }
+
+        try {
+            // For MySQL, issue SELECT FOR UPDATE to acquire pessimistic row lock
+            if (!$isDriverSqlite) {
+                Database::executeQuery(
+                    'SELECT id FROM users WHERE id = :id FOR UPDATE',
+                    ['id' => $customerId]
+                );
+            }
+
+            $currentBalance = self::getBalance($orgId, $customerId);
+            if ($amountCentavos > $currentBalance) {
+                if ($pdo->inTransaction()) {
+                    $pdo->rollBack();
+                }
+                throw new InvalidArgumentException(
+                    "Deposit deduction ({$amountCentavos} centavos) exceeds current held balance ({$currentBalance} centavos)"
+                );
+            }
+
+            $ledgerId = self::recordLedgerEntry($orgId, $customerId, -$amountCentavos, $action, $reason);
+            $pdo->commit();
+            return $ledgerId;
+        } catch (\Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            throw $e;
+        }
+    }
+
+    /**
+     * Helper to resolve customer ID if a reservation ID or customer ID is provided.
+     */
+    private static function resolveCustomerId(string $orgId, string $targetId): string
+    {
+        try {
+            $stmt = Database::executeQuery(
+                'SELECT customer_id FROM reservations WHERE org_id = :org_id AND id = :target_id',
+                ['org_id' => $orgId, 'target_id' => $targetId]
+            );
+            $linkedCust = $stmt->fetchColumn();
+            if ($linkedCust) {
+                return (string) $linkedCust;
+            }
+        } catch (\Throwable $e) {
+            // Not a reservation or table not found
+        }
+        return $targetId;
+    }
+
+    /**
      * Internal: Record immutable ledger entry (shared by hold/forfeit/refund).
-     *
-     * @param string $orgId Tenant/location identifier.
-     * @param string $customerId Customer primary key.
-     * @param int $amountCentavos Signed amount (positive or negative).
-     * @param string $action Transaction action type (hold, forfeit, refund).
-     * @param string $reason Transaction reason/reference.
-     *
-     * @return string Generated ledger ID.
-     *
-     * @throws PDOException If INSERT fails.
      */
     private static function recordLedgerEntry(
         string $orgId,

@@ -38,10 +38,11 @@ require_once __DIR__ . '/../layouts/header.php';
 <section class="card">
     <h3>SuperAdmin Operations</h3>
     <ul class="specimen-action-list">
-        <li><a href="/superadmin/organizations" class="specimen-link-primary">Manage Organizations &rarr;</a></li>
-        <li><a href="/superadmin/users" class="specimen-link-primary">All Users Directory &rarr;</a></li>
-        <li><a href="/superadmin/audit-logs" class="specimen-link-primary">Global Security Logs &rarr;</a></li>
-        <li><form method="POST" action="/logout" class="specimen-inline-form"><?= Session::csrfField() ?><button type="submit" class="specimen-button-danger">Logout &rarr;</button></form></li>
+        <li><a href="<?= htmlspecialchars(\App\Core\Request::url('/superadmin/organizations'), ENT_QUOTES, 'UTF-8') ?>" class="specimen-link-primary">Manage Organizations &rarr;</a></li>
+        <li><a href="<?= htmlspecialchars(\App\Core\Request::url('/superadmin/users'), ENT_QUOTES, 'UTF-8') ?>" class="specimen-link-primary">All Users Directory &rarr;</a></li>
+        <li><a href="<?= htmlspecialchars(\App\Core\Request::url('/superadmin/audit-logs'), ENT_QUOTES, 'UTF-8') ?>" class="specimen-link-primary">Global Security Logs &rarr;</a></li>
+        <li><a href="<?= htmlspecialchars(\App\Core\Request::url('/discover'), ENT_QUOTES, 'UTF-8') ?>" class="specimen-link-primary">Public Restaurant Marketplace &rarr;</a></li>
+        <li><form method="POST" action="<?= htmlspecialchars(\App\Core\Request::url('/logout'), ENT_QUOTES, 'UTF-8') ?>" class="specimen-inline-form"><?= Session::csrfField() ?><button type="submit" class="specimen-button-danger">Logout &rarr;</button></form></li>
     </ul>
 </section>
 <?php

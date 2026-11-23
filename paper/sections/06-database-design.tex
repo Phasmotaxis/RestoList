@@ -1,0 +1,409 @@
+\chapter{Database Design}
+\label{chap:database_design}
+
+\section{Comprehensive Data Dictionary}
+\label{sec:db_data_dictionary}
+This section presents the complete, rigorous Data Dictionary for all 18 production tables of the Enterprise Information Management System (EIMS), supplemented by the four extended ERP inventory tables. Each table specification details the attribute name, SQL data type, primary and foreign key constraints, default values, and operational field descriptions.
+
+\subsection{Domain 1: Core Tenant and Governance Data Dictionary}
+
+\begin{table}[htbp]
+\centering
+\caption{Data Dictionary: \texttt{tenants} Table}
+\label{tab:dict_tenants}
+\small
+\begin{tabularx}{\textwidth}{llp{3.0cm}lX}
+\toprule
+\textbf{Column Name} & \textbf{Data Type} & \textbf{Constraints} & \textbf{Default} & \textbf{Field Description} \\
+\midrule
+\texttt{id} & \texttt{VARCHAR(36)} & \textbf{PK}, NOT NULL & None & Canonical UUIDv4 unique tenant identifier. \\
+\texttt{name} & \texttt{VARCHAR(255)} & NOT NULL & None & Formal commercial legal trade name of restaurant. \\
+\texttt{subdomain} & \texttt{VARCHAR(64)} & \textbf{UNIQUE}, NOT NULL & None & Alphanumeric routing slug for subdomain dispatch. \\
+\texttt{is\_active} & \texttt{INTEGER} & NOT NULL & \texttt{1} & Tenant lifecycle status ($1 = \text{Active}$, $0 = \text{Suspended}$). \\
+\texttt{created\_at} & \texttt{TIMESTAMP} & NOT NULL & \texttt{CURRENT} & UTC timestamp of organizational provisioning. \\
+\texttt{updated\_at} & \texttt{TIMESTAMP} & NOT NULL & \texttt{CURRENT} & UTC timestamp of last metadata mutation. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{table}[htbp]
+\centering
+\caption{Data Dictionary: \texttt{roles} and \texttt{permissions} Tables}
+\label{tab:dict_roles_perms}
+\small
+\begin{tabularx}{\textwidth}{llp{3.0cm}lX}
+\toprule
+\textbf{Column Name} & \textbf{Data Type} & \textbf{Constraints} & \textbf{Default} & \textbf{Field Description} \\
+\midrule
+\multicolumn{5}{l}{\textbf{Table: \texttt{roles}}} \\
+\texttt{id} & \texttt{INTEGER} & \textbf{PK}, NOT NULL & None & Static sequential role identifier. \\
+\texttt{name} & \texttt{VARCHAR(64)} & \textbf{UNIQUE}, NOT NULL & None & Role descriptor (\texttt{SuperAdmin}, \texttt{Admin}, \texttt{FOH}, etc.). \\
+\texttt{mask} & \texttt{INTEGER} & \textbf{UNIQUE}, NOT NULL & None & Integer bitmask power-of-two value. \\
+\texttt{description} & \texttt{VARCHAR(255)} & NULL & None & Formal administrative description of role scope. \\
+\midrule
+\multicolumn{5}{l}{\textbf{Table: \texttt{permissions}}} \\
+\texttt{id} & \texttt{INTEGER} & \textbf{PK}, NOT NULL & None & Static sequential privilege identifier. \\
+\texttt{name} & \texttt{VARCHAR(64)} & \textbf{UNIQUE}, NOT NULL & None & Atomic privilege identifier (e.g., \texttt{DATA\_WRITE}). \\
+\texttt{mask} & \texttt{INTEGER} & \textbf{UNIQUE}, NOT NULL & None & Unique power-of-two bit flag for evaluation. \\
+\texttt{description} & \texttt{VARCHAR(255)} & NULL & None & Detailed scope of authorization privilege. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{table}[htbp]
+\centering
+\caption{Data Dictionary: \texttt{users} Table}
+\label{tab:dict_users}
+\small
+\begin{tabularx}{\textwidth}{llp{3.2cm}lX}
+\toprule
+\textbf{Column Name} & \textbf{Data Type} & \textbf{Constraints} & \textbf{Default} & \textbf{Field Description} \\
+\midrule
+\texttt{id} & \texttt{VARCHAR(36)} & \textbf{PK}, NOT NULL & None & Canonical UUIDv4 unique user identifier. \\
+\texttt{tenant\_id} & \texttt{VARCHAR(36)} & \textbf{FK} $\to$ \texttt{tenants.id} & NULL & Organizational tenant boundary (NULL for SuperAdmin). \\
+\texttt{email} & \texttt{VARCHAR(255)} & NOT NULL & None & Primary login credential and contact address. \\
+\texttt{password\_hash}& \texttt{VARCHAR(255)} & NOT NULL & None & Cost-12 bcrypt cryptographic password digest. \\
+\texttt{first\_name} & \texttt{VARCHAR(128)} & NOT NULL & None & Legal given name of user. \\
+\texttt{last\_name} & \texttt{VARCHAR(128)} & NOT NULL & None & Legal family name of user. \\
+\texttt{role\_mask} & \texttt{INTEGER} & NOT NULL & \texttt{4} & Effective bitmask representing active permissions. \\
+\texttt{created\_at} & \texttt{TIMESTAMP} & NOT NULL & \texttt{CURRENT} & UTC timestamp of account creation. \\
+\texttt{updated\_at} & \texttt{TIMESTAMP} & NOT NULL & \texttt{CURRENT} & UTC timestamp of last credential or profile update. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{table}[htbp]
+\centering
+\caption{Data Dictionary: \texttt{login\_attempts} and \texttt{audit\_logs} (Security and Compliance Logs)}
+\label{tab:dict_gov_security}
+\small
+\begin{tabularx}{\textwidth}{llp{3.2cm}lX}
+\toprule
+\textbf{Column Name} & \textbf{Data Type} & \textbf{Constraints} & \textbf{Default} & \textbf{Field Description} \\
+\midrule
+\multicolumn{5}{l}{\textbf{Table: \texttt{login\_attempts} (Brute-Force Rate Limiting Engine)}} \\
+\texttt{id} & \texttt{INTEGER} & \textbf{PK}, \textbf{AUTO} & None & Auto-incrementing identifier for attempt record. \\
+\texttt{scope} & \texttt{VARCHAR(8)} & NOT NULL & None & Rate-limiting evaluation scope (\texttt{'email'} or \texttt{'ip'}). \\
+\texttt{subject} & \texttt{VARCHAR(255)} & NOT NULL & None & Normalized evaluation target (client IP address or email). \\
+\texttt{attempted\_at} & \texttt{INTEGER} & NOT NULL & None & Unix epoch timestamp of recorded authentication failure. \\
+\midrule
+\multicolumn{5}{l}{\textbf{Table: \texttt{audit\_logs} (Immutable Compliance Audit Trail)}} \\
+\texttt{id} & \texttt{VARCHAR(36)} & \textbf{PK}, NOT NULL & None & UUIDv4 identifier for immutable audit log entry. \\
+\texttt{tenant\_id} & \texttt{VARCHAR(36)} & \textbf{FK} $\to$ \texttt{tenants.id} & None & Scoped organization boundary. \\
+\texttt{user\_id} & \texttt{VARCHAR(36)} & NULL & None & Acting user UUID (NULL for unauthenticated). \\
+\texttt{action} & \texttt{VARCHAR(128)} & NOT NULL & None & Executed action verb (e.g., \texttt{RESERVATION\_CANCEL}). \\
+\texttt{entity} & \texttt{VARCHAR(64)} & NOT NULL & None & Target entity table (e.g., \texttt{dining\_tables}). \\
+\texttt{entity\_id} & \texttt{VARCHAR(36)} & NULL & None & Target record UUID. \\
+\texttt{details} & \texttt{TEXT} & NULL & None & JSON serialization of before/after mutation diff. \\
+\texttt{ip\_address} & \texttt{VARCHAR(45)} & NULL & None & Client IP address of initiating request. \\
+\texttt{created\_at} & \texttt{TIMESTAMP} & NOT NULL & \texttt{CURRENT} & UTC timestamp of log insertion. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{table}[htbp]
+\centering
+\caption{Data Dictionary: \texttt{org\_feature\_flags} and \texttt{org\_invites} (Tenant Modularity and Onboarding)}
+\label{tab:dict_gov_misc}
+\small
+\begin{tabularx}{\textwidth}{llp{3.2cm}lX}
+\toprule
+\textbf{Column Name} & \textbf{Data Type} & \textbf{Constraints} & \textbf{Default} & \textbf{Field Description} \\
+\midrule
+\multicolumn{5}{l}{\textbf{Table: \texttt{org\_feature\_flags} (Modular Subsystem Toggling)}} \\
+\texttt{id} & \texttt{VARCHAR(36)} & \textbf{PK}, NOT NULL & None & UUIDv4 feature flag identifier. \\
+\texttt{org\_id} & \texttt{VARCHAR(36)} & \textbf{FK} $\to$ \texttt{tenants.id} & None & Scoped organization boundary. \\
+\texttt{flag\_name} & \texttt{VARCHAR(64)} & NOT NULL & None & Feature key (\texttt{enable\_deposits}, \texttt{enable\_waitlist}). \\
+\texttt{enabled} & \texttt{INTEGER} & NOT NULL & \texttt{0} & Feature state ($1 = \text{Enabled}$, $0 = \text{Disabled}$). \\
+\texttt{updated\_at} & \texttt{TIMESTAMP} & NOT NULL & \texttt{CURRENT} & UTC timestamp of flag state alteration. \\
+\midrule
+\multicolumn{5}{l}{\textbf{Table: \texttt{org\_invites} (Cryptographic Staff Onboarding)}} \\
+\texttt{id} & \texttt{VARCHAR(36)} & \textbf{PK}, NOT NULL & None & UUIDv4 invitation identifier. \\
+\texttt{org\_id} & \texttt{VARCHAR(36)} & \textbf{FK} $\to$ \texttt{tenants.id} & None & Target organization for invited staff. \\
+\texttt{email} & \texttt{VARCHAR(255)} & NOT NULL & None & Destination email address. \\
+\texttt{role\_mask} & \texttt{INTEGER} & NOT NULL & \texttt{4} & Role bitmask to be assigned upon registration. \\
+\texttt{token} & \texttt{VARCHAR(64)} & \textbf{UNIQUE}, NOT NULL & None & Cryptographic URL invitation nonce. \\
+\texttt{expires\_at} & \texttt{TIMESTAMP} & NOT NULL & None & Expiration timestamp for invitation. \\
+\texttt{created\_at} & \texttt{TIMESTAMP} & NOT NULL & \texttt{CURRENT} & UTC timestamp of invitation issuance. \\
+\texttt{invited\_by\_user\_id} & \texttt{VARCHAR(36)} & \textbf{FK} $\to$ \texttt{users.id}, NULL & None & User ID of issuing manager or administrator. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Domain 2: Dining Operations and Floor Plan Data Dictionary}
+
+\begin{table}[htbp]
+\centering
+\caption{Data Dictionary: \texttt{dining\_zones} and \texttt{dining\_tables} Tables}
+\label{tab:dict_dining_topology}
+\small
+\begin{tabularx}{\textwidth}{llp{3.2cm}lX}
+\toprule
+\textbf{Column Name} & \textbf{Data Type} & \textbf{Constraints} & \textbf{Default} & \textbf{Field Description} \\
+\midrule
+\multicolumn{5}{l}{\textbf{Table: \texttt{dining\_zones}}} \\
+\texttt{id} & \texttt{VARCHAR(36)} & \textbf{PK}, NOT NULL & None & UUIDv4 dining zone identifier. \\
+\texttt{org\_id} & \texttt{VARCHAR(36)} & \textbf{FK} $\to$ \texttt{tenants.id} & None & Scoped organization boundary. \\
+\texttt{name} & \texttt{VARCHAR(128)} & NOT NULL & None & Zone label (e.g., ``Al Fresco Garden''). \\
+\texttt{capacity} & \texttt{INTEGER} & NOT NULL & \texttt{0} & Nominal maximum aggregate seating capacity. \\
+\texttt{created\_at} & \texttt{TIMESTAMP} & NOT NULL & \texttt{CURRENT} & UTC timestamp of zone creation. \\
+\texttt{archived\_at}& \texttt{TIMESTAMP} & NULL & NULL & Soft-delete timestamp for zone deactivation. \\
+\midrule
+\multicolumn{5}{l}{\textbf{Table: \texttt{dining\_tables}}} \\
+\texttt{id} & \texttt{VARCHAR(36)} & \textbf{PK}, NOT NULL & None & UUIDv4 dining table asset identifier. \\
+\texttt{org\_id} & \texttt{VARCHAR(36)} & \textbf{FK} $\to$ \texttt{tenants.id} & None & Scoped organization boundary. \\
+\texttt{zone\_id} & \texttt{VARCHAR(36)} & \textbf{FK} $\to$ \texttt{zones.id} & NULL & Parent zone assignment. \\
+\texttt{label} & \texttt{VARCHAR(64)} & NOT NULL & None & Floor plan table callout (e.g., ``T-01''). \\
+\texttt{capacity} & \texttt{INTEGER} & NOT NULL & None & Maximum seating capacity of table. \\
+\texttt{x\_coord} & \texttt{INTEGER} & NOT NULL & \texttt{0} & Horizontal grid coordinate on 12x8 floor plan. \\
+\texttt{y\_coord} & \texttt{INTEGER} & NOT NULL & \texttt{0} & Vertical grid coordinate on 12x8 floor plan. \\
+\texttt{is\_combinable}& \texttt{INTEGER}& NOT NULL & \texttt{0} & Boolean flag ($1 = \text{True}$) for multi-table linking. \\
+\texttt{created\_at} & \texttt{TIMESTAMP} & NOT NULL & \texttt{CURRENT} & UTC timestamp of table creation. \\
+\texttt{archived\_at}& \texttt{TIMESTAMP} & NULL & NULL & Soft-delete timestamp (guarded by active bookings). \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{table}[htbp]
+\centering
+\caption{Data Dictionary: \texttt{reservations}, \texttt{reservation\_tables}, and \texttt{reservation\_slots}}
+\label{tab:dict_reservations}
+\small
+\begin{tabularx}{\textwidth}{llp{3.2cm}lX}
+\toprule
+\textbf{Column Name} & \textbf{Data Type} & \textbf{Constraints} & \textbf{Default} & \textbf{Field Description} \\
+\midrule
+\multicolumn{5}{l}{\textbf{Table: \texttt{reservations}}} \\
+\texttt{id} & \texttt{VARCHAR(36)} & \textbf{PK}, NOT NULL & None & UUIDv4 reservation master record identifier. \\
+\texttt{org\_id} & \texttt{VARCHAR(36)} & \textbf{FK} $\to$ \texttt{tenants.id} & None & Scoped organization boundary. \\
+\texttt{customer\_id}& \texttt{VARCHAR(36)}& \textbf{FK} $\to$ \texttt{users.id} & NULL & Associated registered customer account. \\
+\texttt{party\_size} & \texttt{INTEGER} & NOT NULL & None & Total number of dining guests. \\
+\texttt{start\_at} & \texttt{DATETIME} & NOT NULL & None & Continuous booking start timestamp. \\
+\texttt{end\_at} & \texttt{DATETIME} & NOT NULL & None & Continuous booking end timestamp. \\
+\texttt{status} & \texttt{VARCHAR(32)} & NOT NULL & \texttt{'pending'} & State: \texttt{pending}, \texttt{confirmed}, \texttt{seated}, etc. \\
+\texttt{notes} & \texttt{TEXT} & NULL & None & Customer dietary preferences or requests. \\
+\texttt{created\_at} & \texttt{TIMESTAMP} & NOT NULL & \texttt{CURRENT} & UTC timestamp of booking initiation. \\
+\texttt{updated\_at} & \texttt{TIMESTAMP} & NOT NULL & \texttt{CURRENT} & UTC timestamp of last status modification. \\
+\midrule
+\multicolumn{5}{l}{\textbf{Table: \texttt{reservation\_tables} (Associative Junction)}} \\
+\texttt{reservation\_id}& \texttt{VARCHAR(36)}& \textbf{PK}, \textbf{FK} $\to$ \texttt{res.id} & None & Master reservation foreign key. \\
+\texttt{table\_id} & \texttt{VARCHAR(36)}& \textbf{PK}, \textbf{FK} $\to$ \texttt{tbl.id} & None & Assigned dining table foreign key. \\
+\midrule
+\multicolumn{5}{l}{\textbf{Table: \texttt{reservation\_slots} (15-Minute Discrete Concurrency Lock)}} \\
+\texttt{org\_id} & \texttt{VARCHAR(36)}& \textbf{PK}, \textbf{FK} $\to$ \texttt{tenants.id} & None & Scoped organization boundary. \\
+\texttt{table\_id} & \texttt{VARCHAR(36)}& \textbf{PK}, \textbf{FK} $\to$ \texttt{tbl.id} & None & Locked physical table identifier. \\
+\texttt{slot\_start\_utc}& \texttt{DATETIME}& \textbf{PK}, NOT NULL & None & 15-minute discrete slot quantum boundary. \\
+\texttt{created\_at} & \texttt{TIMESTAMP} & NOT NULL & \texttt{CURRENT} & Timestamp of lock acquisition. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{table}[htbp]
+\centering
+\caption{Data Dictionary: \texttt{waitlist\_entries} Table}
+\label{tab:dict_waitlist}
+\small
+\begin{tabularx}{\textwidth}{llp{3.2cm}lX}
+\toprule
+\textbf{Column Name} & \textbf{Data Type} & \textbf{Constraints} & \textbf{Default} & \textbf{Field Description} \\
+\midrule
+\texttt{id} & \texttt{VARCHAR(36)} & \textbf{PK}, NOT NULL & None & UUIDv4 queue entry identifier. \\
+\texttt{org\_id} & \texttt{VARCHAR(36)} & \textbf{FK} $\to$ \texttt{tenants.id} & None & Scoped organization boundary. \\
+\texttt{customer\_id}& \texttt{VARCHAR(36)}& \textbf{FK} $\to$ \texttt{users.id} & NULL & Customer account associated with waitlist. \\
+\texttt{party\_size} & \texttt{INTEGER} & NOT NULL & None & Number of dining patrons awaiting seating. \\
+\texttt{preferred\_zone}& \texttt{VARCHAR(36)}& NULL & None & Optional preferred dining zone UUID. \\
+\texttt{position} & \texttt{INTEGER} & NOT NULL & None & Sequential FIFO queue ranking number. \\
+\texttt{status} & \texttt{VARCHAR(32)} & NOT NULL & \texttt{'waiting'} & State: \texttt{waiting}, \texttt{notified}, \texttt{promoted}, \texttt{expired}. \\
+\texttt{join\_at} & \texttt{TIMESTAMP} & NOT NULL & \texttt{CURRENT} & Exact timestamp patron entered queue. \\
+\texttt{promoted\_to\_reservation\_id} & \texttt{VARCHAR(36)} & NULL & NULL & Associated reservation UUID upon promotion. \\
+\texttt{created\_at} & \texttt{TIMESTAMP} & NOT NULL & \texttt{CURRENT} & UTC timestamp of waitlist record initialization. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Domain 3: Menu Catalog and Reviews Data Dictionary}
+
+\begin{table}[htbp]
+\centering
+\caption{Data Dictionary: \texttt{menu\_items} and \texttt{reviews} Tables}
+\label{tab:dict_menu_reviews}
+\small
+\begin{tabularx}{\textwidth}{llp{3.2cm}lX}
+\toprule
+\textbf{Column Name} & \textbf{Data Type} & \textbf{Constraints} & \textbf{Default} & \textbf{Field Description} \\
+\midrule
+\multicolumn{5}{l}{\textbf{Table: \texttt{menu\_items}}} \\
+\texttt{id} & \texttt{VARCHAR(36)} & \textbf{PK}, NOT NULL & None & UUIDv4 menu item identifier. \\
+\texttt{org\_id} & \texttt{VARCHAR(36)} & \textbf{FK} $\to$ \texttt{tenants.id} & None & Scoped organization boundary. \\
+\texttt{name} & \texttt{VARCHAR(255)} & NOT NULL & None & Dish title displayed on customer menu. \\
+\texttt{description} & \texttt{TEXT} & NULL & None & Detailed culinary description of ingredients. \\
+\texttt{price\_centavos}& \texttt{BIGINT} & NOT NULL & None & Price in signed integer Philippine centavos. \\
+\texttt{is\_available}& \texttt{INTEGER} & NOT NULL & \texttt{1} & Real-time 86-list toggle ($1 = \text{Available}$). \\
+\texttt{dietary\_tags}& \texttt{VARCHAR(255)} & NULL & None & Comma-delimited tags (e.g., \texttt{vegan,halal}). \\
+\texttt{allergen\_tags}& \texttt{VARCHAR(255)} & NULL & None & Food allergy warnings (e.g., \texttt{peanuts,dairy}). \\
+\texttt{created\_at} & \texttt{TIMESTAMP} & NOT NULL & \texttt{CURRENT} & UTC timestamp of dish creation. \\
+\texttt{archived\_at}& \texttt{TIMESTAMP} & NULL & NULL & Soft-delete timestamp for archived items. \\
+\midrule
+\multicolumn{5}{l}{\textbf{Table: \texttt{reviews}}} \\
+\texttt{id} & \texttt{VARCHAR(36)} & \textbf{PK}, NOT NULL & None & UUIDv4 review feedback identifier. \\
+\texttt{org\_id} & \texttt{VARCHAR(36)} & \textbf{FK} $\to$ \texttt{tenants.id} & None & Scoped organization boundary. \\
+\texttt{reservation\_id}& \texttt{VARCHAR(36)}& \textbf{FK} $\to$ \texttt{res.id} & NULL & Verified reservation linking dining proof. \\
+\texttt{customer\_id}& \texttt{VARCHAR(36)}& \textbf{FK} $\to$ \texttt{users.id} & NULL & Review author customer account. \\
+\texttt{rating} & \texttt{INTEGER} & NOT NULL & None & Quantitative rating scale (Integer 1 to 5). \\
+\texttt{comment} & \texttt{TEXT} & NULL & None & Narrative customer dining review text. \\
+\texttt{approved} & \texttt{INTEGER} & NOT NULL & \texttt{0} & Moderation state ($1 = \text{Approved}$, $0 = \text{Pending}$). \\
+\texttt{restaurant\_response}& \texttt{TEXT} & NULL & None & Published administrative management response. \\
+\texttt{response\_at}& \texttt{TIMESTAMP} & NULL & NULL & Timestamp of management response publication. \\
+\texttt{created\_at} & \texttt{TIMESTAMP} & NOT NULL & \texttt{CURRENT} & UTC timestamp of review submission. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Domain 4: Financial Accounting Ledgers Data Dictionary}
+
+\begin{table}[htbp]
+\centering
+\caption{Data Dictionary: \texttt{deposit\_ledger} and \texttt{loyalty\_ledger} Tables}
+\label{tab:dict_ledgers}
+\small
+\begin{tabularx}{\textwidth}{llp{3.2cm}lX}
+\toprule
+\textbf{Column Name} & \textbf{Data Type} & \textbf{Constraints} & \textbf{Default} & \textbf{Field Description} \\
+\midrule
+\multicolumn{5}{l}{\textbf{Table: \texttt{deposit\_ledger} (Append-Only Signed Centavo Journal)}} \\
+\texttt{id} & \texttt{VARCHAR(36)} & \textbf{PK}, NOT NULL & None & UUIDv4 financial ledger transaction identifier. \\
+\texttt{org\_id} & \texttt{VARCHAR(36)} & \textbf{FK} $\to$ \texttt{tenants.id} & None & Scoped organization boundary. \\
+\texttt{customer\_id}& \texttt{VARCHAR(36)}& \textbf{FK} $\to$ \texttt{users.id} & None & Target customer account. \\
+\texttt{amount\_centavos}& \texttt{BIGINT} & NOT NULL & None & Signed amount in centavos ($+$Credit, $-$Debit). \\
+\texttt{action} & \texttt{VARCHAR(32)} & NOT NULL & None & Action: \texttt{HOLD}, \texttt{CAPTURE}, \texttt{FORFEIT}, \texttt{REFUND}. \\
+\texttt{reason} & \texttt{VARCHAR(255)} & NULL & None & Narrative transaction audit justification. \\
+\texttt{created\_at} & \texttt{TIMESTAMP} & NOT NULL & \texttt{CURRENT} & Immutable transaction insertion timestamp. \\
+\midrule
+\multicolumn{5}{l}{\textbf{Table: \texttt{loyalty\_ledger} (Append-Only Loyalty Points Journal)}} \\
+\texttt{id} & \texttt{VARCHAR(36)} & \textbf{PK}, NOT NULL & None & UUIDv4 loyalty ledger transaction identifier. \\
+\texttt{org\_id} & \texttt{VARCHAR(36)} & \textbf{FK} $\to$ \texttt{tenants.id} & None & Scoped organization boundary. \\
+\texttt{customer\_id}& \texttt{VARCHAR(36)}& \textbf{FK} $\to$ \texttt{users.id} & None & Target customer account. \\
+\texttt{points\_delta}& \texttt{INTEGER} & NOT NULL & None & Signed integer points variance ($+$Earned, $-$Spent). \\
+\texttt{reason} & \texttt{VARCHAR(255)} & NULL & None & Transaction justification (e.g., ``Dining Reward''). \\
+\texttt{created\_at} & \texttt{TIMESTAMP} & NOT NULL & \texttt{CURRENT} & Immutable transaction insertion timestamp. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Domain 5: ERP Inventory and Recipe Data Dictionary (Extended)}
+
+\begin{table}[htbp]
+\centering
+\caption{Data Dictionary: ERP Inventory Tables (\texttt{ingredients}, \texttt{menu\_item\_recipes}, \texttt{purchase\_orders}, \texttt{stock\_movements})}
+\label{tab:dict_inventory}
+\small
+\begin{tabularx}{\textwidth}{llp{3.2cm}lX}
+\toprule
+\textbf{Column Name} & \textbf{Data Type} & \textbf{Constraints} & \textbf{Default} & \textbf{Field Description} \\
+\midrule
+\multicolumn{5}{l}{\textbf{Table: \texttt{ingredients}}} \\
+\texttt{id} & \texttt{VARCHAR(36)} & \textbf{PK}, NOT NULL & None & UUIDv4 raw ingredient pantry identifier. \\
+\texttt{org\_id} & \texttt{VARCHAR(36)} & \textbf{FK} $\to$ \texttt{tenants.id} & None & Scoped organization boundary. \\
+\texttt{name} & \texttt{VARCHAR(255)} & NOT NULL & None & Common ingredient name (e.g., ``Jasmine Rice''). \\
+\texttt{unit} & \texttt{VARCHAR(32)} & NOT NULL & None & Measurement unit (\texttt{kg}, \texttt{g}, \texttt{liters}, \texttt{pieces}). \\
+\texttt{on\_hand} & \texttt{DECIMAL(10,2)}& NOT NULL & \texttt{0.00} & Current physical inventory stock level. \\
+\texttt{reorder\_level}& \texttt{DECIMAL(10,2)}& NOT NULL & \texttt{0.00} & Automated reorder trigger threshold. \\
+\texttt{created\_at} & \texttt{TIMESTAMP} & NOT NULL & \texttt{CURRENT} & UTC timestamp of ingredient creation. \\
+\texttt{archived\_at} & \texttt{TIMESTAMP} & NULL & NULL & Soft-delete archiving timestamp. \\
+\midrule
+\multicolumn{5}{l}{\textbf{Table: \texttt{menu\_item\_recipes} (Recipe Bill of Materials)}} \\
+\texttt{id} & \texttt{VARCHAR(36)} & \textbf{PK}, NOT NULL & None & UUIDv4 recipe line item identifier. \\
+\texttt{item\_id} & \texttt{VARCHAR(36)} & \textbf{FK} $\to$ \texttt{menu\_items.id} & None & Linked culinary dish identifier. \\
+\texttt{ingredient\_id}& \texttt{VARCHAR(36)}& \textbf{FK} $\to$ \texttt{ingredients.id}& None & Required ingredient identifier. \\
+\texttt{quantity\_required}& \texttt{DECIMAL(10,2)}& NOT NULL & None & Quantity consumed per dish portion. \\
+\midrule
+\multicolumn{5}{l}{\textbf{Table: \texttt{purchase\_orders}}} \\
+\texttt{id} & \texttt{VARCHAR(36)} & \textbf{PK}, NOT NULL & None & UUIDv4 procurement order identifier. \\
+\texttt{org\_id} & \texttt{VARCHAR(36)} & \textbf{FK} $\to$ \texttt{tenants.id} & None & Scoped organization boundary. \\
+\texttt{ingredient\_id}& \texttt{VARCHAR(36)}& \textbf{FK} $\to$ \texttt{ingredients.id}& None & Procured ingredient asset. \\
+\texttt{quantity} & \texttt{DECIMAL(10,2)}& NOT NULL & None & Ordered quantity. \\
+\texttt{status} & \texttt{VARCHAR(32)} & NOT NULL & \texttt{'pending'} & Status: \texttt{pending}, \texttt{received}, \texttt{cancelled}. \\
+\texttt{created\_at} & \texttt{TIMESTAMP} & NOT NULL & \texttt{CURRENT} & Order placement timestamp. \\
+\texttt{received\_at} & \texttt{TIMESTAMP} & NULL & NULL & Warehouse delivery reception timestamp. \\
+\midrule
+\multicolumn{5}{l}{\textbf{Table: \texttt{stock\_movements} (Immutable Inventory Movement Ledger)}} \\
+\texttt{id} & \texttt{VARCHAR(36)} & \textbf{PK}, NOT NULL & None & UUIDv4 movement transaction identifier. \\
+\texttt{org\_id} & \texttt{VARCHAR(36)} & \textbf{FK} $\to$ \texttt{tenants.id} & None & Scoped organization boundary. \\
+\texttt{ingredient\_id}& \texttt{VARCHAR(36)}& \textbf{FK} $\to$ \texttt{ingredients.id}& None & Target ingredient asset. \\
+\texttt{quantity\_delta}& \texttt{DECIMAL(10,2)}& NOT NULL & None & Signed inventory variance ($+$Received, $-$Used). \\
+\texttt{reason} & \texttt{VARCHAR(255)} & NULL & None & Operational reason (e.g., ``Dinner Rush Batch''). \\
+\texttt{created\_at} & \texttt{TIMESTAMP} & NOT NULL & \texttt{CURRENT} & Timestamp of inventory variance logging. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Relational Normalization Analysis (1NF through BCNF)}
+\label{sec:db_normalization}
+Relational database normalization decomposes complex attributes into atomic structures to eliminate data redundancy, update anomalies, insertion anomalies, and deletion anomalies \parencite{codd1970relational, date2004introduction}.
+
+\subsection{First Normal Form (1NF)}
+An entity satisfies 1NF if and only if all attribute values are atomic scalars and there are no repeating groups or multi-valued arrays:
+\begin{itemize}
+    \item Multi-table party bookings are not stored as delimited string arrays inside \texttt{reservations}; they are formally decomposed into discrete relational tuples in the associative junction entity \texttt{reservation\_tables}.
+    \item Discrete reservation time slots are not stored as timestamp arrays; they are decomposed into atomic rows in \texttt{reservation\_slots}.
+    \item Recipe ingredients are decomposed into relational line items in \texttt{menu\_item\_recipes}.
+\end{itemize}
+
+\subsection{Second Normal Form (2NF)}
+An entity satisfies 2NF if it is in 1NF and every non-key attribute is fully functionally dependent on the primary key, eliminating partial dependencies on composite keys:
+\begin{itemize}
+    \item In associative junction tables with composite primary keys (e.g., \texttt{reservation\_tables (reservation\_id, table\_id)}), there are zero non-key attributes; the relationship itself constitutes the entity, preventing partial functional dependencies.
+    \item In \texttt{reservation\_slots (org\_id, table\_id, slot\_start\_utc)}, the only non-key attribute is the audit timestamp \texttt{created\_at}, which is fully functionally dependent on the entire composite key triplet.
+\end{itemize}
+
+\subsection{Third Normal Form (3NF)}
+An entity satisfies 3NF if it is in 2NF and no non-key attribute is transitively dependent on the primary key via another non-key attribute:
+\begin{itemize}
+    \item In \texttt{dining\_tables}, attributes such as \texttt{zone\_name} or \texttt{zone\_capacity} are not duplicated; they reside strictly in \texttt{dining\_zones}, referenced solely via the foreign key \texttt{zone\_id}. Modifying a zone's name modifies exactly one tuple in \texttt{dining\_zones}, preventing update anomalies.
+    \item In \texttt{reservations}, customer profile data (names, email addresses, password hashes) is not stored; it references \texttt{customer\_id} $\to$ \texttt{users.id}.
+    \item In financial ledgers (\texttt{deposit\_ledger}), current running balances are not stored as mutable columns; balances are derived dynamically through immutable aggregate summation ($\sum \texttt{amount\_centavos}$), completely eliminating transitive dependencies and desynchronization anomalies.
+\end{itemize}
+
+\subsection{Boyce-Codd Normal Form (BCNF)}
+An entity satisfies BCNF if for every non-trivial functional dependency $X \to Y$, $X$ is a superkey:
+\begin{itemize}
+    \item In \texttt{tenants}, the candidate keys are \texttt{id} and \texttt{subdomain}. The functional dependency $\texttt{subdomain} \to \{\texttt{id}, \texttt{name}, \texttt{is\_active}\}$ holds, and because \texttt{subdomain} is declared with a \texttt{UNIQUE} constraint, it constitutes a valid superkey.
+    \item In all other production entities, every determinant attribute constitutes a primary key or superkey, satisfying BCNF.
+\end{itemize}
+
+\section{Indexing Strategy}
+\label{sec:db_indexing}
+To deliver sub-millisecond query performance across high-load operations, EIMS enforces a targeted B-Tree indexing strategy:
+
+\begin{enumerate}
+    \item \textbf{Primary Clustered B-Tree Indexes:} Automatically constructed across all primary keys (\texttt{id} columns), enabling $\mathcal{O}(\log N)$ point lookups.
+    \item \textbf{Composite Concurrency Unique Index:} The unique index on \texttt{reservation\_slots (org\_id, table\_id, slot\_start\_utc)} serves as the concurrency arbitration engine. By enforcing uniqueness across the triplet, database engines (MySQL InnoDB and SQLite) evaluate slot availability in sub-millisecond index seek times without scanning relational table pages.
+    \item \textbf{Tenant Scoping Indexes:} Foreign key columns (\texttt{org\_id}, \texttt{tenant\_id}) are indexed across all tenant-scoped tables. In multi-tenant repository queries (\texttt{WHERE org\_id = :org\_id AND archived\_at IS NULL}), composite indexes on \texttt{(org\_id, archived\_at)} eliminate full table scans, restricting index range scans to the authenticated tenant's partition.
+    \item \textbf{Temporal Scheduling Indexes:} In \texttt{reservations}, indexes on \texttt{(org\_id, start\_at, status)} optimize front-of-house date queries and booking calendar rendering.
+\end{enumerate}
+
+\section{Dialect Branching and SQL Abstraction (MySQL 8.0 vs. SQLite3)}
+\label{sec:db_dialect_branching}
+To satisfy both high-throughput production hosting (MySQL 8.0) and offline air-gapped evaluation (SQLite3), the persistence engine in \texttt{App\textbackslash Core\textbackslash Database} executes dialect branching:
+
+\subsection{Syntactic and Structural Branching}
+\begin{itemize}
+    \item \textbf{Data Types and Boolean Representation:} MySQL supports native \texttt{BOOLEAN} (aliased to \texttt{TINYINT(1)}) and \texttt{DATETIME} storage. SQLite utilizes type affinity rules, storing booleans as \texttt{INTEGER} ($0$ or $1$) and timestamps as ISO-8601 \texttt{TEXT} strings.
+    \item \textbf{Auto-Increment Semantics:} Primary keys on rate limiters and sequential tables utilize \texttt{AUTO\_INCREMENT} under MySQL, whereas SQLite requires the keyword \texttt{AUTOINCREMENT} coupled strictly with \texttt{INTEGER PRIMARY KEY}.
+    \item \textbf{Referential Constraint Activation:} Under MySQL InnoDB, foreign key constraints are active by default. Under SQLite3, foreign keys are disabled by default for legacy backward compatibility; \texttt{App\textbackslash Core\textbackslash Database} explicitly executes \texttt{PRAGMA foreign\_keys = ON;} immediately upon opening every SQLite connection.
+\end{itemize}
+
+\subsection{Concurrency Control and Transactional Locking Primitives}
+The most profound dialect branch occurs within the \texttt{TableAllocator} concurrency service:
+\begin{itemize}
+    \item \textbf{MySQL 8.0 Primary Engine:} Employs pessimistic row-level locking via:
+    \begin{lstlisting}[language=SQLANSI]
+    SELECT id FROM dining_tables WHERE org_id = ? AND id IN (...) FOR UPDATE;
+    \end{lstlisting}
+    This acquires exclusive write locks ($\text{X-locks}$) on the target table rows, preventing concurrent transactions from evaluating availability until the active transaction commits or rolls back.
+    \item \textbf{SQLite3 Fallback Engine:} SQLite operates as an embedded database without individual row-level locks. Consequently, the fallback driver escalates transaction isolation by initiating serialized transactions via:
+    \begin{lstlisting}[language=SQLANSI]
+    BEGIN IMMEDIATE;
+    \end{lstlisting}
+    This acquires a reserved lock on the SQLite database file, preventing any concurrent write operations while permitting simultaneous readers, ensuring serialization equivalence without crashing.
+\end{itemize}

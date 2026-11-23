@@ -23,6 +23,13 @@ Before starting, review three fundamental computing concepts used throughout the
 
 ---
 
+## Pre-Flight Diagnostics & Self-Healing Engine
+Before booting or troubleshooting services, run the environmental audit tool:
+```bash
+just doctor
+```
+`just doctor` audits 16 critical dependencies across your system (Docker daemon, Docker Compose, port collisions on 80/8080/3306, host PHP 8.3+ extensions, Python/uv, Just, and LaTeX monograph toolchains). If Docker is offline or permissions are restricted, `just fix-docker` provides automatic escalation and diagnosis. In offline environments without Docker, `just test` automatically activates the host PHP runner with SQLite3 relational fallback (ADR-002).
+
 ## Platform Guides
 
 ### Linux Onboarding

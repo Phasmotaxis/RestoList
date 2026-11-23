@@ -13,6 +13,7 @@ namespace App\Core;
 class Response
 {
     private static bool $sendHeadersAndExit = true;
+    private int $statusCode = 200;
 
     /**
      * Enable or disable test mode (prevents exit and header modification when headers already sent).
@@ -31,15 +32,27 @@ class Response
      */
     public function setStatusCode(int $code): void
     {
+        $this->statusCode = $code;
         if (!headers_sent()) {
             http_response_code($code);
         }
     }
 
     /**
+     * Get current HTTP response status code.
+     *
+     * @return int Current status code.
+     */
+    public function getStatusCode(): int
+    {
+        return $this->statusCode;
+    }
+
+    /**
      * Send Location header and exit (HTTP 302 redirect).
      *
      * Sets Location header and terminates execution. Browser follows redirect to $url.
+     * Automatically prefixes detected base path for subfolder deployments (e.g. XAMPP).
      * Use for POST-redirect-GET pattern (prevent form re-submission on refresh).
      *
      * @param string $url Redirect target URL (absolute or relative).
@@ -48,6 +61,12 @@ class Response
      */
     public function redirect(string $url): void
     {
+        if (str_starts_with($url, '/') && !str_starts_with($url, '//')) {
+            $basePath = Request::getBasePath();
+            if ($basePath !== '' && !str_starts_with($url, $basePath)) {
+                $url = $basePath . $url;
+            }
+        }
         if (!headers_sent()) {
             header("Location: {$url}");
         }

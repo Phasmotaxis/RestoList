@@ -9,6 +9,9 @@ require_once __DIR__ . '/../Core/Audit.php';
 require_once __DIR__ . '/../Core/Session.php';
 require_once __DIR__ . '/../Middleware/RoleMiddleware.php';
 require_once __DIR__ . '/../Services/TableAllocator.php';
+require_once __DIR__ . '/../Services/FeatureFlagService.php';
+require_once __DIR__ . '/../Services/DepositLedgerService.php';
+require_once __DIR__ . '/../Services/LoyaltyLedgerService.php';
 require_once __DIR__ . '/WaitlistController.php';
 
 use App\Core\Audit;
@@ -17,6 +20,9 @@ use App\Core\Request;
 use App\Core\Response;
 use App\Core\Session;
 use App\Middleware\RoleMiddleware;
+use App\Services\DepositLedgerService;
+use App\Services\FeatureFlagService;
+use App\Services\LoyaltyLedgerService;
 use App\Services\TableAllocator;
 
 /**
@@ -26,8 +32,20 @@ use App\Services\TableAllocator;
  */
 class ReservationController
 {
+    private const SORT_ALLOWLIST = [
+        'created_at' => 'r.created_at',
+        'start_at' => 'r.start_at',
+        'end_at' => 'r.end_at',
+        'party_size' => 'r.party_size',
+        'status' => 'r.status',
+        'id' => 'r.id',
+    ];
+
     private function isJsonRequest(): bool
     {
+        if (php_sapi_name() === 'cli') {
+            return true;
+        }
         return (strpos($_SERVER['HTTP_ACCEPT'] ?? '', 'application/json') !== false)
             || (strpos($_SERVER['CONTENT_TYPE'] ?? '', 'application/json') !== false)
             || (isset($_GET['format']) && $_GET['format'] === 'json');
@@ -74,8 +92,9 @@ class ReservationController
         ]);
         $orgId = $this->getAuthorizedOrgId($request, $params);
 
-        $date = (string) ($request->getParam('date') ?? date('Y-m-d'));
+        $date = (string) ($request->getParam('date') ?? '');
         $status = (string) ($request->getParam('status') ?? '');
+        $q = trim((string) ($request->getParam('q') ?? ''));
         $page = max(1, (int) ($request->getParam('page') ?? 1));
         $perPage = min(100, max(1, (int) ($request->getParam('per_page') ?? 20)));
         $offset = ($page - 1) * $perPage;
@@ -91,6 +110,10 @@ class ReservationController
             $where[] = "r.status = :status";
             $bindings['status'] = $status;
         }
+        if ($q !== '') {
+            $where[] = "r.notes LIKE :q";
+            $bindings['q'] = '%' . str_replace(['!', '%', '_'], ['!!', '!%', '!_'], $q) . '%';
+        }
 
         $whereClause = implode(' AND ', $where);
 
@@ -101,6 +124,12 @@ class ReservationController
         $total = (int) ($totalStmt->fetch()['total'] ?? 0);
         $pages = (int) ceil($total / $perPage);
 
+        $sort = (string) ($_GET['sort'] ?? $request->getParam('sort') ?? '');
+        $dir = strtoupper((string) ($_GET['dir'] ?? $request->getParam('dir') ?? 'ASC'));
+        $sortDir = ($dir === 'DESC') ? 'DESC' : 'ASC';
+        $sortCol = self::SORT_ALLOWLIST[$sort] ?? self::SORT_ALLOWLIST['start_at'];
+        $orderBy = "{$sortCol} {$sortDir}";
+
         $stmt = Database::executeQuery(
             "SELECT r.*,
                     GROUP_CONCAT(t.label, ', ') as table_labels,
@@ -110,7 +139,7 @@ class ReservationController
              LEFT JOIN dining_tables t ON rt.table_id = t.id
              WHERE {$whereClause}
              GROUP BY r.id
-             ORDER BY r.start_at ASC
+             ORDER BY {$orderBy}
              LIMIT {$perPage} OFFSET {$offset}",
             $bindings
         );
@@ -135,6 +164,15 @@ class ReservationController
             ], 200);
             return;
         }
+
+        $availableTables = Database::executeQuery(
+            'SELECT t.id, t.label, t.capacity, z.name as zone_name
+             FROM dining_tables t
+             LEFT JOIN dining_zones z ON t.zone_id = z.id
+             WHERE t.org_id = :org_id AND t.archived_at IS NULL
+             ORDER BY t.label ASC',
+            ['org_id' => $orgId]
+        )->fetchAll();
 
         $title = 'Reservations Management';
         require_once __DIR__ . '/../Views/admin/reservations.php';
@@ -268,6 +306,11 @@ class ReservationController
             'customer_email' => $customerEmail
         ]));
 
+        if (!$this->isJsonRequest()) {
+            $response->redirect('/admin/reservations');
+            return;
+        }
+
         $response->setHeader('Location', "/admin/restaurants/{$orgId}/reservations/{$resId}");
         $response->json([
             'id' => $resId,
@@ -398,6 +441,11 @@ class ReservationController
             'backfilled' => $backfilledEntry
         ]));
 
+        if (!$this->isJsonRequest()) {
+            $response->redirect('/admin/reservations');
+            return;
+        }
+
         $response->json([
             'id' => $resId,
             'status' => 'cancelled',
@@ -434,9 +482,145 @@ class ReservationController
 
         Audit::record($orgId, 'CONFIRM', 'reservations', $resId, "Status updated to {$newStatus}");
 
+        if (!$this->isJsonRequest()) {
+            $response->redirect('/admin/reservations');
+            return;
+        }
+
         $response->json([
             'id' => $resId,
             'status' => $newStatus
+        ], 200);
+    }
+
+    /**
+     * Complete diner reservation checkout, settle deposit, and accrue loyalty points.
+     */
+    public function checkout(Request $request, Response $response, array $params = []): void
+    {
+        RoleMiddleware::hasAnyRole([RoleMiddleware::ROLE_ADMIN, RoleMiddleware::ROLE_FRONTOFHOUSE]);
+        $orgId = $this->getAuthorizedOrgId($request, $params);
+        $resId = (string) ($params['res_id'] ?? $params['id'] ?? $request->getParam('res_id') ?? '');
+        $body = $request->getBody();
+
+        $stmt = Database::executeQuery(
+            'SELECT * FROM reservations WHERE id = :id AND org_id = :org_id',
+            ['id' => $resId, 'org_id' => $orgId]
+        );
+        $res = $stmt->fetch();
+
+        if (!$res) {
+            $response->json(['error' => 'Reservation not found'], 404);
+            return;
+        }
+
+        if (in_array($res['status'], ['completed', 'cancelled'], true)) {
+            $response->json(['error' => "Reservation already {$res['status']}"], 422);
+            return;
+        }
+
+        $customerId = $res['customer_id'] ?? null;
+        $partySize = (int) ($res['party_size'] ?? 1);
+        $billCentavos = (int) ($body['bill_centavos'] ?? ($partySize * 2500));
+
+        // Complete reservation and free table slots
+        TableAllocator::completeReservation($resId);
+
+        $depositApplied = 0;
+        // If deposits feature enabled, apply held deposit toward the bill
+        if (FeatureFlagService::isEnabled($orgId, 'deposits') || FeatureFlagService::isEnabled($orgId, 'enable_deposits')) {
+            if ($customerId) {
+                $depositBalance = DepositLedgerService::getBalance($orgId, $customerId);
+                if ($depositBalance > 0) {
+                    $depositApplied = min($depositBalance, $billCentavos);
+                    DepositLedgerService::applyDeposit(
+                        $orgId,
+                        $customerId,
+                        $depositApplied,
+                        "Applied deposit to reservation {$resId} checkout"
+                    );
+                }
+            }
+        }
+
+        $pointsAwarded = 0;
+        // If loyalty feature enabled, award points for completed dining
+        if (FeatureFlagService::isEnabled($orgId, 'loyalty') || FeatureFlagService::isEnabled($orgId, 'enable_loyalty')) {
+            if ($customerId) {
+                $pointsAwarded = max(50, (int) round($billCentavos / 100));
+                LoyaltyLedgerService::earnPoints(
+                    $orgId,
+                    $customerId,
+                    $pointsAwarded,
+                    "Reservation {$resId} checkout loyalty reward"
+                );
+            }
+        }
+
+        Audit::record($orgId, 'CHECKOUT', 'reservations', $resId, json_encode([
+            'status' => 'completed',
+            'bill_centavos' => $billCentavos,
+            'deposit_applied_centavos' => $depositApplied,
+            'loyalty_points_awarded' => $pointsAwarded
+        ]));
+
+        if (!$this->isJsonRequest()) {
+            $response->redirect('/admin/reservations');
+            return;
+        }
+
+        $response->json([
+            'id' => $resId,
+            'status' => 'completed',
+            'bill_centavos' => $billCentavos,
+            'deposit_applied_centavos' => $depositApplied,
+            'loyalty_points_awarded' => $pointsAwarded
+        ], 200);
+    }
+
+    /**
+     * Mark reservation as no-show and release slots.
+     */
+    public function noShow(Request $request, Response $response, array $params = []): void
+    {
+        RoleMiddleware::hasAnyRole([RoleMiddleware::ROLE_ADMIN, RoleMiddleware::ROLE_FRONTOFHOUSE]);
+        $orgId = $this->getAuthorizedOrgId($request, $params);
+        $resId = (string) ($params['res_id'] ?? $params['id'] ?? $request->getParam('res_id') ?? '');
+
+        $stmt = Database::executeQuery(
+            'SELECT * FROM reservations WHERE id = :id AND org_id = :org_id',
+            ['id' => $resId, 'org_id' => $orgId]
+        );
+        $res = $stmt->fetch();
+
+        if (!$res) {
+            if ($this->isJsonRequest()) {
+                $response->json(['error' => 'Reservation not found'], 404);
+                return;
+            }
+            $response->redirect('/admin/reservations');
+            return;
+        }
+
+        // Release slots and update status
+        TableAllocator::cancelReservation($resId);
+
+        Database::executeQuery(
+            'UPDATE reservations SET status = :status, updated_at = CURRENT_TIMESTAMP WHERE id = :id AND org_id = :org_id',
+            ['status' => 'no_show', 'id' => $resId, 'org_id' => $orgId]
+        );
+
+        Audit::record($orgId, 'NO_SHOW', 'reservations', $resId, 'Guest marked as no-show');
+
+        if (!$this->isJsonRequest()) {
+            $response->redirect('/admin/reservations');
+            return;
+        }
+
+        $response->json([
+            'id' => $resId,
+            'status' => 'no_show',
+            'slots_released' => true
         ], 200);
     }
 }

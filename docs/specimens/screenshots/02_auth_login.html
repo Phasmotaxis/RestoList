@@ -33,29 +33,41 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
 
-    <link rel="preload stylesheet" as="style" href="/assets/css/style.css" />
+    <link rel="stylesheet" href="/assets/css/base.css" />
+    <link rel="stylesheet" href="/assets/css/themes/default.css" />
+    <link rel="stylesheet" href="/assets/css/themes/lyra.css" />
+    <script src="/assets/css/theme-engine.js"></script>
     <script defer src="/assets/js/app.js"></script>
 </head>
 <body>
     <header class="site-header">
-        <div class="container">
-            <h1>Enterprise Information Management System</h1>
-            <p class="subtitle">Cavite State University - Main Campus - 2nd year 1st semester 2026-27</p>
+        <div class="container site-header-content">
+            <div>
+                <h1><a href="/">Enterprise Information Management System</a></h1>
+                <p class="subtitle">Cavite State University - Main Campus - 2nd year 1st semester 2026-27</p>
+            </div>
+            <div class="theme-switcher-container">
+                <label for="theme-select" class="theme-switcher-label">Theme:</label>
+                <select id="theme-select" class="theme-select" aria-label="Select Color Theme">
+                    <option value="default">Default (Neutral)</option>
+                    <option value="lyra">Lyra (Piiiiink WCAG AA)</option>
+                </select>
+            </div>
         </div>
     </header>
     <main class="container">
-<section class="card" style="max-width: 480px; margin: 2rem auto;">
+<section class="card card-auth">
     <h2>Authentication</h2>
         <form method="POST" action="/login">
-        <div style="margin-bottom: 1rem;">
-            <label for="email" style="display: block; margin-bottom: 0.5rem;">Email Address</label>
-            <input type="email" id="email" name="email" required style="width: 100%; padding: 0.5rem; border: 1px solid var(--color-border); border-radius: var(--radius-sm);">
+        <input type="hidden" name="_csrf" value="d33d58096fe23d39cb9a92def80287e39e0fe43e998e6de49ed79ccd2cac3357">        <div class="form-group">
+            <label for="email" class="form-label">Email Address</label>
+            <input type="email" id="email" name="email" class="form-input" required autocomplete="email">
         </div>
-        <div style="margin-bottom: 1.5rem;">
-            <label for="password" style="display: block; margin-bottom: 0.5rem;">Password</label>
-            <input type="password" id="password" name="password" required style="width: 100%; padding: 0.5rem; border: 1px solid var(--color-border); border-radius: var(--radius-sm);">
+        <div class="form-group-lg">
+            <label for="password" class="form-label">Password</label>
+            <input type="password" id="password" name="password" class="form-input" required autocomplete="current-password">
         </div>
-        <button type="submit" style="background: var(--color-primary); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: var(--radius-sm); cursor: pointer;">Sign In</button>
+        <button type="submit" class="btn-primary">Sign In</button>
     </form>
 </section>
     </main>

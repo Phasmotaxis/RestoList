@@ -1,0 +1,22 @@
+# ==============================================================================
+# DICT24 Restaurant ERP: Root Directory Apache Configuration
+# Forward requests to public/ subfolder for stock XAMPP htdocs deployments
+# ==============================================================================
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    Options -Indexes -MultiViews
+
+    # Pass through requests targeting existing files or directories
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # Pass through requests already targeting public/
+    RewriteCond %{REQUEST_URI} ^.*/public/ [NC]
+    RewriteRule ^ - [L]
+
+    # Rewrite root directory requests into public/
+    RewriteRule ^$ public/ [L]
+    RewriteRule ^(.*)$ public/$1 [L,QSA]
+</IfModule>

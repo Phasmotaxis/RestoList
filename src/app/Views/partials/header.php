@@ -54,9 +54,12 @@ $logo = htmlspecialchars($sys['logo_image'] ?? '/assets/images/icons/logo.png', 
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
 
-    <link rel="stylesheet" href="/assets/css/base.css" />
-    <link rel="stylesheet" href="/assets/css/themes/default.css" />
-    <link rel="stylesheet" href="/assets/css/themes/lyra.css" />
-    <script src="/assets/css/theme-engine.js"></script>
-    <script defer src="/assets/js/app.js"></script>
+    <link rel="stylesheet" href="<?= htmlspecialchars(\App\Core\Request::url('/assets/css/base.css'), ENT_QUOTES, 'UTF-8') ?>" />
+    <link rel="stylesheet" href="<?= htmlspecialchars(\App\Core\Request::url('/assets/css/app.css'), ENT_QUOTES, 'UTF-8') ?>" />
+    <link rel="stylesheet" href="<?= htmlspecialchars(\App\Core\Request::url('/assets/css/themes/default.css'), ENT_QUOTES, 'UTF-8') ?>" />
+    <link rel="stylesheet" href="<?= htmlspecialchars(\App\Core\Request::url('/assets/css/themes/lyra.css'), ENT_QUOTES, 'UTF-8') ?>" />
+    <link rel="stylesheet" href="<?= htmlspecialchars(\App\Core\Request::url('/assets/css/themes/hiraya.css'), ENT_QUOTES, 'UTF-8') ?>" />
+    <link rel="stylesheet" href="<?= htmlspecialchars(\App\Core\Request::url('/assets/css/themes/katipunan.css'), ENT_QUOTES, 'UTF-8') ?>" />
+    <script src="<?= htmlspecialchars(\App\Core\Request::url('/assets/css/theme-engine.js'), ENT_QUOTES, 'UTF-8') ?>"></script>
+    <script defer src="<?= htmlspecialchars(\App\Core\Request::url('/assets/js/app.js'), ENT_QUOTES, 'UTF-8') ?>"></script>
 </head>

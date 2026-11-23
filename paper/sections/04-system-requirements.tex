@@ -1,0 +1,186 @@
+\chapter{System Requirements}
+\label{chap:system_requirements}
+
+\section{Hardware Specifications}
+\label{sec:req_hardware}
+The Enterprise Information Management System (EIMS) is engineered for exceptional computational efficiency. By eschewing heavy vendor frameworks and client-side JavaScript runtimes, the system exhibits minimal hardware overhead, operating seamlessly on low-power single-board computers (such as a Raspberry Pi 4), standard academic computer laboratory workstations, or high-throughput enterprise virtualization clusters.
+
+Table~\ref{tab:hardware_requirements} outlines the minimum and recommended hardware specifications for both server hosting and client access nodes.
+
+\begin{table}[htbp]
+\centering
+\caption{EIMS Hardware Specifications (Server and Client Tiers)}
+\label{tab:hardware_requirements}
+\small
+\begin{tabularx}{\textwidth}{lp{6.2cm}X}
+\toprule
+\textbf{Hardware Component} & \textbf{Minimum Specification} & \textbf{Recommended Specification} \\
+\midrule
+\multicolumn{3}{l}{\textbf{Server Node (Host Runtime)}} \\
+Processor (CPU) & Dual-Core x86\_64 or ARM64 @ 1.8\,GHz & Quad-Core x86\_64 @ 2.5\,GHz or higher \\
+System Memory (RAM) & 2\,GB DDR4 & 8\,GB DDR4/DDR5 \\
+Storage Capacity & 10\,GB available disk space & 50\,GB NVMe SSD (High IOPS) \\
+Network Interface & 100\,Mbps Ethernet interface & 1\,Gbps full-duplex Ethernet \\
+\midrule
+\multicolumn{3}{l}{\textbf{Client Node (Management Workstation \& Customer Devices)}} \\
+Processor (CPU) & Single-Core 1.2\,GHz (Desktop/Mobile) & Multi-Core 2.0\,GHz \\
+System Memory (RAM) & 1\,GB RAM & 4\,GB RAM or higher \\
+Display Resolution & $1024 \times 768$ (ERP Floor Plan Grid) & $1920 \times 1080$ Full HD (Desktop) \\
+Mobile Display & $360 \times 640$ (Responsive Customer View) & $390 \times 844$ (Standard Mobile) \\
+Network Interface & Standard Wi-Fi or 4G/5G mobile data & Low-latency local LAN or broadband \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Software Environment}
+\label{sec:req_software}
+The software architecture of EIMS is built upon standard, open, and strictly clean-room technologies:
+
+\begin{enumerate}[label=\textbf{SE\arabic*.}]
+    \item \textbf{PHP Runtime Environment (Server-Side):}
+    \begin{itemize}
+        \item \textbf{Version:} Native PHP 8.3.0 or higher with \texttt{declare(strict\_types=1);}.
+        \item \textbf{Core Extensions:} \texttt{pdo\_mysql} (Primary MySQL 8.0 connectivity), \texttt{pdo\_sqlite} (Offline SQLite3 fallback engine), \texttt{mbstring} (UTF-8 multi-byte string processing), \texttt{session} (Cryptographic state tracking), \texttt{json} (Deterministic API payload encoding), and \texttt{ctype} / \texttt{filter} (Sanitization primitives).
+        \item \textbf{Runtime Configuration:} \texttt{memory\_limit = 128M}, \texttt{max\_execution\_time = 30}, \texttt{session.cookie\_httponly = 1}, \texttt{session.cookie\_samesite = "Lax"}, \texttt{session.use\_strict\_mode = 1}.
+    \end{itemize}
+    \item \textbf{Database Management Systems (Dual-Driver Persistence):}
+    \begin{itemize}
+        \item \textbf{Primary RDBMS:} Oracle MySQL 8.0 (or MariaDB 10.11+) utilizing the InnoDB storage engine, with character set \texttt{utf8mb4} and collation \texttt{utf8mb4\_unicode\_ci}.
+        \item \textbf{Fallback RDBMS:} SQLite 3.35.0 or higher with Write-Ahead Logging (WAL) enabled (\texttt{PRAGMA journal\_mode = WAL;}) and explicit foreign key enforcement (\texttt{PRAGMA foreign\_keys = ON;}).
+    \end{itemize}
+    \item \textbf{Containerized Orchestration (Production):}
+    \begin{itemize}
+        \item Docker Engine version 24.0+ and Docker Compose v2.20+.
+        \item Multi-container configuration consisting of three isolated services:
+        \begin{itemize}
+            \item \texttt{eims\_web}: Nginx 1.25-alpine reverse proxy and static asset file server.
+            \item \texttt{eims\_app}: Dedicated PHP 8.3 FPM micro-container with volume-mounted application sources.
+            \item \texttt{eims\_db}: Containerized MySQL 8.0 server with persistent data volumes.
+        \end{itemize}
+    \end{itemize}
+    \item \textbf{Turnkey Educational Environment (XAMPP / WAMPP):}
+    \begin{itemize}
+        \item Compatible with stock XAMPP for Windows/Linux (Apache 2.4, PHP 8.3, MariaDB).
+        \item Automated deployment packaging via \texttt{dev/scripts/sh/package-xampp.sh}, generating self-contained distribution bundles for academic evaluators.
+    \end{itemize}
+    \item \textbf{Client-Side Browsers:}
+    \begin{itemize}
+        \item Modern standards-compliant web browsers supporting CSS Grid \texttt{auto-fill} / \texttt{minmax()}, CSS Custom Properties, and ES6 JavaScript: Google Chrome (version 110+), Mozilla Firefox (version 110+), Apple Safari (version 16+), or Microsoft Edge (version 110+).
+    \end{itemize}
+\end{enumerate}
+
+\section{Web Server Configuration and Apache Rewrite Rules}
+\label{sec:req_rewrite}
+To enforce the Front Controller architectural pattern and protect sensitive system internals, EIMS relies on strict web server rewrite rules. When deployed under Apache 2.4, the system employs a two-tier configuration:
+
+\subsection{Root Directory Gateway (\texorpdfstring{\texttt{.htaccess}}{.htaccess})}
+When deployed in stock XAMPP installations where the document root maps to the repository root rather than \texttt{src/public/}, the root \texttt{.htaccess} file transparently proxies incoming requests into the public distribution directory while protecting backend directories:
+
+\begin{lstlisting}[language=SQLANSI, caption={Root directory Apache rewrite rules (\texttt{.htaccess})}, label={lst:root_htaccess}]
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    Options -Indexes
+
+    # Pass through requests already targeting public/
+    RewriteCond %{REQUEST_URI} ^/public/ [NC,OR]
+    RewriteCond %{REQUEST_URI} ^.*/public/ [NC]
+    RewriteRule ^ - [L]
+
+    # Rewrite root directory requests into public/
+    RewriteRule ^$ public/ [L]
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^(.*)$ public/$1 [L,QSA]
+</IfModule>
+\end{lstlisting}
+
+\subsection{Public Web Gateway (\texorpdfstring{\texttt{src/public/.htaccess}}{src/public/.htaccess})}
+Within the public web root (\texttt{src/public/}), the Apache configuration routes all non-static uniform resource identifiers directly to the single entry point (\texttt{index.php}), while injecting defensive HTTP security headers:
+
+\begin{lstlisting}[language=SQLANSI, caption={Public gateway rewrite and security configuration (\texttt{src/public/.htaccess})}, label={lst:public_htaccess}]
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    Options -Indexes
+
+    # Serve existing files and directories directly
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+
+    # Dispatch all application traffic through front controller
+    RewriteRule ^(.*)$ index.php [QSA,L]
+</IfModule>
+
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "DENY"
+    Header always set Referrer-Policy "same-origin"
+</IfModule>
+\end{lstlisting}
+
+\subsection{Directory Isolation and Security Rules}
+Direct HTTP access to sensitive non-public source code directories is strictly forbidden:
+\begin{itemize}
+    \item \texttt{src/app/}: Contains controllers, domain models, services, and core defense kernels.
+    \item \texttt{src/database/}: Houses raw SQL migrations, seeds, and schema definitions.
+    \item \texttt{src/views/}: Contains server-side PHP HTML rendering templates.
+    \item \texttt{storage/}: Stores transient session files, runtime error logs, and the \texttt{fallback.sqlite} database.
+\end{itemize}
+In production Nginx configurations, access to these directories returns an instantaneous HTTP 403 Forbidden or 404 Not Found before PHP-FPM execution.
+
+\section{Network Topology and Deployment Architecture}
+\label{sec:req_topology}
+EIMS is designed to operate under two distinct network topologies: a containerized production service mesh and an air-gapped standalone evaluation topology.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    node distance=1.0cm and 1.2cm,
+    box/.style={rectangle, draw=primaryNavy, fill=codebg, rounded corners, minimum width=3.5cm, minimum height=1.0cm, align=center, font=\small\bfseries},
+    client/.style={rectangle, draw=accentBlue, fill=white, rounded corners, minimum width=3.5cm, minimum height=0.9cm, align=center, font=\small},
+    dbbox/.style={cylinder, draw=cvsuGreen, fill=codebg, shape border rotate=90, aspect=0.25, minimum width=3.2cm, minimum height=1.2cm, align=center, font=\small\bfseries},
+    arrow/.style={-{Latex[length=2.5mm]}, thick, color=primaryNavy},
+    dashedarrow/.style={-{Latex[length=2.5mm]}, thick, dashed, color=dangerRed}
+]
+    % Client Tier
+    \node (browser) [client] {Client Browser / POS Terminal};
+
+    % Ingress / Web Tier
+    \node (web) [box, below=of browser] {Reverse Proxy / Web Server\\(Nginx / Apache 2.4)};
+
+    % Application Tier
+    \node (app) [box, below=of web] {PHP 8.3 Front Controller\\(\texttt{src/public/index.php})};
+    \node (middleware) [box, below=of app] {Defense Middleware Tier\\(CSRF $\cdot$ RBAC $\cdot$ RateLimiter)};
+    \node (controllers) [box, below=of middleware] {Application Controllers \&\\Domain Services (\texttt{TableAllocator})};
+
+    % Persistence Tier
+    \node (db_primary) [dbbox, below left=1.2cm and 0.5cm of controllers] {Primary Database\\(MySQL 8.0 Server)};
+    \node (db_fallback) [dbbox, below right=1.2cm and 0.5cm of controllers] {Fallback Database\\(Air-Gapped SQLite3)};
+
+    % Connections
+    \draw [arrow] (browser) -- node[right, font=\tiny\sffamily] {HTTP / HTTPS (Port 80/443)} (web);
+    \draw [arrow] (web) -- node[right, font=\tiny\sffamily] {FastCGI / Rewrite} (app);
+    \draw [arrow] (app) -- (middleware);
+    \draw [arrow] (middleware) -- (controllers);
+    \draw [arrow] (controllers) -- node[above left, font=\tiny\sffamily] {Default PDO (Port 3306)} (db_primary);
+    \draw [dashedarrow] (controllers) -- node[above right, font=\tiny\sffamily] {On Disruption Failover} (db_fallback);
+\end{tikzpicture}
+\caption{EIMS Network Topology and Request Dispatch Architecture}
+\label{fig:eims_network_topology}
+\end{figure}
+
+\subsection{Production Containerized Service Mesh}
+In the production Docker environment, services communicate across an isolated, private bridge network named \texttt{eims\_network}:
+\begin{itemize}
+    \item The client workstation connects to Nginx on host port 8080 (or 443 with TLS termination).
+    \item Nginx acts as reverse proxy, serving public assets directly from \texttt{src/public/assets/} and forwarding PHP script executions to the \texttt{app} container via FastCGI on port 9000.
+    \item The PHP-FPM worker establishes a high-performance TCP connection to the \texttt{db} container on port 3306.
+    \item If the MySQL container becomes unreachable, \texttt{App\textbackslash Core\textbackslash Database} autonomously switches execution to the local volume-mounted \texttt{storage/fallback.sqlite} database file.
+\end{itemize}
+
+\subsection{Standalone Air-Gapped Topology}
+In local development, campus evaluation, or emergency offline scenarios:
+\begin{itemize}
+    \item The complete application runs on a single host machine via XAMPP or the native PHP development server (\texttt{php -S localhost:8000 -t src/public}).
+    \item The system operates without external network interfaces, binding strictly to loopback IP \texttt{127.0.0.1}.
+    \item The database layer operates natively against the air-gapped SQLite3 file, achieving zero external daemon dependencies and total evaluation portability.
+\end{itemize}

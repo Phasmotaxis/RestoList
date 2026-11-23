@@ -1,26 +1,29 @@
-/* EIMS Lyra Theme - Extracted from piiiiink.json */
-/* Contrast Ratios: Body >= 4.5:1, Headings/Borders >= 3:1 (WCAG AA Conformance) */
+/* EIMS Lyra Personal Platform Theme */
+/* Aesthetic: Cutesy, elegant blurple and neon pink */
+/* Contrast: Body text >= 4.5:1 (WCAG AA/AAA Conformance) */
 
 [data-theme="lyra"] {
     /* Surfaces & Backgrounds */
-    --bg-primary: #191a28;        /* Editor background */
-    --bg-secondary: #161824;      /* Sidebar / Card background */
+    --bg-primary: #191a28;        /* Deep twilight violet */
+    --bg-secondary: #161824;      /* Card slate / Sidebar background */
     --bg-surface: #2a2e45;        /* Input / Container background */
     --bg-elevated: #282b3f;       /* Dropdown / Modal background */
+    --card-bg: #161824;           /* Card background */
 
     /* Borders & Dividers */
     --border-subtle: #2d314f;     /* Subtle container border */
-    --border-strong: #ff59c6;     /* High-visibility active border */
+    --border-strong: #ff59c6;     /* Bubblegum neon pink active border */
+    --border-color: #2d314f;      /* Standard border color */
 
     /* Text & Foreground */
-    --text-primary: #ffffff;      /* Pure white for primary body (high contrast) */
-    --text-secondary: #fcd7ff;    /* Soft lavender-pink for secondary text */
+    --text-primary: #ffffff;      /* Pure white for primary body (18.2:1 contrast) */
+    --text-secondary: #fcd7ff;    /* Soft pastel lavender secondary text */
     --text-muted: #dec1cf;        /* Muted accessible text */
 
     /* Brand & Interactive Accents */
-    --accent-primary: #ff59c6;    /* Hot pink (links, primary actions) */
+    --accent-primary: #ff59c6;    /* Bubblegum neon pink (actions, links) */
     --accent-primary-hover: #ff89cc;
-    --accent-secondary: #ae89ff;  /* Lavender accent */
+    --accent-secondary: #ae89ff;  /* Royal blurple */
     --accent-tertiary: #75beff;   /* Cyan-blue info accent */
 
     /* Status Tokens */
@@ -30,6 +33,9 @@
 
     /* Focus & Accessibility */
     --focus-ring: 0 0 0 3px rgba(255, 89, 198, 0.45);
+
+    /* Typography */
+    --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 
     /* Dimensions & Geometry */
     --radius-sm: 4px;

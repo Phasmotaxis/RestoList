@@ -1,11 +1,18 @@
 <?php
+declare(strict_types=1);
+
 use App\Core\Session;
+use App\Core\Request;
 
 $title = $title ?? 'Dining Tables & Floor Plan - Admin';
 require_once __DIR__ . '/../layouts/header.php';
 $tables = $tables ?? [];
 $zones = $zones ?? [];
 $orgId = $orgId ?? (string) Session::get('tenant_id');
+
+$currentQ = htmlspecialchars((string)($_GET['q'] ?? ''), ENT_QUOTES, 'UTF-8');
+$currentSort = htmlspecialchars((string)($_GET['sort'] ?? 'code'), ENT_QUOTES, 'UTF-8');
+$currentDir = htmlspecialchars((string)($_GET['dir'] ?? 'ASC'), ENT_QUOTES, 'UTF-8');
 ?>
 <section class="card">
     <div class="header-actions">
@@ -13,7 +20,7 @@ $orgId = $orgId ?? (string) Session::get('tenant_id');
             <h2>Dining Tables & Floor Plan</h2>
             <p class="subtitle">Table allocation, layout grid, and live occupancy status</p>
         </div>
-        <a href="/admin/dashboard" class="link-nav">&larr; Back to Dashboard</a>
+        <a href="<?= htmlspecialchars(Request::url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>" class="link-nav">&larr; Back to Dashboard</a>
     </div>
 </section>
 
@@ -40,7 +47,7 @@ $orgId = $orgId ?? (string) Session::get('tenant_id');
 
 <section class="card">
     <h3>Add New Dining Table</h3>
-    <form method="POST" action="/admin/restaurants/<?= htmlspecialchars($orgId, ENT_QUOTES, 'UTF-8') ?>/tables" class="form-grid-admin" novalidate>
+    <form method="POST" action="<?= htmlspecialchars(Request::url('/admin/restaurants/' . urlencode($orgId) . '/tables'), ENT_QUOTES, 'UTF-8') ?>" class="form-grid-admin" novalidate>
         <?= Session::csrfField() ?>
         <div>
             <label for="label" class="form-label">Table Label / Number</label>
@@ -81,6 +88,34 @@ $orgId = $orgId ?? (string) Session::get('tenant_id');
 </section>
 
 <section class="card">
+    <h3>Filter & Search Tables</h3>
+    <form method="GET" action="<?= htmlspecialchars(Request::url('/admin/tables'), ENT_QUOTES, 'UTF-8') ?>" class="form-grid-admin">
+        <div>
+            <label for="filter_q" class="form-label">Search Table Label / Zone</label>
+            <input type="text" id="filter_q" name="q" value="<?= $currentQ ?>" class="form-input" placeholder="Search tables...">
+        </div>
+        <div>
+            <label for="filter_sort" class="form-label">Sort By</label>
+            <select id="filter_sort" name="sort" class="form-input">
+                <option value="code" <?= $currentSort === 'code' ? 'selected' : '' ?>>Table Label</option>
+                <option value="capacity" <?= $currentSort === 'capacity' ? 'selected' : '' ?>>Capacity</option>
+            </select>
+        </div>
+        <div>
+            <label for="filter_dir" class="form-label">Sort Direction</label>
+            <select id="filter_dir" name="dir" class="form-input">
+                <option value="ASC" <?= $currentDir === 'ASC' ? 'selected' : '' ?>>Ascending &uarr;</option>
+                <option value="DESC" <?= $currentDir === 'DESC' ? 'selected' : '' ?>>Descending &darr;</option>
+            </select>
+        </div>
+        <div class="form-full">
+            <button type="submit" class="btn-primary">Apply Filters</button>
+            <a href="<?= htmlspecialchars(Request::url('/admin/tables'), ENT_QUOTES, 'UTF-8') ?>" class="btn-secondary">Reset</a>
+        </div>
+    </form>
+</section>
+
+<section class="card">
     <h3>Table Roster</h3>
     <div class="table-container">
         <table class="table-data">
@@ -110,7 +145,7 @@ $orgId = $orgId ?? (string) Session::get('tenant_id');
                             <td>(<?= (int)$table['x_coord'] ?>, <?= (int)$table['y_coord'] ?>)</td>
                             <td><span class="status-badge <?= htmlspecialchars((string)($table['status_class'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars((string)($table['occupancy_status'] ?? 'available'), ENT_QUOTES, 'UTF-8') ?></span></td>
                             <td>
-                                <form method="POST" action="/admin/restaurants/<?= htmlspecialchars($orgId, ENT_QUOTES, 'UTF-8') ?>/tables/<?= htmlspecialchars((string)$table['id'], ENT_QUOTES, 'UTF-8') ?>/delete" class="inline-form">
+                                <form method="POST" action="<?= htmlspecialchars(Request::url('/admin/restaurants/' . urlencode($orgId) . '/tables/' . urlencode((string)$table['id']) . '/delete'), ENT_QUOTES, 'UTF-8') ?>" class="inline-form">
                                     <?= Session::csrfField() ?>
                                     <button type="submit" class="btn-danger-sm" onclick="return confirm('Archive this table?');">Delete</button>
                                 </form>

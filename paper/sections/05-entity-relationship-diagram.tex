@@ -1,0 +1,196 @@
+\chapter{Entity-Relationship Diagram}
+\label{chap:erd}
+
+\section{Relational Architecture Overview}
+\label{sec:erd_overview}
+The data persistence tier of the Enterprise Information Management System (EIMS) is formulated upon an enterprise-grade relational architecture structured across 18 core production tables (extended by four ERP inventory tables, yielding 22 production entities). The schema is engineered to guarantee strict referential integrity, eliminate data redundancy through Third Normal Form (3NF) normalization, and enforce multi-tenant data isolation via organizational discriminator keys.
+
+The 18 tables are partitioned into five cohesive functional domains:
+\begin{enumerate}
+    \item \textbf{Core Tenant and Governance Domain:} Manages multi-tenant organizations, bitmask roles, fine-grained permissions, user credentials, authentication throttling, system-wide audit logging, staff invites, and tenant feature flags.
+    \item \textbf{Dining Operations and Floor Plan Domain:} Governs physical floor plan zones, dining tables, coordinate layout positioning, reservations, multi-table allocation junctions, discretized 15-minute concurrency slots, and digital waitlist queues.
+    \item \textbf{Menu Catalog and Reviews Domain:} Structures categorized food and beverage menus, kitchen availability states (the 86-list), and post-dining customer feedback with moderation workflows.
+    \item \textbf{Financial Accounting Ledgers Domain:} Enforces immutable, append-only double-entry ledger accounting for reservation deposits (in signed integer centavos) and customer loyalty reward points.
+    \item \textbf{ERP Inventory and Recipe Lifecycle Domain:} Tracks raw ingredient stock levels, Bill of Materials (BOM) dish recipes, purchase replenishment orders, and immutable stock audit movements.
+\end{enumerate}
+
+\section{Entity Descriptions Across the Five Functional Domains}
+\label{sec:erd_domains}
+
+\subsection{Domain 1: Core Tenant and Governance}
+\begin{itemize}
+    \item \texttt{tenants}: The root entity representing independent restaurant organizations. Identified by a UUIDv4 surrogate primary key (\texttt{id}), with a unique alphanumeric \texttt{subdomain} used for multi-tenant HTTP host routing and an \texttt{is\_active} status flag.
+    \item \texttt{roles}: Static registry of platform roles (SuperAdmin, Admin, User, FrontOfHouse, Kitchen). Identified by integer \texttt{id}, carrying an integer power-of-two bitmask (\texttt{mask}).
+    \item \texttt{permissions}: Atomic system privilege definitions (e.g., \texttt{TENANT\_MANAGE}, \texttt{DATA\_WRITE}, \texttt{RESERVATION\_MANAGE}) mapped to unique bit flags.
+    \item \texttt{users}: Master user credential registry holding tenant associations (\texttt{tenant\_id}), email address, bcrypt password hash, name attributes, and an assigned \texttt{role\_mask}.
+    \item \texttt{login\_attempts}: State-tracking entity for brute-force authentication protection, recording failed attempts per client IP and email with sliding-window timestamps.
+    \item \texttt{audit\_logs}: Append-only compliance log capturing all administrative mutations, recording actor \texttt{user\_id}, entity type, mutation payload, and client IP.
+    \item \texttt{org\_feature\_flags}: Dynamic modularity registry enabling or disabling tenant-level operational modules (e.g., deposits, loyalty, waitlist).
+    \item \texttt{org\_invites}: Cryptographically signed invitation tokens enabling organization administrators to securely onboard staff members with predefined role masks.
+\end{itemize}
+
+\subsection{Domain 2: Dining Operations and Floor Plan}
+\begin{itemize}
+    \item \texttt{dining\_zones}: Physical architectural partitions within a restaurant (e.g., Main Hall, Patio, Balcony), maintaining aggregate seating capacities.
+    \item \texttt{dining\_tables}: Physical table assets mapped to a 12x8 coordinate grid (\texttt{x\_coord}, \texttt{y\_coord}), with seating capacity, minimum party requirements, and adjacency combinability flags.
+    \item \texttt{reservations}: Master booking records capturing scheduled dining intervals (\texttt{start\_at}, \texttt{end\_at}), party size, booking status (\texttt{'pending'}, \texttt{'confirmed'}, \texttt{'seated'}, \texttt{'completed'}, \texttt{'cancelled'}), and special guest requests.
+    \item \texttt{reservation\_tables}: Associative junction entity resolving the Many-to-Many ($M:N$) relationship between reservations and dining tables, enabling multi-table groupings for large dining parties.
+    \item \texttt{reservation\_slots}: Atomic 15-minute discretized time-slot quantum table, serving as the relational lock engine. Enforces a composite unique key on \texttt{(org\_id, table\_id, slot\_start\_utc)} to eliminate double-bookings.
+    \item \texttt{waitlist\_entries}: Digital queue records tracking patrons awaiting table availability, maintaining party size, zone preferences, queue position, and promotion references.
+\end{itemize}
+
+\subsection{Domain 3: Menu Catalog and Reviews}
+\begin{itemize}
+    \item \texttt{menu\_items}: Culinary dish offerings with descriptions, dietary flags (e.g., vegan, gluten-free), allergen warnings, signed integer centavo prices, and an \texttt{is\_available} availability toggle.
+    \item \texttt{reviews}: Customer feedback entries storing numeric star ratings (1--5), narrative comments, an \texttt{approved} moderation flag, and management response text.
+\end{itemize}
+
+\subsection{Domain 4: Financial Accounting Ledgers}
+\begin{itemize}
+    \item \texttt{deposit\_ledger}: Immutable, append-only financial ledger tracking customer reservation deposit transactions (Hold, Capture, Forfeit, Refund) in signed 64-bit integer centavos.
+    \item \texttt{loyalty\_ledger}: Immutable ledger recording customer loyalty point accruals and redemptions with signed integer point deltas.
+\end{itemize}
+
+\subsection{Domain 5: ERP Inventory and Recipe Lifecycle (Extended)}
+\begin{itemize}
+    \item \texttt{ingredients}: Raw inventory pantry items with unit measures (kg, g, L, pcs), current on-hand quantities, and automated reorder thresholds.
+    \item \texttt{menu\_item\_recipes}: Bill of Materials (BOM) junction mapping menu items to required ingredients and quantities.
+    \item \texttt{purchase\_orders}: Vendor replenishment procurement records tracking requested quantities and receipt timestamps.
+    \item \texttt{stock\_movements}: Immutable audit trail recording inventory stock variances (Usage, Wastage, Delivery, Spoilage).
+\end{itemize}
+
+\section{Crow's Foot Notation and Entity Relationship Matrix}
+\label{sec:erd_crows_foot}
+In accordance with standard information engineering conventions, relationships in EIMS are specified using Crow's Foot notation, capturing exact cardinalities (One-to-One, One-to-Many, Many-to-Many) and participation constraints (Mandatory vs. Optional).
+
+Table~\ref{tab:erd_relationships} defines the complete entity relationship matrix for all 18 production tables.
+
+\small
+\begin{xltabular}{\textwidth}{llllX}
+\caption{EIMS Relational Architecture: Crow's Foot Entity Relationship Matrix}
+\label{tab:erd_relationships} \\
+\toprule
+\textbf{Parent Entity} & \textbf{Child Entity} & \textbf{Cardinality} & \textbf{FK Constraint} & \textbf{Relational Semantics} \\
+\midrule
+\endfirsthead
+\multicolumn{5}{l}{\small\itshape Table \ref{tab:erd_relationships}, Continued from previous page} \\
+\toprule
+\textbf{Parent Entity} & \textbf{Child Entity} & \textbf{Cardinality} & \textbf{FK Constraint} & \textbf{Relational Semantics} \\
+\midrule
+\endhead
+\midrule
+\multicolumn{5}{r}{\small\itshape Continued on next page} \\
+\endfoot
+\bottomrule
+\endlastfoot
+\texttt{tenants} & \texttt{users} & $1 : N$ (Zero/Many) & \texttt{CASCADE} & Organization employs zero or many staff/customer users. \\
+\texttt{tenants} & \texttt{audit\_logs} & $1 : N$ (Zero/Many) & \texttt{CASCADE} & Organization owns zero or many immutable audit log entries. \\
+\texttt{tenants} & \texttt{org\_feature\_flags} & $1 : N$ (Zero/Many) & \texttt{CASCADE} & Organization maintains zero or many operational feature toggles. \\
+\texttt{tenants} & \texttt{org\_invites} & $1 : N$ (Zero/Many) & \texttt{CASCADE} & Organization issues zero or many staff invitation tokens. \\
+\texttt{tenants} & \texttt{dining\_zones} & $1 : N$ (Zero/Many) & \texttt{CASCADE} & Organization configures one or many architectural dining zones. \\
+\texttt{dining\_zones} & \texttt{dining\_tables} & $1 : N$ (Zero/Many) & \texttt{SET NULL} & Zone encloses zero or many tables; tables may exist unassigned. \\
+\texttt{tenants} & \texttt{dining\_tables} & $1 : N$ (Zero/Many) & \texttt{CASCADE} & Organization owns all physical dining tables. \\
+\texttt{tenants} & \texttt{reservations} & $1 : N$ (Zero/Many) & \texttt{CASCADE} & Organization receives zero or many customer reservations. \\
+\texttt{users} & \texttt{reservations} & $1 : N$ (Zero/Many) & \texttt{SET NULL} & Customer account books zero or many dining reservations. \\
+\texttt{reservations} & \texttt{reservation\_tables} & $1 : N$ (One/Many) & \texttt{CASCADE} & Reservation claims one or many tables (multi-table booking). \\
+\texttt{dining\_tables} & \texttt{reservation\_tables} & $1 : N$ (Zero/Many) & \texttt{CASCADE} & Table is assigned to zero or many reservation records. \\
+\texttt{dining\_tables} & \texttt{reservation\_slots} & $1 : N$ (Zero/Many) & \texttt{CASCADE} & Table occupies zero or many 15-minute discrete time slots. \\
+\texttt{tenants} & \texttt{waitlist\_entries} & $1 : N$ (Zero/Many) & \texttt{CASCADE} & Organization maintains zero or many waitlisted queue patrons. \\
+\texttt{tenants} & \texttt{menu\_items} & $1 : N$ (Zero/Many) & \texttt{CASCADE} & Organization catalogs zero or many food/beverage dishes. \\
+\texttt{tenants} & \texttt{reviews} & $1 : N$ (Zero/Many) & \texttt{CASCADE} & Organization receives zero or many customer reviews. \\
+\texttt{reservations} & \texttt{reviews} & $1 : 1$ (Zero/One) & \texttt{SET NULL} & Completed reservation generates at most one customer review. \\
+\texttt{tenants} & \texttt{deposit\_ledger} & $1 : N$ (Zero/Many) & \texttt{CASCADE} & Organization tracks zero or many customer deposit ledger entries. \\
+\texttt{users} & \texttt{deposit\_ledger} & $1 : N$ (Zero/Many) & \texttt{RESTRICT} & Customer owns ledger records; customer deletion restricted. \\
+\texttt{tenants} & \texttt{loyalty\_ledger} & $1 : N$ (Zero/Many) & \texttt{CASCADE} & Organization records zero or many loyalty point adjustments. \\
+\texttt{users} & \texttt{loyalty\_ledger} & $1 : N$ (Zero/Many) & \texttt{RESTRICT} & Customer owns point ledger; deletion guarded by restriction. \\
+\texttt{menu\_items} & \texttt{menu\_item\_recipes} & $1 : N$ (Zero/Many) & \texttt{CASCADE} & Dish requires zero or many raw ingredient quantities. \\
+\texttt{ingredients} & \texttt{menu\_item\_recipes} & $1 : N$ (Zero/Many) & \texttt{RESTRICT} & Ingredient is utilized in zero or many recipes. \\
+\texttt{tenants} & \texttt{ingredients} & $1 : N$ (Zero/Many) & \texttt{CASCADE} & Organization maintains zero or many raw ingredient inventory assets. \\
+\texttt{tenants} & \texttt{purchase\_orders} & $1 : N$ (Zero/Many) & \texttt{CASCADE} & Organization places zero or many ingredient purchase orders. \\
+\texttt{ingredients} & \texttt{purchase\_orders} & $1 : N$ (Zero/Many) & \texttt{RESTRICT} & Ingredient is replenished through zero or many purchase orders. \\
+\texttt{tenants} & \texttt{stock\_movements} & $1 : N$ (Zero/Many) & \texttt{CASCADE} & Organization tracks zero or many inventory stock movements. \\
+\texttt{ingredients} & \texttt{stock\_movements} & $1 : N$ (Zero/Many) & \texttt{CASCADE} & Ingredient stock level fluctuates via zero or many movement events. \\
+\texttt{users} & \texttt{org\_invites} & $1 : N$ (Zero/Many) & \texttt{SET NULL} & Administrator issues zero or many staff onboarding invitations. \\
+\end{xltabular}
+\normalsize
+
+\section{TikZ Entity-Relationship Architecture Diagram}
+\label{sec:erd_tikz}
+Figure~\ref{fig:erd_diagram} provides a structural graphical representation of the relational schema, illustrating primary foreign key pathways, domain boundaries, and associative junction tables.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    node distance=1.1cm and 1.2cm,
+    entity/.style={rectangle, draw=primaryNavy, fill=codebg, rounded corners, minimum width=2.8cm, minimum height=0.8cm, text centered, font=\scriptsize\bfseries},
+    rootentity/.style={rectangle, draw=accentBlue, fill=codebg, line width=1pt, rounded corners, minimum width=3.0cm, minimum height=0.9cm, text centered, font=\small\bfseries},
+    rel/.style={-{Latex[length=2.0mm]}, thick, color=slateGray},
+    crows/.style={{Latex[length=2.0mm]}-, thick, color=primaryNavy}
+]
+    % Domain 1: Tenant & Governance
+    \node (tenants) [rootentity] {\texttt{tenants}};
+    \node (users) [entity, right=1.8cm of tenants] {\texttt{users}};
+    \node (roles) [entity, above=of users] {\texttt{roles}};
+    \node (perms) [entity, right=1.2cm of roles] {\texttt{permissions}};
+    \node (audit) [entity, below=of tenants] {\texttt{audit\_logs}};
+    \node (flags) [entity, left=1.2cm of tenants] {\texttt{org\_feature\_flags}};
+    \node (invites) [entity, above=of flags] {\texttt{org\_invites}};
+    \node (login) [entity, above=of perms] {\texttt{login\_attempts}};
+
+    % Domain 2: Dining Operations
+    \node (zones) [entity, below right=1.4cm and 0.4cm of tenants] {\texttt{dining\_zones}};
+    \node (tables) [entity, below=of zones] {\texttt{dining\_tables}};
+    \node (reservations) [entity, right=1.8cm of tables] {\texttt{reservations}};
+    \node (res_tables) [entity, below=of reservations] {\texttt{reservation\_tables}};
+    \node (res_slots) [entity, left=1.2cm of res_tables] {\texttt{reservation\_slots}};
+    \node (waitlist) [entity, below=of audit] {\texttt{waitlist\_entries}};
+
+    % Domain 3: Menu & Reviews
+    \node (menu) [entity, above left=1.2cm and 1.2cm of tenants] {\texttt{menu\_items}};
+    \node (reviews) [entity, right=1.8cm of reservations] {\texttt{reviews}};
+
+    % Domain 4: Financial Ledgers
+    \node (deposit) [entity, above right=1.2cm and 1.8cm of users] {\texttt{deposit\_ledger}};
+    \node (loyalty) [entity, right=1.2cm of deposit] {\texttt{loyalty\_ledger}};
+
+    % Connectors
+    \draw [rel] (tenants) -- node[above, font=\tiny] {$1:N$} (users);
+    \draw [rel] (tenants) -- node[left, font=\tiny] {$1:N$} (audit);
+    \draw [rel] (tenants) -- node[above, font=\tiny] {$1:N$} (flags);
+    \draw [rel] (tenants) -- node[above left, font=\tiny] {$1:N$} (zones);
+    \draw [rel] (zones) -- node[left, font=\tiny] {$1:N$} (tables);
+    \draw [rel] (tenants) -- node[above, font=\tiny] {$1:N$} (reservations);
+    \draw [rel] (users) -- node[left, font=\tiny] {$1:N$} (reservations);
+    \draw [rel] (reservations) -- node[right, font=\tiny] {$1:N$} (res_tables);
+    \draw [rel] (tables) -- node[below, font=\tiny] {$1:N$} (res_tables);
+    \draw [rel] (tables) -- node[left, font=\tiny] {$1:N$} (res_slots);
+    \draw [rel] (reservations) -- node[above, font=\tiny] {$1:1$} (reviews);
+    \draw [rel] (users) -- node[left, font=\tiny] {$1:N$} (deposit);
+    \draw [rel] (users) -- node[above, font=\tiny] {$1:N$} (loyalty);
+    \draw [rel] (tenants) -- node[above left, font=\tiny] {$1:N$} (menu);
+    \draw [rel] (tenants) -- node[left, font=\tiny] {$1:N$} (waitlist);
+    \draw [rel] (tenants) -- node[left, font=\tiny] {$1:N$} (invites);
+    \draw [rel] (users) -- node[above, font=\tiny] {$1:N$} (invites);
+\end{tikzpicture}
+\caption{Relational Architecture Topology and Inter-Entity Relationships}
+\label{fig:erd_diagram}
+\end{figure}
+
+\section{Composite Keys and Referential Integrity Policies}
+\label{sec:erd_keys}
+
+\subsection{Composite Primary Keys}
+While entities representing distinct business resources utilize UUIDv4 surrogate primary keys (\texttt{VARCHAR(36)}), associative junction entities and concurrency arbitration tables utilize composite primary keys to guarantee physical uniqueness at the storage engine level:
+\begin{enumerate}
+    \item \texttt{reservation\_tables (reservation\_id, table\_id)}: Enforces that an individual dining table cannot be associated with the same reservation record more than once, while allowing multiple tables to form a composite seating arrangement for a single booking.
+    \item \texttt{reservation\_slots (org\_id, table\_id, slot\_start\_utc)}: The core concurrency control constraint. This three-column composite primary key guarantees that a specific dining table within an organization cannot possess more than one allocation record for any given 15-minute time quantum.
+    \item \texttt{menu\_item\_recipes (item\_id, ingredient\_id)}: While assigning a UUID surrogate key (\texttt{id}), this junction enforces a composite \texttt{UNIQUE} constraint over \texttt{(item\_id, ingredient\_id)}, preventing duplicate ingredient line items within a single dish's recipe Bill of Materials.
+\end{enumerate}
+
+\subsection{Referential Cascade and Restrict Policies}
+Referential integrity is maintained through explicit SQL foreign key actions:
+\begin{itemize}
+    \item \texttt{ON DELETE CASCADE}: Applied to organizational sub-resources (e.g., deleting a tenant cascades to all its zones, tables, menus, and audit logs) and reservation junctions (deleting a reservation cascades to its junction entries and slot locks).
+    \item \texttt{ON DELETE SET NULL}: Applied to non-critical structural relationships (e.g., archiving a dining zone sets \texttt{dining\_tables.zone\_id} to \texttt{NULL} without deleting physical tables; deleting a staff account retains reservations with \texttt{customer\_id = NULL}).
+    \item \texttt{ON DELETE RESTRICT}: Enforced across financial ledgers (\texttt{deposit\_ledger}, \texttt{loyalty\_ledger}) and inventory recipes (\texttt{ingredients}). An administrator cannot delete a customer who holds historical ledger balances, guaranteeing that monetary and compliance audit trails remain intact.
+\end{itemize}

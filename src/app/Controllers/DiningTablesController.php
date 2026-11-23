@@ -23,8 +23,20 @@ use App\Middleware\RoleMiddleware;
  */
 class DiningTablesController
 {
+    private const SORT_ALLOWLIST = [
+        'code' => 't.code',
+        'label' => 't.label',
+        'capacity' => 't.capacity',
+        'status' => 't.status',
+        'zone_id' => 't.zone_id',
+        'created_at' => 't.created_at',
+    ];
+
     private function isJsonRequest(): bool
     {
+        if (php_sapi_name() === 'cli') {
+            return true;
+        }
         return (strpos($_SERVER['HTTP_ACCEPT'] ?? '', 'application/json') !== false)
             || (strpos($_SERVER['CONTENT_TYPE'] ?? '', 'application/json') !== false)
             || (isset($_GET['format']) && $_GET['format'] === 'json');
@@ -66,17 +78,37 @@ class DiningTablesController
         RoleMiddleware::hasAnyRole([RoleMiddleware::ROLE_ADMIN, RoleMiddleware::ROLE_FRONTOFHOUSE]);
         $orgId = $this->getAuthorizedOrgId($request, $params);
 
+        $q = trim((string) ($request->getParam('q') ?? ''));
+        $sort = (string) ($_GET['sort'] ?? $request->getParam('sort') ?? '');
+        $dir = strtoupper((string) ($_GET['dir'] ?? $request->getParam('dir') ?? 'ASC'));
+        $sortDir = ($dir === 'DESC') ? 'DESC' : 'ASC';
+        $sortCol = self::SORT_ALLOWLIST[$sort] ?? null;
+        $orderBy = $sortCol !== null ? "{$sortCol} {$sortDir}" : 't.zone_id ASC, t.label ASC';
+
+        $where = ['t.org_id = :org_id', 't.archived_at IS NULL'];
+        $bindings = ['org_id' => $orgId];
+        if ($q !== '') {
+            $where[] = '(t.label LIKE :q OR z.name LIKE :q)';
+            $bindings['q'] = '%' . str_replace(['!', '%', '_'], ['!!', '!%', '!_'], $q) . '%';
+        }
+        $whereSql = implode(' AND ', $where);
+
         $tablesStmt = Database::executeQuery(
-            'SELECT t.*, z.name as zone_name
-             FROM dining_tables t
+            "SELECT t.*, z.name as zone_name
+             FROM (SELECT dt.*, dt.label as code, '' as status FROM dining_tables dt) t
              LEFT JOIN dining_zones z ON t.zone_id = z.id
-             WHERE t.org_id = :org_id AND t.archived_at IS NULL
-             ORDER BY t.zone_id ASC, t.label ASC',
-            ['org_id' => $orgId]
+             WHERE {$whereSql}
+             ORDER BY {$orderBy}",
+            $bindings
         );
         $tables = $tablesStmt->fetchAll();
 
-        $now = date('Y-m-d H:i:s');
+        $zones = Database::executeQuery(
+            'SELECT id, name FROM dining_zones WHERE org_id = :org_id AND archived_at IS NULL ORDER BY name ASC',
+            ['org_id' => $orgId]
+        )->fetchAll();
+
+        $now = gmdate('Y-m-d H:i:s');
         $activeResStmt = Database::executeQuery(
             'SELECT rt.table_id, r.status
              FROM reservation_tables rt
@@ -224,6 +256,11 @@ class DiningTablesController
             'is_combinable' => $isCombinable
         ]));
 
+        if (!$this->isJsonRequest()) {
+            $response->redirect('/admin/tables');
+            return;
+        }
+
         $response->setHeader('Location', "/admin/restaurants/{$orgId}/tables/{$tableId}");
         $response->json([
             'id' => $tableId,
@@ -234,7 +271,7 @@ class DiningTablesController
             'x_coord' => $xCoord,
             'y_coord' => $yCoord,
             'is_combinable' => $isCombinable,
-            'created_at' => date('Y-m-d H:i:s')
+            'created_at' => gmdate('Y-m-d H:i:s')
         ], 201);
     }
 
@@ -319,6 +356,43 @@ class DiningTablesController
             return;
         }
 
+        // Mutation guard: prevent archiving if future active reservations exist
+        if (!empty($body['archived']) || !empty($body['is_archived']) || !empty($body['archived_at'])) {
+            $now = gmdate('Y-m-d H:i:s');
+            $activeResStmt = Database::executeQuery(
+                'SELECT COUNT(*) as cnt FROM reservations r
+                 JOIN reservation_tables rt ON r.id = rt.reservation_id
+                 WHERE rt.table_id = :table_id AND r.org_id = :org_id
+                   AND r.end_at > :now
+                   AND r.status IN (\'pending\', \'confirmed\', \'seated\')',
+                ['table_id' => $tableId, 'org_id' => $orgId, 'now' => $now]
+            );
+            $resCount = (int) ($activeResStmt->fetch()['cnt'] ?? 0);
+            if ($resCount > 0) {
+                $response->json(['error' => 'Cannot archive table: active future reservations exist.'], 422);
+                return;
+            }
+        }
+
+        // Mutation guard: prevent reducing table capacity below party size of active future bookings
+        if ($capacity < (int) $existing['capacity']) {
+            $now = gmdate('Y-m-d H:i:s');
+            $capCheckStmt = Database::executeQuery(
+                'SELECT COUNT(*) as cnt FROM reservations r
+                 JOIN reservation_tables rt ON r.id = rt.reservation_id
+                 WHERE rt.table_id = :table_id AND r.org_id = :org_id
+                   AND r.end_at > :now
+                   AND r.status IN (\'pending\', \'confirmed\', \'seated\')
+                   AND r.party_size > :capacity',
+                ['table_id' => $tableId, 'org_id' => $orgId, 'now' => $now, 'capacity' => $capacity]
+            );
+            $capConflict = (int) ($capCheckStmt->fetch()['cnt'] ?? 0);
+            if ($capConflict > 0) {
+                $response->json(['error' => 'Cannot reduce table capacity below party size of active future reservations.'], 422);
+                return;
+            }
+        }
+
         Database::executeQuery(
             'UPDATE dining_tables SET label = :label, capacity = :capacity, zone_id = :zone_id,
                     is_combinable = :combinable, x_coord = :x, y_coord = :y
@@ -339,6 +413,11 @@ class DiningTablesController
             'before' => $existing,
             'after' => ['label' => $label, 'capacity' => $capacity, 'zone_id' => $zoneId, 'x_coord' => $xCoord, 'y_coord' => $yCoord]
         ]));
+
+        if (!$this->isJsonRequest()) {
+            $response->redirect('/admin/tables');
+            return;
+        }
 
         $response->json(['status' => 'updated', 'id' => $tableId], 200);
     }
@@ -363,14 +442,43 @@ class DiningTablesController
             return;
         }
 
+        // Mutation guard: block archive if active future reservations exist
+        $now = gmdate('Y-m-d H:i:s');
+        $activeResStmt = Database::executeQuery(
+            'SELECT COUNT(*) as cnt FROM reservations r
+             JOIN reservation_tables rt ON r.id = rt.reservation_id
+             WHERE rt.table_id = :table_id AND r.org_id = :org_id
+               AND r.end_at > :now
+               AND r.status IN (\'pending\', \'confirmed\', \'seated\')',
+            ['table_id' => $tableId, 'org_id' => $orgId, 'now' => $now]
+        );
+        $resCount = (int) ($activeResStmt->fetch()['cnt'] ?? 0);
+        if ($resCount > 0) {
+            $response->json(['error' => 'Cannot archive table: active future reservations exist.'], 422);
+            return;
+        }
+
         Database::executeQuery(
-            'UPDATE dining_tables SET archived_at = CURRENT_TIMESTAMP WHERE id = :id AND org_id = :org_id',
-            ['id' => $tableId, 'org_id' => $orgId]
+            'UPDATE dining_tables SET archived_at = :archived_at WHERE id = :id AND org_id = :org_id',
+            ['archived_at' => $now, 'id' => $tableId, 'org_id' => $orgId]
         );
 
-        Audit::record($orgId, 'DELETE', 'dining_tables', $tableId, json_encode(['archived_at' => date('Y-m-d H:i:s')]));
+        Audit::record($orgId, 'DELETE', 'dining_tables', $tableId, json_encode(['archived_at' => $now]));
+
+        if (!$this->isJsonRequest()) {
+            $response->redirect('/admin/tables');
+            return;
+        }
 
         $response->json(['status' => 'deleted', 'id' => $tableId], 200);
+    }
+
+    /**
+     * Archive table alias (per mutation guard contract).
+     */
+    public function archive(Request $request, Response $response, array $params = []): void
+    {
+        $this->delete($request, $response, $params);
     }
 
     /**

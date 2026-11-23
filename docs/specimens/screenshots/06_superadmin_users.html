@@ -33,76 +33,47 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
 
-    <link rel="preload stylesheet" as="style" href="/assets/css/style.css" />
+    <link rel="stylesheet" href="/assets/css/base.css" />
+    <link rel="stylesheet" href="/assets/css/themes/default.css" />
+    <link rel="stylesheet" href="/assets/css/themes/lyra.css" />
+    <script src="/assets/css/theme-engine.js"></script>
     <script defer src="/assets/js/app.js"></script>
 </head>
 <body>
     <header class="site-header">
-        <div class="container">
-            <h1>Enterprise Information Management System</h1>
-            <p class="subtitle">Cavite State University - Main Campus - 2nd year 1st semester 2026-27</p>
+        <div class="container site-header-content">
+            <div>
+                <h1><a href="/">Enterprise Information Management System</a></h1>
+                <p class="subtitle">Cavite State University - Main Campus - 2nd year 1st semester 2026-27</p>
+            </div>
+            <div class="theme-switcher-container">
+                <label for="theme-select" class="theme-switcher-label">Theme:</label>
+                <select id="theme-select" class="theme-select" aria-label="Select Color Theme">
+                    <option value="default">Default (Neutral)</option>
+                    <option value="lyra">Lyra (Piiiiink WCAG AA)</option>
+                </select>
+            </div>
         </div>
     </header>
     <main class="container">
 <section class="card">
-    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+    <div class="header-actions">
         <div>
             <h2>Global User Directory</h2>
             <p class="subtitle">Cross-tenant visibility across all organization administrators and users</p>
         </div>
-        <a href="/superadmin/dashboard" style="color: var(--color-primary); font-weight: 500;">&larr; Back to Dashboard</a>
+        <a href="/superadmin/dashboard" class="link-nav">&larr; Back to Dashboard</a>
     </div>
 </section>
 
 <section class="card">
-    <div style="overflow-x: auto;">
-        <table style="width: 100%; border-collapse: collapse; text-align: left;">
-            <thead>
-                <tr style="border-bottom: 2px solid var(--color-border);">
-                    <th style="padding: 0.5rem;">User ID</th>
-                    <th style="padding: 0.5rem;">Name</th>
-                    <th style="padding: 0.5rem;">Email</th>
-                    <th style="padding: 0.5rem;">Tenant Organization</th>
-                    <th style="padding: 0.5rem;">Role Mask</th>
-                    <th style="padding: 0.5rem;">Created</th>
-                </tr>
-            </thead>
-            <tbody>
-                                                        <tr style="border-bottom: 1px solid var(--color-border);">
-                        <td style="padding: 0.5rem;"><code>usr-admin-002</code></td>
-                        <td style="padding: 0.5rem; font-weight: 500;">Campus Administrator</td>
-                        <td style="padding: 0.5rem;">admin@cvsu.edu.ph</td>
-                        <td style="padding: 0.5rem;">Cavite State University Main Campus</td>
-                        <td style="padding: 0.5rem;"><span style="background: rgba(37, 99, 235, 0.1); color: var(--color-primary); padding: 0.2rem 0.5rem; border-radius: var(--radius-sm); font-size: 0.85rem; font-weight: 600;">Admin (2)</span></td>
-                        <td style="padding: 0.5rem;">2026-11-05 23:13:13</td>
-                    </tr>
-                                                        <tr style="border-bottom: 1px solid var(--color-border);">
-                        <td style="padding: 0.5rem;"><code>usr-a41e3d57b6c6</code></td>
-                        <td style="padding: 0.5rem; font-weight: 500;">Maria Santos</td>
-                        <td style="padding: 0.5rem;">maria.santos@cvsu.edu.ph</td>
-                        <td style="padding: 0.5rem;">Cavite State University Main Campus</td>
-                        <td style="padding: 0.5rem;"><span style="background: rgba(37, 99, 235, 0.1); color: var(--color-primary); padding: 0.2rem 0.5rem; border-radius: var(--radius-sm); font-size: 0.85rem; font-weight: 600;">User (4)</span></td>
-                        <td style="padding: 0.5rem;">2026-11-05 23:18:44</td>
-                    </tr>
-                                                        <tr style="border-bottom: 1px solid var(--color-border);">
-                        <td style="padding: 0.5rem;"><code>usr-user-003</code></td>
-                        <td style="padding: 0.5rem; font-weight: 500;">Standard StudentUser</td>
-                        <td style="padding: 0.5rem;">user@cvsu.edu.ph</td>
-                        <td style="padding: 0.5rem;">Cavite State University Main Campus</td>
-                        <td style="padding: 0.5rem;"><span style="background: rgba(37, 99, 235, 0.1); color: var(--color-primary); padding: 0.2rem 0.5rem; border-radius: var(--radius-sm); font-size: 0.85rem; font-weight: 600;">User (4)</span></td>
-                        <td style="padding: 0.5rem;">2026-11-05 23:13:13</td>
-                    </tr>
-                                                        <tr style="border-bottom: 1px solid var(--color-border);">
-                        <td style="padding: 0.5rem;"><code>usr-superadmin-001</code></td>
-                        <td style="padding: 0.5rem; font-weight: 500;">System SuperAdmin</td>
-                        <td style="padding: 0.5rem;">superadmin@cvsu.edu.ph</td>
-                        <td style="padding: 0.5rem;">Cavite State University Main Campus</td>
-                        <td style="padding: 0.5rem;"><span style="background: rgba(37, 99, 235, 0.1); color: var(--color-primary); padding: 0.2rem 0.5rem; border-radius: var(--radius-sm); font-size: 0.85rem; font-weight: 600;">SuperAdmin (1)</span></td>
-                        <td style="padding: 0.5rem;">2026-11-05 23:13:13</td>
-                    </tr>
-                            </tbody>
-        </table>
-    </div>
+    <form method="GET" action="/superadmin/users" class="form-grid-admin" role="search">
+        <div>
+            <label for="q" class="form-label">Search email or name</label>
+            <input type="search" id="q" name="q" class="form-input" maxlength="100" value="<section class="card card-error">
+    <h2 class="error-title">500 Internal Server Error</h2>
+    <p>An unexpected error occurred. Give this request ID to the administrator:</p>
+    <p><code>65f347123ea6</code></p>
 </section>
     </main>
     <footer class="site-footer container">

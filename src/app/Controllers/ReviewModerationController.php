@@ -23,6 +23,12 @@ use App\Middleware\RoleMiddleware;
  */
 class ReviewModerationController
 {
+    private const SORT_ALLOWLIST = [
+        'created_at' => 'r.created_at',
+        'rating' => 'r.rating',
+        'id' => 'r.id',
+    ];
+
     private function isJsonRequest(): bool
     {
         return (strpos($_SERVER['HTTP_ACCEPT'] ?? '', 'application/json') !== false)
@@ -66,12 +72,18 @@ class ReviewModerationController
         RoleMiddleware::handle(RoleMiddleware::ROLE_ADMIN);
         $orgId = $this->getAuthorizedOrgId($request, $params);
 
+        $sort = (string) ($_GET['sort'] ?? $request->getParam('sort') ?? '');
+        $dir = strtoupper((string) ($_GET['dir'] ?? $request->getParam('dir') ?? 'DESC'));
+        $sortDir = ($dir === 'ASC') ? 'ASC' : 'DESC';
+        $sortCol = self::SORT_ALLOWLIST[$sort] ?? self::SORT_ALLOWLIST['created_at'];
+        $orderBy = "{$sortCol} {$sortDir}";
+
         $stmt = Database::executeQuery(
-            'SELECT r.*, u.first_name, u.last_name, u.email as reviewer_email
+            "SELECT r.*, u.first_name, u.last_name, u.email as reviewer_email
              FROM reviews r
-             LEFT JOIN users u ON r.customer_id = u.id
+             LEFT JOIN (SELECT id, first_name, last_name, email FROM users) u ON r.customer_id = u.id
              WHERE r.org_id = :org_id
-             ORDER BY r.created_at DESC',
+             ORDER BY {$orderBy}",
             ['org_id' => $orgId]
         );
         $reviews = $stmt->fetchAll();

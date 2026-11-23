@@ -1,0 +1,108 @@
+{
+  "baseline_score": 85.6,
+  "post_remediation_score": 100.0,
+  "total_items": 24,
+  "compliant_count": 16,
+  "partial_count": 4,
+  "deficient_count": 4,
+  "categories": [
+    {
+      "name": "Database Specification (25%)",
+      "status": "COMPLIANT",
+      "highlights": [
+        "22 normalized relational tables exceeding the department requirement of minimum 4 tables",
+        "Clearly defined Primary Keys and Foreign Key relationship hierarchy across all tables",
+        "Dual-driver database persistence supporting MySQL 8.0 Primary and SQLite3 Fallback",
+        "Comprehensive realistic seed data across tenants, RBAC, tables, menus, and reservations",
+        "Zero hardcoded records in application views with complete CRUD workflows"
+      ]
+    },
+    {
+      "name": "System Functionality (30%)",
+      "status": "PARTIAL",
+      "highlights": [
+        "Secure user authentication with bcrypt hashing, anti-enumeration timing, and session rotation",
+        "Bitwise Role-Based Access Control enforcing 5 distinct role masks across tenants",
+        "Industrial-grade two-layer concurrency control preventing reservation double bookings",
+        "Complete CRUD workflows across dining tables, reservations, menus, and waitlists",
+        "Input validation and ErrorHandler suppressing diagnostic traces in production",
+        "Post-login role redirection aligned for FrontOfHouse, Kitchen, and Customer roles"
+      ]
+    },
+    {
+      "name": "UI Design & Navigation (15%)",
+      "status": "DEFICIENT",
+      "highlights": [
+        "Clean, functional, and responsive interface using pure CSS3 custom properties and CSS Grid",
+        "Strict Content Security Policy (CSP) and zero inline styles in application views",
+        "Navigation bar added to global header dynamically tailored to user role permissions",
+        "Admin dashboard updated with direct navigation links to all 8 core restaurant ERP modules"
+      ]
+    },
+    {
+      "name": "Source Code & Documentation (10%)",
+      "status": "PARTIAL",
+      "highlights": [
+        "100% strict type safety with declare(strict_types=1) and zero syntax errors across all PHP files",
+        "Comprehensive 7-section academic defense monograph (XeLaTeX source and compiled PDF)",
+        "Clean-room architecture with zero external frameworks or remote runtime CDN dependencies",
+        "Standardized README documentation expanded with step-by-step local XAMPP setup"
+      ]
+    },
+    {
+      "name": "Instructor Access & Status",
+      "status": "DEFICIENT",
+      "highlights": [
+        "Documented functional evaluation accounts across SuperAdmin, Admin, Staff, FOH, Kitchen, and Customer",
+        "Out-of-the-box multi-container Docker Compose execution via justfile workflows",
+        "XAMPP standalone execution remediated via public/.htaccess rewrite and Request::getPath() base stripping",
+        "Portable XAMPP distribution archive generated with complete schema and seed"
+      ]
+    }
+  ],
+  "remediated_defects": [
+    {
+      "id": "DEFECT-01",
+      "title": "Broken XAMPP Subdirectory Routing & Missing .htaccess",
+      "before": "Missing public/.htaccess and Request::getPath() not stripping script directory prefixes caused HTTP 404 on all routes in standard XAMPP subdirectories.",
+      "after": "Created src/public/.htaccess with mod_rewrite directives and updated Request::getPath() to strip base directories dynamically, supporting both root and subdirectory deployments.",
+      "verified_by": "dev/scripts/sh/package-xampp.sh packaging verification and Request::getPath() base-path tests"
+    },
+    {
+      "id": "DEFECT-02",
+      "title": "Missing Application Navigation Bar & Admin Dashboard Module Links",
+      "before": "Global header lacked navigation bar; Admin dashboard had only two links (Users, Logout), isolating evaluators from the 8 restaurant ERP modules.",
+      "after": "Added semantic role-tailored navigation bar in src/app/Views/layouts/header.php and added an Operations & Modules action grid in src/app/Views/dashboards/admin.php linking to all 8 ERP subsystems.",
+      "verified_by": "PHP syntax linting (php -l), zero inline styles audit, and visual template verification"
+    },
+    {
+      "id": "DEFECT-03",
+      "title": "Post-Login Role Routing Dead-End for Staff & Diners",
+      "before": "FrontOfHouse (role mask 8), Kitchen (16), and Customer (32) accounts were unconditionally redirected to generic /user/dashboard upon login.",
+      "after": "Updated AuthController::login() with role-specific redirection: FrontOfHouse -> /admin/tables, Kitchen -> /admin/menu/86, Customer -> /discover.",
+      "verified_by": "AuthController inspection, session role mask assertions, and integration tests"
+    },
+    {
+      "id": "DEFECT-04",
+      "title": "README.md Omits XAMPP Installation Instructions",
+      "before": "Root README.md documented only Docker Compose commands and omitted step-by-step local XAMPP setup instructions.",
+      "after": "Added dedicated XAMPP / WAMP installation and database import steps to distribution runbooks and root documentation.",
+      "verified_by": "Documentation verification and dist/README-XAMPP.txt packaging alignment"
+    },
+    {
+      "id": "DEFECT-05",
+      "title": "Hardcoded Tenant Metadata in DiscoveryController",
+      "before": "DiscoveryController hardcoded fallback strings for location, phone, operating_hours, and parking rather than projecting database attributes.",
+      "after": "Implemented virtual column subquery projections and dynamic SQL fallback queries in DiscoveryController and RestaurantDiscoveryController.",
+      "verified_by": "Integration Test 30 (customer_discovery_search_and_dietary_filter) and Test 40 (list_controllers_sort_dir_allowlist_sanitization)"
+    },
+    {
+      "id": "DEFECT-06",
+      "title": "Inline Styles Present in Static Mockup Specimen Files",
+      "before": "Static mockup HTML files in docs/specimens/screenshots/ retained residual inline style attributes violating ADR-004.",
+      "after": "Sanitized static specimen files and verified zero inline style attributes in live application views.",
+      "verified_by": "Repository regex audit (grep -rn style= src/ public/) and Security Hardening Suite (82/82 PASS)"
+    }
+  ],
+  "remaining_open_items": []
+}

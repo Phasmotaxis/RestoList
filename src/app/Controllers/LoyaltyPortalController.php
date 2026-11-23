@@ -10,6 +10,7 @@ use App\Core\Request;
 use App\Core\Response;
 use App\Core\Session;
 use App\Services\FeatureFlagService;
+use App\Services\LoyaltyLedgerService;
 
 /**
  * Loyalty Portal Controller: Feature-gated customer loyalty points and rewards.
@@ -108,15 +109,9 @@ class LoyaltyPortalController
             return;
         }
 
-        // Calculate running balance: SUM(points_delta)
-        $balStmt = $pdo->prepare('SELECT COALESCE(SUM(points_delta), 0) as balance_points FROM loyalty_ledger WHERE org_id = :org_id AND customer_id = :customer_id');
-        $balStmt->execute([':org_id' => $orgId, ':customer_id' => $customerId]);
-        $balancePoints = (int) ($balStmt->fetch()['balance_points'] ?? 0);
-
-        // Fetch recent ledger history
-        $histStmt = $pdo->prepare('SELECT id, points_delta, reason, created_at FROM loyalty_ledger WHERE org_id = :org_id AND customer_id = :customer_id ORDER BY created_at DESC LIMIT 50');
-        $histStmt->execute([':org_id' => $orgId, ':customer_id' => $customerId]);
-        $history = $histStmt->fetchAll();
+        // Calculate running balance and fetch recent ledger history via LoyaltyLedgerService
+        $balancePoints = LoyaltyLedgerService::getBalance($orgId, $customerId);
+        $history = LoyaltyLedgerService::getLedger($orgId, $customerId, 50);
 
         $response->json([
             'org_id' => $orgId,
@@ -178,10 +173,8 @@ class LoyaltyPortalController
             return;
         }
 
-        // Check sufficient point balance
-        $balStmt = $pdo->prepare('SELECT COALESCE(SUM(points_delta), 0) as balance_points FROM loyalty_ledger WHERE org_id = :org_id AND customer_id = :customer_id');
-        $balStmt->execute([':org_id' => $orgId, ':customer_id' => $customerId]);
-        $currentBalance = (int) ($balStmt->fetch()['balance_points'] ?? 0);
+        // Check sufficient point balance via LoyaltyLedgerService
+        $currentBalance = LoyaltyLedgerService::getBalance($orgId, $customerId);
 
         if ($currentBalance < $pointsToRedeem) {
             $response->json([
@@ -192,17 +185,16 @@ class LoyaltyPortalController
             return;
         }
 
-        $ledgerId = bin2hex(random_bytes(18));
-        $pointsDelta = -1 * abs($pointsToRedeem);
-
-        $ins = $pdo->prepare('INSERT INTO loyalty_ledger (id, org_id, customer_id, points_delta, reason, created_at) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)');
-        $ins->execute([
-            $ledgerId,
-            $orgId,
-            $customerId,
-            $pointsDelta,
-            $rewardReason,
-        ]);
+        try {
+            $ledgerId = LoyaltyLedgerService::redeemPoints($orgId, $customerId, $pointsToRedeem, $rewardReason);
+        } catch (\RuntimeException $e) {
+            $response->json([
+                'error' => 'Insufficient points',
+                'current_balance' => $currentBalance,
+                'requested_points' => $pointsToRedeem,
+            ], 422);
+            return;
+        }
 
         Audit::log(
             $orgId,
@@ -273,15 +265,7 @@ class LoyaltyPortalController
             return;
         }
 
-        $ledgerId = bin2hex(random_bytes(18));
-        $ins = $pdo->prepare('INSERT INTO loyalty_ledger (id, org_id, customer_id, points_delta, reason, created_at) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)');
-        $ins->execute([
-            $ledgerId,
-            $orgId,
-            $customerId,
-            $points,
-            $reason,
-        ]);
+        $ledgerId = LoyaltyLedgerService::earnPoints($orgId, $customerId, $points, $reason);
 
         Audit::log(
             $orgId,
@@ -292,9 +276,7 @@ class LoyaltyPortalController
             "Awarded {$points} points to customer {$customerId}"
         );
 
-        $balStmt = $pdo->prepare('SELECT COALESCE(SUM(points_delta), 0) as balance_points FROM loyalty_ledger WHERE org_id = :org_id AND customer_id = :customer_id');
-        $balStmt->execute([':org_id' => $orgId, ':customer_id' => $customerId]);
-        $newBalance = (int) ($balStmt->fetch()['balance_points'] ?? 0);
+        $newBalance = LoyaltyLedgerService::getBalance($orgId, $customerId);
 
         $response->json([
             'id' => $ledgerId,

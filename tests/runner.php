@@ -18,7 +18,7 @@ error_reporting(E_ALL);
 ini_set('display_errors', '1');
 
 define('TESTS_DIR', __DIR__);
-define('SRC_DIR', is_dir('/var/www/html/app') ? '/var/www/html' : (is_dir(dirname(__DIR__) . '/src') ? dirname(__DIR__) . '/src' : (is_dir('/src/app') ? '/src' : (is_dir('/app/src') ? '/app/src' : '/var/www/html'))));
+define('SRC_DIR', is_dir('/var/www/html/app') ? '/var/www/html' : (is_dir(dirname(__DIR__) . '/src') ? dirname(__DIR__) . '/src' : (is_dir(dirname(dirname(__DIR__)) . '/src') ? dirname(dirname(__DIR__)) . '/src' : (is_dir('/src/app') ? '/src' : (is_dir('/app/src') ? '/app/src' : '/var/www/html')))));
 define('ROOT_DIR', dirname(SRC_DIR));
 
 $testCount = 0;
@@ -409,14 +409,37 @@ registerTest(
 // ============================================================================
 
 function setupTableAllocatorTestDb(): \PDO {
-    $srcDir = is_dir('/src') ? '/src' : (is_dir(__DIR__ . '/../src') ? realpath(__DIR__ . '/../src') : '/var/www/html');
+    $srcDir = defined('SRC_DIR') && is_dir(SRC_DIR . '/app') ? SRC_DIR : (is_dir('/src/app') ? '/src' : (is_dir(__DIR__ . '/../src/app') ? realpath(__DIR__ . '/../src') : (is_dir(__DIR__ . '/../../src/app') ? realpath(__DIR__ . '/../../src') : '/var/www/html')));
+    require_once $srcDir . '/app/Core/Config.php';
     require_once $srcDir . '/app/Core/Database.php';
+    require_once $srcDir . '/app/Core/Session.php';
+    require_once $srcDir . '/app/Core/Request.php';
+    require_once $srcDir . '/app/Core/Response.php';
     require_once $srcDir . '/app/Services/TableAllocator.php';
 
     putenv('DB_CONNECTION=sqlite');
     putenv('DB_SQLITE_PATH=:memory:');
     \App\Core\Database::resetConnection();
+    \App\Core\Response::setTestingMode(true);
     $pdo = \App\Core\Database::getConnection();
+
+    $pdo->exec('CREATE TABLE IF NOT EXISTS tenants (
+        id VARCHAR(36) PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        subdomain VARCHAR(64) NOT NULL UNIQUE,
+        is_active INTEGER NOT NULL DEFAULT 1,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );');
+
+    $pdo->exec('CREATE TABLE IF NOT EXISTS users (
+        id VARCHAR(36) PRIMARY KEY,
+        org_id VARCHAR(36),
+        email VARCHAR(255) NOT NULL,
+        first_name VARCHAR(64),
+        last_name VARCHAR(64),
+        role_mask INTEGER NOT NULL DEFAULT 4,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );');
 
     $pdo->exec('CREATE TABLE IF NOT EXISTS dining_zones (
         id VARCHAR(36) PRIMARY KEY,
@@ -499,6 +522,7 @@ function setupTableAllocatorTestDb(): \PDO {
         customer_id VARCHAR(36),
         rating INTEGER NOT NULL,
         comment TEXT,
+        approved INTEGER DEFAULT 0,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         restaurant_response TEXT,
         response_at TIMESTAMP NULL
@@ -902,7 +926,7 @@ registerTest(
 // ============================================================================
 
 function setupCustomerPortalTestDb(): \PDO {
-    $srcDir = is_dir('/src') ? '/src' : (is_dir(__DIR__ . '/../src') ? realpath(__DIR__ . '/../src') : '/var/www/html');
+    $srcDir = defined('SRC_DIR') && is_dir(SRC_DIR . '/app') ? SRC_DIR : (is_dir('/src/app') ? '/src' : (is_dir(__DIR__ . '/../src/app') ? realpath(__DIR__ . '/../src') : (is_dir(__DIR__ . '/../../src/app') ? realpath(__DIR__ . '/../../src') : '/var/www/html')));
     require_once $srcDir . '/app/Core/Config.php';
     require_once $srcDir . '/app/Core/Database.php';
     require_once $srcDir . '/app/Core/Session.php';
@@ -912,6 +936,8 @@ function setupCustomerPortalTestDb(): \PDO {
     require_once $srcDir . '/app/Core/Validator.php';
     require_once $srcDir . '/app/Services/TableAllocator.php';
     require_once $srcDir . '/app/Services/FeatureFlagService.php';
+    require_once $srcDir . '/app/Services/DepositLedgerService.php';
+    require_once $srcDir . '/app/Services/LoyaltyLedgerService.php';
     require_once $srcDir . '/app/Controllers/DiscoveryController.php';
     require_once $srcDir . '/app/Controllers/SlotAvailabilityController.php';
     require_once $srcDir . '/app/Controllers/BookingFlowController.php';
@@ -1564,6 +1590,442 @@ registerTest(
         return true;
     },
     'ConciergeController: deterministic rule-based ranking (dietary match, non-peak bonus, rating)'
+);
+
+// ============================================================================
+// AUDIT VERIFICATION TESTS: TABLE MUTATION GUARD & SORT ALLOWLISTS
+// ============================================================================
+
+registerTest(
+    'client_erp_dining_table_future_reservation_mutation_guard',
+    function(): bool {
+        $pdo = setupTableAllocatorTestDb();
+        $orgId = 'org-1';
+        $tableId = 'tbl-guard-1';
+
+        require_once SRC_DIR . '/app/Middleware/RoleMiddleware.php';
+        require_once SRC_DIR . '/app/Controllers/DiningTablesController.php';
+
+        // 1. Create test table
+        $pdo->prepare('INSERT INTO dining_tables (id, org_id, zone_id, label, capacity, is_combinable) VALUES (?, ?, ?, ?, ?, ?)')
+            ->execute([$tableId, $orgId, 'zone-1', 'G-1', 4, 0]);
+
+        // 2. Set up authenticated admin session
+        \App\Core\Session::set('user_id', 'admin-guard');
+        \App\Core\Session::set('role_mask', \App\Middleware\RoleMiddleware::ROLE_ADMIN);
+        \App\Core\Session::set('tenant_id', $orgId);
+        \App\Core\Session::set('org_id', $orgId);
+
+        // 3. Create active future reservation for table
+        $futureStart = gmdate('Y-m-d H:i:s', strtotime('+2 hours'));
+        $futureEnd = gmdate('Y-m-d H:i:s', strtotime('+3.5 hours'));
+        $resId = 'res-guard-active';
+
+        $pdo->prepare('INSERT INTO reservations (id, org_id, party_size, start_at, end_at, status) VALUES (?, ?, ?, ?, ?, ?)')
+            ->execute([$resId, $orgId, 4, $futureStart, $futureEnd, 'confirmed']);
+        $pdo->prepare('INSERT INTO reservation_tables (reservation_id, table_id) VALUES (?, ?)')
+            ->execute([$resId, $tableId]);
+
+        $controller = new \App\Controllers\DiningTablesController();
+        $_SERVER['HTTP_ACCEPT'] = 'application/json';
+
+        // 4. Test delete() / archive() rejection
+        $delReq = new \App\Core\Request();
+        $delRes = new \App\Core\Response();
+
+        ob_start();
+        $controller->delete($delReq, $delRes, ['id' => $orgId, 'table_id' => $tableId]);
+        $delOut = ob_get_clean();
+        $delData = json_decode($delOut, true);
+
+        assert_equal($delRes->getStatusCode() === 422, 'Expected HTTP 422 when deleting table with future active reservations');
+        assert_equal(
+            isset($delData['error']) && str_contains($delData['error'], 'Cannot archive table: active future reservations exist.'),
+            'Error message mismatch for future reservation delete guard'
+        );
+
+        // Verify table is not archived in DB
+        $stmt = $pdo->prepare('SELECT archived_at FROM dining_tables WHERE id = ?');
+        $stmt->execute([$tableId]);
+        $tbl = $stmt->fetch();
+        assert_equal(empty($tbl['archived_at']), 'Table was wrongly archived despite active reservation');
+
+        // 5. Test archive() method alias rejection
+        $archReq = new \App\Core\Request();
+        $archRes = new \App\Core\Response();
+
+        ob_start();
+        $controller->archive($archReq, $archRes, ['id' => $orgId, 'table_id' => $tableId]);
+        $archOut = ob_get_clean();
+        $archData = json_decode($archOut, true);
+
+        assert_equal($archRes->getStatusCode() === 422, 'Expected HTTP 422 when archiving table via archive() alias');
+        assert_equal(
+            isset($archData['error']) && str_contains($archData['error'], 'Cannot archive table: active future reservations exist.'),
+            'Error message mismatch for archive() alias'
+        );
+
+        // 6. Test capacity reduction below active party size rejection (4 -> 2)
+        $upCapReq = new \App\Core\Request();
+        $upCapReq->setParams([
+            'label' => 'G-1',
+            'capacity' => 2,
+            'zone_id' => 'zone-1',
+            'is_combinable' => 0,
+        ]);
+        $upCapRes = new \App\Core\Response();
+
+        ob_start();
+        $controller->update($upCapReq, $upCapRes, ['id' => $orgId, 'table_id' => $tableId]);
+        $upCapOut = ob_get_clean();
+        $upCapData = json_decode($upCapOut, true);
+
+        assert_equal($upCapRes->getStatusCode() === 422, 'Expected HTTP 422 when reducing table capacity below active reservation party size');
+        assert_equal(
+            isset($upCapData['error']) && str_contains($upCapData['error'], 'Cannot reduce table capacity below party size of active future reservations.'),
+            'Error message mismatch for capacity reduction guard'
+        );
+
+        // 7. Cancel future reservation and verify archiving succeeds
+        $pdo->prepare("UPDATE reservations SET status = 'cancelled' WHERE id = ?")->execute([$resId]);
+
+        $delSuccessReq = new \App\Core\Request();
+        $delSuccessRes = new \App\Core\Response();
+
+        ob_start();
+        $controller->delete($delSuccessReq, $delSuccessRes, ['id' => $orgId, 'table_id' => $tableId]);
+        $delSuccessOut = ob_get_clean();
+        $delSuccessData = json_decode($delSuccessOut, true);
+
+        assert_equal($delSuccessRes->getStatusCode() === 200, 'Expected HTTP 200 when deleting table after reservation cancelled');
+        assert_equal(
+            isset($delSuccessData['status']) && in_array($delSuccessData['status'], ['deleted', 'archived'], true),
+            'Expected table deleted/archived response'
+        );
+
+        $stmt->execute([$tableId]);
+        $tblArchived = $stmt->fetch();
+        assert_equal(!empty($tblArchived['archived_at']), 'Table archived_at timestamp not set');
+
+        return true;
+    },
+    'DiningTablesController mutation guard: HTTP 422 on table archiving or capacity reduction with active reservations'
+);
+
+registerTest(
+    'list_controllers_sort_dir_allowlist_sanitization',
+    function(): bool {
+        $pdo = setupTableAllocatorTestDb();
+        $orgId = 'org-1';
+
+        require_once SRC_DIR . '/app/Controllers/ReservationController.php';
+        require_once SRC_DIR . '/app/Controllers/DiningTablesController.php';
+        require_once SRC_DIR . '/app/Controllers/WaitlistController.php';
+        require_once SRC_DIR . '/app/Controllers/MenuItemController.php';
+        require_once SRC_DIR . '/app/Controllers/ReviewModerationController.php';
+        require_once SRC_DIR . '/app/Controllers/DiscoveryController.php';
+        require_once SRC_DIR . '/app/Controllers/RestaurantDiscoveryController.php';
+
+        \App\Core\Session::set('user_id', 'admin-sort');
+        \App\Core\Session::set('role_mask', \App\Middleware\RoleMiddleware::ROLE_ADMIN | \App\Middleware\RoleMiddleware::ROLE_SUPERADMIN);
+        \App\Core\Session::set('tenant_id', $orgId);
+        \App\Core\Session::set('org_id', $orgId);
+        $_SERVER['HTTP_ACCEPT'] = 'application/json';
+
+        // 1. ReservationController sort tests
+        $resCtrl = new \App\Controllers\ReservationController();
+
+        // Seed 2 reservations for today
+        $now = date('Y-m-d H:i:s');
+        $later = date('Y-m-d H:i:s', strtotime('+2 hours'));
+        $pdo->prepare('INSERT INTO reservations (id, org_id, party_size, start_at, end_at, status) VALUES (?, ?, ?, ?, ?, ?)')
+            ->execute(['res-sort-1', $orgId, 2, $now, date('Y-m-d H:i:s', strtotime('+1 hour')), 'confirmed']);
+        $pdo->prepare('INSERT INTO reservations (id, org_id, party_size, start_at, end_at, status) VALUES (?, ?, ?, ?, ?, ?)')
+            ->execute(['res-sort-2', $orgId, 8, $later, date('Y-m-d H:i:s', strtotime('+3 hours')), 'confirmed']);
+
+        // Test party_size DESC
+        $_GET = ['sort' => 'party_size', 'dir' => 'DESC', 'date' => '', 'format' => 'json'];
+        $req = new \App\Core\Request();
+        $res = new \App\Core\Response();
+        ob_start();
+        $resCtrl->index($req, $res, ['id' => $orgId]);
+        $out = ob_get_clean();
+        $data = json_decode($out, true);
+        assert_equal(is_array($data) && count($data['data']) >= 2, 'ReservationController index failed');
+        assert_equal((int)$data['data'][0]['party_size'] >= (int)$data['data'][1]['party_size'], 'ReservationController party_size DESC ordering failed');
+
+        // Test SQL injection attempt in sort and dir parameters - must not crash or inject SQL
+        $_GET = ['sort' => "id; DROP TABLE--", 'dir' => "INVALID' OR '1'='1", 'date' => '', 'format' => 'json'];
+        $req = new \App\Core\Request();
+        $res = new \App\Core\Response();
+        ob_start();
+        $resCtrl->index($req, $res, ['id' => $orgId]);
+        $out = ob_get_clean();
+        $data = json_decode($out, true);
+        assert_equal($res->getStatusCode() === 200, 'ReservationController should safely fall back on malicious sort/dir');
+
+        // 2. DiningTablesController sort tests
+        $tableCtrl = new \App\Controllers\DiningTablesController();
+        $pdo->prepare('INSERT INTO dining_tables (id, org_id, zone_id, label, capacity, is_combinable) VALUES (?, ?, ?, ?, ?, ?)')
+            ->execute(['tbl-s-1', $orgId, 'zone-1', 'A-1', 2, 0]);
+        $pdo->prepare('INSERT INTO dining_tables (id, org_id, zone_id, label, capacity, is_combinable) VALUES (?, ?, ?, ?, ?, ?)')
+            ->execute(['tbl-s-2', $orgId, 'zone-1', 'B-1', 10, 0]);
+
+        $_GET = ['sort' => 'capacity', 'dir' => 'DESC', 'format' => 'json'];
+        $req = new \App\Core\Request();
+        $res = new \App\Core\Response();
+        ob_start();
+        $tableCtrl->index($req, $res, ['id' => $orgId]);
+        $out = ob_get_clean();
+        $data = json_decode($out, true);
+        assert_equal(is_array($data) && count($data['data']) >= 2, 'DiningTablesController index failed');
+        assert_equal((int)$data['data'][0]['capacity'] >= (int)$data['data'][1]['capacity'], 'DiningTablesController capacity DESC ordering failed');
+
+        // Safe fallback on invalid sort column
+        $_GET = ['sort' => "nonexistent_column", 'dir' => "DOWN", 'format' => 'json'];
+        $req = new \App\Core\Request();
+        $res = new \App\Core\Response();
+        ob_start();
+        $tableCtrl->index($req, $res, ['id' => $orgId]);
+        $out = ob_get_clean();
+        $data = json_decode($out, true);
+        assert_equal($res->getStatusCode() === 200, 'DiningTablesController safe fallback failed');
+
+        // 3. WaitlistController sort tests
+        $wlCtrl = new \App\Controllers\WaitlistController();
+        $pdo->prepare('INSERT INTO waitlist_entries (id, org_id, customer_id, party_size, position, status) VALUES (?, ?, ?, ?, ?, ?)')
+            ->execute(['wl-s-1', $orgId, 'c1', 2, 1, 'waiting']);
+        $pdo->prepare('INSERT INTO waitlist_entries (id, org_id, customer_id, party_size, position, status) VALUES (?, ?, ?, ?, ?, ?)')
+            ->execute(['wl-s-2', $orgId, 'c2', 6, 2, 'waiting']);
+
+        $_GET = ['sort' => 'party_size', 'dir' => 'DESC', 'format' => 'json'];
+        $req = new \App\Core\Request();
+        $res = new \App\Core\Response();
+        ob_start();
+        $wlCtrl->index($req, $res, ['id' => $orgId]);
+        $out = ob_get_clean();
+        $data = json_decode($out, true);
+        assert_equal(is_array($data) && count($data['data']) >= 2, 'WaitlistController index failed');
+        assert_equal((int)$data['data'][0]['party_size'] >= (int)$data['data'][1]['party_size'], 'WaitlistController party_size DESC ordering failed');
+
+        // Waitlist fallback on malicious input
+        $_GET = ['sort' => "' OR 1=1--", 'dir' => "INJECTION", 'format' => 'json'];
+        $req = new \App\Core\Request();
+        $res = new \App\Core\Response();
+        ob_start();
+        $wlCtrl->index($req, $res, ['id' => $orgId]);
+        $out = ob_get_clean();
+        $data = json_decode($out, true);
+        assert_equal($res->getStatusCode() === 200, 'WaitlistController safe fallback failed');
+
+        // 4. MenuItemController sort tests
+        $menuCtrl = new \App\Controllers\MenuItemController();
+        $pdo->prepare('INSERT INTO menu_items (id, org_id, name, price_centavos, is_available) VALUES (?, ?, ?, ?, ?)')
+            ->execute(['item-s-1', $orgId, 'Appetizer Salad', 1200, 1]);
+        $pdo->prepare('INSERT INTO menu_items (id, org_id, name, price_centavos, is_available) VALUES (?, ?, ?, ?, ?)')
+            ->execute(['item-s-2', $orgId, 'Zesty Ribeye', 4800, 1]);
+
+        $_GET = ['sort' => 'price_centavos', 'dir' => 'ASC', 'format' => 'json'];
+        $req = new \App\Core\Request();
+        $res = new \App\Core\Response();
+        ob_start();
+        $menuCtrl->index($req, $res, ['id' => $orgId]);
+        $out = ob_get_clean();
+        $data = json_decode($out, true);
+        assert_equal(is_array($data) && count($data['data']) >= 2, 'MenuItemController index failed');
+        assert_equal((int)$data['data'][0]['price_centavos'] <= (int)$data['data'][1]['price_centavos'], 'MenuItemController price_centavos ASC ordering failed');
+
+        // MenuItem fallback on malicious input
+        $_GET = ['sort' => "UNION SELECT 1", 'dir' => "DESC", 'format' => 'json'];
+        $req = new \App\Core\Request();
+        $res = new \App\Core\Response();
+        ob_start();
+        $menuCtrl->index($req, $res, ['id' => $orgId]);
+        $out = ob_get_clean();
+        $data = json_decode($out, true);
+        assert_equal($res->getStatusCode() === 200, 'MenuItemController safe fallback failed');
+
+        // 5. ReviewModerationController sort tests
+        $revCtrl = new \App\Controllers\ReviewModerationController();
+        $pdo->prepare('INSERT INTO reviews (id, org_id, rating, comment) VALUES (?, ?, ?, ?)')
+            ->execute(['rev-s-1', $orgId, 1, 'Poor service']);
+        $pdo->prepare('INSERT INTO reviews (id, org_id, rating, comment) VALUES (?, ?, ?, ?)')
+            ->execute(['rev-s-2', $orgId, 5, 'Outstanding service']);
+
+        $_GET = ['sort' => 'rating', 'dir' => 'DESC', 'format' => 'json'];
+        $req = new \App\Core\Request();
+        $res = new \App\Core\Response();
+        ob_start();
+        $revCtrl->pending($req, $res, ['id' => $orgId]);
+        $out = ob_get_clean();
+        $data = json_decode($out, true);
+        assert_equal(is_array($data) && count($data['data']) >= 2, 'ReviewModerationController pending failed');
+        assert_equal((int)$data['data'][0]['rating'] >= (int)$data['data'][1]['rating'], 'ReviewModerationController rating DESC ordering failed');
+
+        // ReviewModeration fallback on malicious input
+        $_GET = ['sort' => "1; SELECT 1", 'dir' => "ASC", 'format' => 'json'];
+        $req = new \App\Core\Request();
+        $res = new \App\Core\Response();
+        ob_start();
+        $revCtrl->pending($req, $res, ['id' => $orgId]);
+        $out = ob_get_clean();
+        $data = json_decode($out, true);
+        assert_equal($res->getStatusCode() === 200, 'ReviewModerationController safe fallback failed');
+
+        // 6. RestaurantDiscoveryController sort tests
+        $discCtrl = new \App\Controllers\RestaurantDiscoveryController();
+        $pdo->prepare('INSERT INTO tenants (id, name, subdomain, is_active) VALUES (?, ?, ?, ?)')
+            ->execute(['org-alpha', 'Alpha Bistro', 'alpha', 1]);
+        $pdo->prepare('INSERT INTO tenants (id, name, subdomain, is_active) VALUES (?, ?, ?, ?)')
+            ->execute(['org-zeta', 'Zeta Kitchen', 'zeta', 1]);
+
+        $_GET = ['sort' => 'name', 'dir' => 'DESC', 'format' => 'json'];
+        $req = new \App\Core\Request();
+        $res = new \App\Core\Response();
+        ob_start();
+        $discCtrl->index($req, $res);
+        $out = ob_get_clean();
+        $data = json_decode($out, true);
+        assert_equal(is_array($data) && count($data['data']) >= 2, 'RestaurantDiscoveryController index failed');
+        assert_equal(strcmp($data['data'][0]['name'], $data['data'][1]['name']) >= 0, 'RestaurantDiscoveryController name DESC ordering failed');
+
+        // RestaurantDiscovery fallback on malicious input
+        $_GET = ['sort' => "nonexistent;--", 'dir' => "INVALID", 'format' => 'json'];
+        $req = new \App\Core\Request();
+        $res = new \App\Core\Response();
+        ob_start();
+        $discCtrl->index($req, $res);
+        $out = ob_get_clean();
+        $data = json_decode($out, true);
+        assert_equal($res->getStatusCode() === 200, 'RestaurantDiscoveryController safe fallback failed');
+
+        return true;
+    },
+    'List Controllers sort/dir sanitization: strict allowlists and safe default fallback across all list endpoints'
+);
+
+registerTest(
+    'reservation_checkout_flow_deposit_and_loyalty_accrual',
+    function(): bool {
+        $pdo = setupCustomerPortalTestDb();
+        $orgId = 'org-checkout-1';
+        $tableId = 'tbl-chk-1';
+        $customerId = 'cust-chk-1';
+
+        require_once SRC_DIR . '/app/Middleware/RoleMiddleware.php';
+        require_once SRC_DIR . '/app/Controllers/ReservationController.php';
+        require_once SRC_DIR . '/app/Controllers/BookingFlowController.php';
+        require_once SRC_DIR . '/app/Services/DepositLedgerService.php';
+        require_once SRC_DIR . '/app/Services/LoyaltyLedgerService.php';
+        require_once SRC_DIR . '/app/Services/FeatureFlagService.php';
+
+        // 1. Seed tenant, dining table, and customer user
+        $pdo->prepare('INSERT INTO tenants (id, name, subdomain, is_active) VALUES (?, ?, ?, ?)')
+            ->execute([$orgId, 'Trattoria Checkout', 'checkoutrest', 1]);
+        $pdo->prepare('INSERT INTO users (id, tenant_id, email, password_hash, first_name, last_name, role_mask) VALUES (?, ?, ?, ?, ?, ?, ?)')
+            ->execute([$customerId, $orgId, 'diner.checkout@example.com', 'hash', 'Diner', 'Checkout', 4]);
+        $pdo->prepare('INSERT INTO dining_tables (id, org_id, zone_id, label, capacity, is_combinable) VALUES (?, ?, ?, ?, ?, ?)')
+            ->execute([$tableId, $orgId, 'zone-1', 'C-1', 4, 0]);
+
+        // 2. Enable deposits and loyalty feature flags for tenant
+        \App\Services\FeatureFlagService::toggle($orgId, 'deposits', true);
+        \App\Services\FeatureFlagService::toggle($orgId, 'loyalty', true);
+
+        // 3. Customer places $30 (3000 centavos) deposit hold
+        \App\Services\DepositLedgerService::holdDeposit($orgId, $customerId, 3000, 'Party reservation hold');
+        $initialDepositBal = \App\Services\DepositLedgerService::getBalance($orgId, $customerId);
+        assert_equal($initialDepositBal === 3000, 'Initial deposit balance must be 3000 centavos');
+
+        // 4. Allocate a reservation with slots
+        $futureStart = gmdate('Y-m-d H:i:s', strtotime('+1 hour'));
+        $futureEnd = gmdate('Y-m-d H:i:s', strtotime('+2.5 hours'));
+        $resId = \App\Services\TableAllocator::allocateReservation(
+            $orgId,
+            [$tableId],
+            $futureStart,
+            $futureEnd,
+            2,
+            $customerId,
+            'Window table request'
+        );
+
+        // Verify slot buckets exist in DB
+        $slotCheck = $pdo->prepare('SELECT COUNT(*) as cnt FROM reservation_slots WHERE org_id = ? AND table_id = ?');
+        $slotCheck->execute([$orgId, $tableId]);
+        assert_equal((int)($slotCheck->fetch()['cnt'] ?? 0) > 0, 'Table slots must be occupied after allocation');
+
+        // 5. Staff performs checkout via ReservationController
+        \App\Core\Session::set('user_id', 'staff-chk');
+        \App\Core\Session::set('role_mask', \App\Middleware\RoleMiddleware::ROLE_FRONTOFHOUSE);
+        \App\Core\Session::set('tenant_id', $orgId);
+        \App\Core\Session::set('org_id', $orgId);
+        $_SERVER['HTTP_ACCEPT'] = 'application/json';
+
+        $resCtrl = new \App\Controllers\ReservationController();
+        $chkReq = new \App\Core\Request();
+        $chkReq->setBody(['bill_centavos' => 5000]); // $50.00 bill
+        $chkRes = new \App\Core\Response();
+
+        ob_start();
+        $resCtrl->checkout($chkReq, $chkRes, ['id' => $orgId, 'res_id' => $resId]);
+        $chkOut = ob_get_clean();
+        $chkData = json_decode($chkOut, true);
+
+        assert_equal($chkRes->getStatusCode() === 200, 'Checkout must return HTTP 200');
+        assert_equal($chkData['status'] === 'completed', 'Reservation status must be completed');
+        assert_equal($chkData['deposit_applied_centavos'] === 3000, 'Held deposit must be applied to bill');
+        assert_equal($chkData['loyalty_points_awarded'] === 50, 'Loyalty points must be accrued');
+
+        // 6. Verify table slots freed
+        $slotCheck->execute([$orgId, $tableId]);
+        assert_equal((int)($slotCheck->fetch()['cnt'] ?? 0) === 0, 'Table slots must be released upon checkout');
+
+        // 7. Verify deposit ledger updated and balance is 0
+        $finalDepositBal = \App\Services\DepositLedgerService::getBalance($orgId, $customerId);
+        assert_equal($finalDepositBal === 0, 'Deposit balance must be 0 after full application');
+
+        // 8. Verify loyalty balance is 50
+        $finalLoyaltyBal = \App\Services\LoyaltyLedgerService::getBalance($orgId, $customerId);
+        assert_equal($finalLoyaltyBal === 50, 'Loyalty points balance must be 50 after earn');
+
+        // 9. Verify double checkout is rejected (HTTP 422)
+        $dupReq = new \App\Core\Request();
+        $dupRes = new \App\Core\Response();
+        ob_start();
+        $resCtrl->checkout($dupReq, $dupRes, ['id' => $orgId, 'res_id' => $resId]);
+        $dupOut = ob_get_clean();
+        assert_equal($dupRes->getStatusCode() === 422, 'Duplicate checkout must be rejected with HTTP 422');
+
+        // 10. Verify customer portal self-checkout route (BookingFlowController::checkout)
+        $resId2 = \App\Services\TableAllocator::allocateReservation(
+            $orgId,
+            [$tableId],
+            gmdate('Y-m-d H:i:s', strtotime('+4 hours')),
+            gmdate('Y-m-d H:i:s', strtotime('+5.5 hours')),
+            2,
+            $customerId
+        );
+        $bookingCtrl = new \App\Controllers\BookingFlowController();
+        $cReq = new \App\Core\Request();
+        $cReq->setParams(['token' => $resId2]);
+        $cReq->setBody(['bill_centavos' => 2500]);
+        $cRes = new \App\Core\Response();
+
+        ob_start();
+        $bookingCtrl->checkout($cReq, $cRes);
+        $cOut = ob_get_clean();
+        $cData = json_decode($cOut, true);
+
+        assert_equal($cRes->getStatusCode() === 200, 'Customer portal checkout must return HTTP 200');
+        assert_equal($cData['status'] === 'completed', 'Reservation status must transition to completed');
+        assert_equal($cData['loyalty_points_awarded'] >= 25, 'Customer checkout must award loyalty points');
+
+        $finalLoyaltyBal2 = \App\Services\LoyaltyLedgerService::getBalance($orgId, $customerId);
+        assert_equal($finalLoyaltyBal2 === (50 + $cData['loyalty_points_awarded']), 'Loyalty points balance must accrue customer checkout reward');
+
+        return true;
+    },
+    'Reservation Checkout Flow: atomic slot release, DepositLedgerService settlement, and LoyaltyLedgerService accrual'
 );
 
 // ============================================================================

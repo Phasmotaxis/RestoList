@@ -8,7 +8,7 @@ require_once __DIR__ . '/../layouts/header.php';
         <p class="subtitle">Find dining venues, check real-time availability, and reserve tables across our multi-tenant platform.</p>
     </div>
 
-    <form method="GET" action="/discover" class="search-form">
+    <form method="GET" action="<?= htmlspecialchars(\App\Core\Request::url('/discover'), ENT_QUOTES, 'UTF-8') ?>" class="search-form">
         <div class="grid-form">
             <div class="form-group">
                 <label for="search-query">Search Venue</label>
@@ -44,7 +44,7 @@ require_once __DIR__ . '/../layouts/header.php';
         </div>
         <div class="action-group">
             <button type="submit" class="btn-primary">Search Availability</button>
-            <a href="/discover" class="btn-secondary">Reset Filters</a>
+            <a href="<?= htmlspecialchars(\App\Core\Request::url('/discover'), ENT_QUOTES, 'UTF-8') ?>" class="btn-secondary">Reset Filters</a>
         </div>
     </form>
 </section>
@@ -78,9 +78,9 @@ require_once __DIR__ . '/../layouts/header.php';
                         </div>
                     <?php endif; ?>
                     <div class="action-group">
-                        <a href="/discover/<?= urlencode($restaurant['id']) ?>" class="btn-secondary">View Details &amp; Menu</a>
-                        <a href="/bookings/new?restaurant_id=<?= urlencode($restaurant['id']) ?>" class="btn-primary">Reserve Table</a>
-                        <a href="/waitlist/<?= urlencode($restaurant['id']) ?>/join" class="btn-secondary">Join Waitlist</a>
+                        <a href="<?= htmlspecialchars(\App\Core\Request::url('/discover/' . urlencode($restaurant['id'])), ENT_QUOTES, 'UTF-8') ?>" class="btn-secondary">View Details &amp; Menu</a>
+                        <a href="<?= htmlspecialchars(\App\Core\Request::url('/bookings/new?restaurant_id=' . urlencode($restaurant['id'])), ENT_QUOTES, 'UTF-8') ?>" class="btn-primary">Reserve Table</a>
+                        <a href="<?= htmlspecialchars(\App\Core\Request::url('/waitlist/' . urlencode($restaurant['id']) . '/join'), ENT_QUOTES, 'UTF-8') ?>" class="btn-secondary">Join Waitlist</a>
                     </div>
                 </div>
             <?php endforeach; ?>
