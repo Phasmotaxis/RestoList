@@ -86,14 +86,14 @@ Our database schema is structured into 5 cohesive functional domains:
 Clone the project from GitHub and navigate to the project directory:
 
 ```bash
-git clone https://github.com/whinee/dict24-resto-erp.git
-cd dict24-resto-erp
+git clone https://github.com/Phasmotaxis/RestoList.git
+cd RestoList
 ```
 
 Here is how the project repository is organized:
 
 ```
-dict24-resto-erp/
+RestoList/
 ├── .github/                   # GitHub workflows, Issue and PR templates
 │   ├── ISSUE_TEMPLATE/        # Task ticket issue templates
 │   └── PULL_REQUEST_TEMPLATE.md
@@ -159,13 +159,13 @@ just down
 #### Option B: Native XAMPP (Recommended for Windows)
 If you prefer running XAMPP without Docker:
 1. Extract or clone the project into your XAMPP `htdocs` directory:
-   `C:\xampp\htdocs\dict24-resto-erp`
+   `C:\xampp\htdocs\RestoList`
 2. Open XAMPP Control Panel and start **Apache** and **MySQL**.
 3. Open your browser and go to phpMyAdmin: `http://localhost/phpmyadmin/`
 4. Create a new database named `eims_db` with collation `utf8mb4_unicode_ci`.
 5. Click **Import** and select `src/database/dict24_resto_erp.sql` to import the schema and baseline data.
 6. Open the application in your browser:
-   `http://localhost/dict24-resto-erp/src/public/` (or `http://localhost/dict24-resto-erp/`).
+   `http://localhost/RestoList/src/public/` (or `http://localhost/RestoList/`).
 
 ### 2.4 Running Verification Suites
 Before making any changes, verify that the existing codebase passes all checks:
@@ -329,7 +329,7 @@ git push -u origin feat/TSK-MEN-01-filipino-appetizers
 ```
 
 Then open GitHub in your browser:
-1. Navigate to the repository: `https://github.com/whinee/dict24-resto-erp`
+1. Navigate to the repository: `https://github.com/Phasmotaxis/RestoList`
 2. You will see a yellow banner: *"feat/TSK-MEN-01-filipino-appetizers had recent pushes"*. Click **Compare & pull request**.
 3. Ensure the base branch is `main` and the compare branch is your feature branch.
 4. Fill out the Pull Request template completely:
@@ -344,7 +344,7 @@ Opening a PR is a collaborative milestone:
 1. **Notify the Team in Messenger**: Drop your PR link in our Messenger group chat:
    ```text
    🚀 PR OPEN FOR REVIEW: feat/TSK-MEN-01-filipino-appetizers
-   PR Link: https://github.com/whinee/dict24-resto-erp/pull/12
+   PR Link: https://github.com/Phasmotaxis/RestoList/pull/12
    Ticket: TSK-MEN-01 (Filipino Appetizers Menu Data)
    Please review and leave feedback or approval! 👍
    ```
